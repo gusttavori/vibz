@@ -11,31 +11,27 @@ const nodemailer = require('nodemailer');
 // Inicializa o Resend com a chave do arquivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CONFIGURAÇÃO SMTP ROBUSTA (GMAIL + RENDER) ---
+// --- CORREÇÃO DEFINITIVA: Porta 465 (SSL) + IPv4 Forçado ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // false para porta 587 (usa STARTTLS)
+    port: 465, // Porta 465 usa criptografia desde o início (SSL)
+    secure: true, // TEM que ser true para porta 465
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
-    tls: {
-        rejectUnauthorized: false
-    },
-    // 👇 O SEGREDO: Força IPv4 para evitar que o Render tente IPv6 e trave
+    // 👇 O SEGREDO: Força IPv4 (Render bloqueia IPv6 às vezes)
     family: 4, 
-    // Logs para debug
+    // Logs para debug (vai aparecer no painel do Render)
     logger: true,
     debug: true,
-    // Timeouts estendidos
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
+    // Aumentei os Timeouts para 20s para garantir
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000
 });
 
 // --- VERIFICAÇÃO DE CONEXÃO AO INICIAR ---
-// Isso vai testar o email assim que o servidor subir!
 transporter.verify(function (error, success) {
     if (error) {
         console.error('❌ ERRO CRÍTICO NA CONEXÃO SMTP:', error);
