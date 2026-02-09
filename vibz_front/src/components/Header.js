@@ -75,7 +75,7 @@ export default function Header() {
                 {/* AÇÕES DIREITA */}
                 <div className="header-actions">
                     {/* Botão Criar Evento (CTA) */}
-                    <Link href="/eventos/novo" className="btn-create-event">
+                    <Link href="/admin/new" className="btn-create-event">
                         <FaPlus className="icon-mobile" />
                         <FaCalendarPlus className="icon-desktop" />
                         <span className="btn-text">Criar evento</span>
