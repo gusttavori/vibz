@@ -11,13 +11,19 @@ const nodemailer = require('nodemailer');
 // Inicializa o Resend com a chave do arquivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Configuração do Nodemailer (Fallback para Gmail se não houver domínio)
+// --- CORREÇÃO AQUI: Configuração robusta para evitar Timeout no Render ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Força SSL/TLS
     auth: {
         user: process.env.EMAIL_USER, // Seu e-mail Gmail
         pass: process.env.EMAIL_PASS  // Senha de App do Gmail
-    }
+    },
+    // Configurações de Timeout para evitar travamentos
+    connectionTimeout: 10000, // 10 segundos
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 });
 
 async function fetchImage(src) {
@@ -167,10 +173,10 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                 // Ler o arquivo para Buffer para enviar
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Tenta enviar via Resend se configurado, senão usa Nodemailer
+                // Tenta enviar via Resend se configurado E verificado
                 if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
                     await resend.emails.send({
-                        from: 'Vibz <ingressos@vibz.com.br>', // Altere para seu domínio verificado
+                        from: 'Vibz <ingressos@vibz.com.br>', // Domínio verificado
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
                         html: `
@@ -191,7 +197,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     });
                     console.log('📧 Email enviado via Resend para:', recipientEmail);
                 } else {
-                    // Fallback para Nodemailer (Gmail)
+                    // Fallback para Nodemailer (Gmail Pessoal)
                     const mailOptions = {
                         from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`,
                         to: recipientEmail,
