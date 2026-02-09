@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -19,7 +19,8 @@ const getApiBaseUrl = () => {
     return `${window.location.protocol}//${window.location.hostname}:5000/api`;
 };
 
-const Dashboard = () => {
+// Componente Interno com a Lógica do Dashboard
+const DashboardContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const API_BASE_URL = getApiBaseUrl();
@@ -31,6 +32,7 @@ const Dashboard = () => {
     const [loadingStripe, setLoadingStripe] = useState(false);
     const [connectionError, setConnectionError] = useState(false);
 
+    // Efeito para detectar retorno do Stripe (Sucesso)
     useEffect(() => {
         const stripeStatus = searchParams.get('stripe');
         if (stripeStatus === 'success') {
@@ -335,4 +337,11 @@ const Dashboard = () => {
     );
 };
 
-export default Dashboard;
+// Componente Principal Wrapper com Suspense (CORREÇÃO DE BUILD)
+export default function Dashboard() {
+    return (
+        <Suspense fallback={<div className="loading-screen">Carregando painel...</div>}>
+            <DashboardContent />
+        </Suspense>
+    );
+}
