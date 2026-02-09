@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../Auth.css';
 
-const API_BASE_URL = 'http://localhost:5000';
+// CORREÇÃO AQUI: Usar a variável de ambiente
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export default function Login() {
     setMessage('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -46,7 +47,7 @@ export default function Login() {
     onSuccess: async (tokenResponse) => {
       setMessage('Processando login com Google...');
       try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
+        const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -83,7 +84,6 @@ export default function Login() {
     router.push('/cadastro');
   };
 
-  // --- NOVO: Handler para ir à tela de recuperação ---
   const handleForgotPassword = () => {
     router.push('/esqueci-senha');
   };
@@ -108,7 +108,6 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)} 
         />
         
-        {/* --- NOVO: Botão Esqueceu sua senha? --- */}
         <div>
           <button 
               type="button" 
