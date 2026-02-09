@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import { FaCamera, FaLock, FaChevronDown, FaChevronUp } from 'react-icons/fa'; 
 import './EditProfile.css';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const EditProfile = () => {
     const router = useRouter();

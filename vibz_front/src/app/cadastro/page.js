@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import '../Auth.css'; 
 
-const API_BASE_URL = 'http://localhost:5000';
+// CORREÇÃO: Usa variável de ambiente (que já inclui /api)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function Cadastro() {
   const [name, setName] = useState('');
@@ -21,7 +22,6 @@ export default function Cadastro() {
     setIsLoading(true);
     setMessage('');
 
-    // Validação simples de senha
     if (password !== confirmPassword) {
         setMessage("As senhas não coincidem.");
         setIsLoading(false);
@@ -29,8 +29,8 @@ export default function Cadastro() {
     }
 
     try {
-      // --- CORREÇÃO AQUI: Adicionado '/auth' na URL ---
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      // CORREÇÃO: Removido '/api' manual, pois API_BASE_URL já tem
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -40,7 +40,6 @@ export default function Cadastro() {
 
       if (response.ok) {
         setMessage('Cadastro realizado com sucesso! Redirecionando...');
-        // Salva o token se o backend já retornar no cadastro (opcional)
         if (data.token) {
             localStorage.setItem('userToken', data.token);
             if(data.user) {
@@ -50,7 +49,7 @@ export default function Cadastro() {
         }
         
         setTimeout(() => {
-            router.push('/login'); // Ou '/' se quiser logar direto
+            router.push('/login');
         }, 1500);
       } else {
         setMessage(data.msg || 'Erro ao cadastrar.');
@@ -63,7 +62,6 @@ export default function Cadastro() {
     }
   };
 
-  // Função para voltar ao login
   const handleGoToLogin = () => {
     router.push('/login');
   };

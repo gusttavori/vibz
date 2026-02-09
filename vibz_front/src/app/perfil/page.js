@@ -11,8 +11,7 @@ import { FaEdit, FaTicketAlt, FaChartLine, FaSearch, FaChevronRight, FaMapMarker
 import './UserProfile.css'; 
 
 const getApiBaseUrl = () => {
-    if (typeof window === 'undefined') return 'http://localhost:5000/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
 const UserProfile = () => {

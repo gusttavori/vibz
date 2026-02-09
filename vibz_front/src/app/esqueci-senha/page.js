@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import '../Auth.css'; // Usa o CSS de autenticação existente
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Ajustado para /api se for o padrão do seu backend
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'; // Ajustado para /api se for o padrão do seu backend
 
 export default function ForgotPasswordStep1() {
   const router = useRouter();

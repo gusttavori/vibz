@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import '../../Auth.css'; 
 
-const API_BASE_URL = 'http://localhost:5000';
+// CORREÇÃO: Variável padrão
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ForgotPasswordStep3() {
   const router = useRouter();
@@ -14,7 +15,6 @@ export default function ForgotPasswordStep3() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Dados recuperados da sessão
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
 
@@ -23,7 +23,7 @@ export default function ForgotPasswordStep3() {
     const storedCode = sessionStorage.getItem('resetCode');
 
     if (!storedEmail || !storedCode) {
-      router.push('/esqueci-senha'); // Se faltar dados, reinicia o fluxo
+      router.push('/esqueci-senha'); 
     } else {
       setEmail(storedEmail);
       setCode(storedCode);
@@ -47,8 +47,8 @@ export default function ForgotPasswordStep3() {
     setMessage('');
 
     try {
-      // Envia E-mail + Código + Nova Senha para o backend
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      // CORREÇÃO: Removeu '/api' manual
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword }),
@@ -58,7 +58,6 @@ export default function ForgotPasswordStep3() {
 
       if (response.ok) {
         setMessage('Senha alterada com sucesso! Redirecionando...');
-        // Limpa a sessão por segurança
         sessionStorage.removeItem('resetEmail');
         sessionStorage.removeItem('resetCode');
         

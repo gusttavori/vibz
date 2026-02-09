@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import '../../Auth.css'; 
 
-const API_BASE_URL = 'http://localhost:5000';
+// CORREÇÃO: Variável padrão
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ForgotPasswordStep2() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function ForgotPasswordStep2() {
   const [email, setEmail] = useState('');
   
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Estado de carregamento
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const storedEmail = sessionStorage.getItem('resetEmail');
@@ -35,8 +36,8 @@ export default function ForgotPasswordStep2() {
     setIsLoading(true);
 
     try {
-      // --- VALIDAÇÃO NO BACKEND ---
-      const response = await fetch(`${API_BASE_URL}/api/auth/validate-code`, {
+      // CORREÇÃO: Removeu '/api' manual
+      const response = await fetch(`${API_BASE_URL}/auth/validate-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code }),
@@ -45,11 +46,9 @@ export default function ForgotPasswordStep2() {
       const data = await response.json();
 
       if (response.ok) {
-        // SUCESSO: O código é real. Pode passar.
         sessionStorage.setItem('resetCode', code);
         router.push('/esqueci-senha/nova-senha');
       } else {
-        // ERRO: Código errado (ex: 803754 em vez de 803755)
         setMessage(data.msg || 'Código inválido.');
       }
     } catch (error) {

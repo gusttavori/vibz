@@ -15,8 +15,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import './Dashboard.css';
 
 const getApiBaseUrl = () => {
-    if (typeof window === 'undefined') return 'http://localhost:5000/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
 // Componente Interno com a Lógica do Dashboard
