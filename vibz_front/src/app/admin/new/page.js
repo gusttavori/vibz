@@ -11,14 +11,13 @@ import {
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
-const getApiBaseUrl = () => {
-    if (typeof window === 'undefined') return 'http://localhost:5000/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
-};
+// --- CORREÇÃO AQUI ---
+// Usamos a variável de ambiente. Se não existir (localhost), usa a porta 5000 local.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const CadastroEvento = () => {
     const router = useRouter();
-    const API_BASE_URL = getApiBaseUrl();
+    // A variável API_BASE_URL já foi definida acima, não precisa chamar função
 
     // --- ESTADOS ---
     const [title, setTitle] = useState('');
