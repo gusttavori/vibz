@@ -6,9 +6,19 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
 // Inicializa o Resend com a chave do arquivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Configuração do Nodemailer (Fallback para Gmail se não houver domínio)
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER, // Seu e-mail Gmail
+        pass: process.env.EMAIL_PASS  // Senha de App do Gmail
+    }
+});
 
 async function fetchImage(src) {
     if (!src) return null;
@@ -154,33 +164,61 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 
         stream.on('finish', async () => {
             try {
-                // Ler o arquivo para Buffer para enviar via Resend
+                // Ler o arquivo para Buffer para enviar
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Envia email via Resend
-                await resend.emails.send({
-                    from: 'Vibz <ingressos@vibz.com.br>', // Altere para seu domínio verificado no Resend
-                    to: recipientEmail,
-                    subject: `Seus ingressos para ${event.title}`,
-                    html: `
-                        <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                            <h2 style="color: #4C01B5;">Olá, ${recipientName}!</h2>
-                            <p>Seu pagamento foi confirmado com sucesso.</p>
-                            <p>Em anexo estão seus ingressos para <strong>${event.title}</strong>.</p>
-                            <hr/>
-                            <p>Nos vemos lá!<br/>Equipe Vibz</p>
-                        </div>
-                    `,
-                    attachments: [
-                        {
-                            filename: `Ingressos_${event.title.replace(/\s+/g, '_')}.pdf`,
-                            content: pdfBuffer
-                        }
-                    ]
-                });
-                console.log('📧 Email enviado via Resend para:', recipientEmail);
+                // Tenta enviar via Resend se configurado, senão usa Nodemailer
+                if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
+                    await resend.emails.send({
+                        from: 'Vibz <ingressos@vibz.com.br>', // Altere para seu domínio verificado
+                        to: recipientEmail,
+                        subject: `Seus ingressos para ${event.title}`,
+                        html: `
+                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                                <h2 style="color: #4C01B5;">Olá, ${recipientName}!</h2>
+                                <p>Seu pagamento foi confirmado com sucesso.</p>
+                                <p>Em anexo estão seus ingressos para <strong>${event.title}</strong>.</p>
+                                <hr/>
+                                <p>Nos vemos lá!<br/>Equipe Vibz</p>
+                            </div>
+                        `,
+                        attachments: [
+                            {
+                                filename: `Ingressos_${event.title.replace(/\s+/g, '_')}.pdf`,
+                                content: pdfBuffer
+                            }
+                        ]
+                    });
+                    console.log('📧 Email enviado via Resend para:', recipientEmail);
+                } else {
+                    // Fallback para Nodemailer (Gmail)
+                    const mailOptions = {
+                        from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`,
+                        to: recipientEmail,
+                        subject: `Seus ingressos para ${event.title}`,
+                        html: `
+                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                                <h2 style="color: #4C01B5;">Olá, ${recipientName}!</h2>
+                                <p>Seu pagamento foi confirmado com sucesso.</p>
+                                <p>Em anexo estão seus ingressos para <strong>${event.title}</strong>.</p>
+                                <hr/>
+                                <p>Nos vemos lá!<br/>Equipe Vibz</p>
+                            </div>
+                        `,
+                        attachments: [
+                            {
+                                filename: `Ingressos_${event.title.replace(/\s+/g, '_')}.pdf`,
+                                content: pdfBuffer
+                            }
+                        ]
+                    };
+
+                    await transporter.sendMail(mailOptions);
+                    console.log('📧 Email enviado via Gmail para:', recipientEmail);
+                }
+
             } catch (err) {
-                console.error('❌ Erro ao enviar email Resend:', err);
+                console.error('❌ Erro ao enviar email:', err);
             } finally {
                 // Limpa o arquivo temporário
                 try { fs.unlinkSync(pdfPath); } catch(e) {}
