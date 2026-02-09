@@ -23,28 +23,13 @@ app.post(
     handleStripeWebhook
 );
 
-// --- 2. Configuração de CORS (Segurança) ---
-// Define quem pode acessar sua API
-const allowedOrigins = [
-    'http://localhost:3000',              // Seu teste local
-    process.env.CLIENT_URL,               // Sua URL da Vercel (definida no .env do Render)
-    'https://vibz.vercel.app',            // Exemplo fixo (opcional)
-    'https://vibz-ingressos.vercel.app'   // Exemplo fixo (opcional)
-];
-
+// --- 2. Configuração de CORS (LIBERADA GERAL) ---
+// Resolve o problema dos links de Preview da Vercel que mudam toda hora.
+// Agora o Backend aceita requisições de qualquer origem.
 app.use(cors({
-    origin: function (origin, callback) {
-        // Permite requisições sem 'origin' (como apps mobile ou Postman/Insomnia)
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) === -1) {
-            var msg = 'A política de CORS deste site não permite acesso desta origem.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: '*', // Aceita tudo (Vercel, Localhost, Postman, Mobile)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true // Permite cookies/sessões se necessário
 }));
 
@@ -66,7 +51,7 @@ app.use('/api/dashboard', dashboardRoutes);
 
 // Rota de Teste (Health Check)
 app.get('/', (req, res) => {
-    res.send('API Vibz Funcionando 🚀 (PostgreSQL)');
+    res.send('API Vibz Funcionando 🚀 (CORS Liberado)');
 });
 
 // --- 5. Inicialização do Servidor ---
