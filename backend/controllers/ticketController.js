@@ -7,36 +7,42 @@ const path = require('path');
 const axios = require('axios');
 const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 
-// Inicializa o Resend com a chave do arquivo .env
+// --- CORREÇÃO DE REDE GLOBAL ---
+// Isso obriga o Node.js a usar IPv4 primeiro, resolvendo problemas de timeout no Render
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
+// Inicializa o Resend (Manter caso compre domínio no futuro)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CORREÇÃO DEFINITIVA: Porta 465 (SSL) + IPv4 Forçado ---
+// --- CONFIGURAÇÃO PARA OUTLOOK / HOTMAIL ---
+// O Outlook é mais amigável com servidores de nuvem que o Gmail
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465, // Porta 465 usa criptografia desde o início (SSL)
-    secure: true, // TEM que ser true para porta 465
+    host: 'smtp-mail.outlook.com', // Servidor do Outlook/Hotmail
+    port: 587,
+    secure: false, // TLS (STARTTLS)
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.EMAIL_USER, // Seu email @outlook ou @hotmail
+        pass: process.env.EMAIL_PASS  // Sua senha normal do email
     },
-    // 👇 O SEGREDO: Força IPv4 (Render bloqueia IPv6 às vezes)
-    family: 4, 
-    // Logs para debug (vai aparecer no painel do Render)
+    tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+    },
     logger: true,
     debug: true,
-    // Aumentei os Timeouts para 20s para garantir
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    socketTimeout: 20000
+    connectionTimeout: 10000
 });
 
-// --- VERIFICAÇÃO DE CONEXÃO AO INICIAR ---
+// --- VERIFICAÇÃO AO INICIAR ---
 transporter.verify(function (error, success) {
     if (error) {
-        console.error('❌ ERRO CRÍTICO NA CONEXÃO SMTP:', error);
+        console.error('❌ ERRO NA CONEXÃO SMTP:', error);
     } else {
-        console.log('✅ SMTP CONECTADO COM SUCESSO! Pronto para enviar emails.');
+        console.log('✅ SMTP CONECTADO (OUTLOOK)! Pronto para enviar.');
     }
 });
 
@@ -151,7 +157,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
-        // Render e Vercel usam o diretório /tmp para arquivos temporários
         const tempDir = path.join('/tmp'); 
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -186,33 +191,19 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             try {
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Lógica de Envio: Tenta Resend se verificado, senão vai de Gmail
+                // Tenta Resend (se tiver domínio), senão usa Fallback
                 if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
                     await resend.emails.send({
                         from: 'Vibz <ingressos@vibz.com.br>',
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
-                        html: `
-                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                                <h2 style="color: #4C01B5;">Olá, ${recipientName}!</h2>
-                                <p>Seu pagamento foi confirmado com sucesso.</p>
-                                <p>Em anexo estão seus ingressos para <strong>${event.title}</strong>.</p>
-                                <hr/>
-                                <p>Nos vemos lá!<br/>Equipe Vibz</p>
-                            </div>
-                        `,
-                        attachments: [
-                            {
-                                filename: `Ingressos_${event.title.replace(/\s+/g, '_')}.pdf`,
-                                content: pdfBuffer
-                            }
-                        ]
+                        html: `<p>Olá ${recipientName}, seus ingressos estão em anexo.</p>`,
+                        attachments: [{ filename: `Ingressos.pdf`, content: pdfBuffer }]
                     });
-                    console.log('📧 Email enviado via Resend para:', recipientEmail);
+                    console.log('📧 Email enviado via Resend');
                 } else {
-                    // Fallback para Nodemailer (Gmail Pessoal)
-                    console.log('🔄 Tentando enviar via Gmail (Fallback)...');
-                    
+                    // Fallback para Outlook
+                    console.log('🔄 Tentando enviar via Outlook/Fallback...');
                     const mailOptions = {
                         from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`,
                         to: recipientEmail,
@@ -226,22 +217,14 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                                 <p>Nos vemos lá!<br/>Equipe Vibz</p>
                             </div>
                         `,
-                        attachments: [
-                            {
-                                filename: `Ingressos_${event.title.replace(/\s+/g, '_')}.pdf`,
-                                content: pdfBuffer
-                            }
-                        ]
+                        attachments: [{ filename: `Ingresso_${event.title.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer }]
                     };
-
                     await transporter.sendMail(mailOptions);
-                    console.log('📧 Email enviado com sucesso via Gmail para:', recipientEmail);
+                    console.log('📧 Email enviado via Outlook para:', recipientEmail);
                 }
-
             } catch (err) {
-                console.error('❌ Erro CRÍTICO ao enviar email:', err);
+                console.error('❌ Erro no envio de email:', err);
             } finally {
-                // Limpa o arquivo temporário
                 try { fs.unlinkSync(pdfPath); } catch(e) {}
             }
         });
@@ -281,7 +264,7 @@ const validateTicket = async (req, res) => {
             details: { 
                 user: user.name, 
                 event: event.title, 
-                type: ticketType?.name, 
+                type: ticketType?.name,
                 batch: ticketType?.batchName
             } 
         });
@@ -303,23 +286,11 @@ const getMyTickets = async (req, res) => {
         const enriched = await Promise.all(tickets.map(async (t) => {
             let qrImg = null;
             if (t.qrCodeData) qrImg = await QRCode.toDataURL(t.qrCodeData);
-
-            let eventDate = t.event.eventDate;
-            if (!eventDate && t.event.sessions) {
-                try {
-                    const s = typeof t.event.sessions === 'string' ? JSON.parse(t.event.sessions) : t.event.sessions;
-                    if (s[0] && s[0].date) eventDate = s[0].date;
-                } catch(e) {}
-            }
-            if (!eventDate) eventDate = t.event.createdAt;
-
+            let eventDate = t.event.eventDate || t.event.createdAt;
             return {
                 ...t,
                 qrCodeImage: qrImg,
-                event: t.event ? { 
-                    ...t.event, 
-                    date: eventDate 
-                } : {},
+                event: t.event ? { ...t.event, date: eventDate } : {},
                 ticketType: t.ticketType || { name: 'Geral' }
             };
         }));
@@ -337,19 +308,14 @@ const downloadTicketPDF = async (req, res) => {
             where: { id: ticketId },
             include: { event: true, user: true, ticketType: true }
         });
-
         if (!ticket) return res.status(404).send('Ingresso não encontrado');
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=Ingresso_${ticket.event.title.replace(/\s+/g, '_')}.pdf`);
-
         const doc = new PDFDocument({ size: 'A4', margin: 0 });
         doc.pipe(res);
-
         await drawTicketPDF(doc, ticket, ticket.event, ticket.user, ticket.ticketType, null);
-
         doc.end();
-
     } catch (error) {
         console.error('Erro download PDF:', error);
         res.status(500).send('Erro ao gerar PDF');
