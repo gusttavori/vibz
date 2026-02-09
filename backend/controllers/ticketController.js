@@ -11,17 +11,21 @@ const nodemailer = require('nodemailer');
 // Inicializa o Resend com a chave do arquivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CORREÇÃO AQUI: Configuração robusta para evitar Timeout no Render ---
+// --- CORREÇÃO: Configuração SMTP otimizada para Render (Porta 587) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Força SSL/TLS
+    port: 587, // Porta 587 é mais amigável para firewalls de nuvem que a 465
+    secure: false, // false para porta 587 (usa STARTTLS)
     auth: {
         user: process.env.EMAIL_USER, // Seu e-mail Gmail
         pass: process.env.EMAIL_PASS  // Senha de App do Gmail
     },
-    // Configurações de Timeout para evitar travamentos
-    connectionTimeout: 10000, // 10 segundos
+    tls: {
+        // Ajuda a evitar erros de certificado no ambiente Linux do Render
+        rejectUnauthorized: false 
+    },
+    // Configurações de Timeout mantidas para segurança
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000
 });
