@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { Suspense } from 'react'; // Adicionado Suspense
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaCheckCircle, FaTicketAlt, FaHome } from 'react-icons/fa';
@@ -8,10 +8,11 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import './Sucesso.css'; 
 
-export default function SucessoPage() {
+// 1. Componente interno com a lógica da URL
+function SucessoContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const sessionId = searchParams.get('session_id');
+    const sessionId = searchParams.get('session_id'); // O erro ocorria aqui
 
     return (
         <div className="success-page-container">
@@ -32,7 +33,6 @@ export default function SucessoPage() {
                     </div>
 
                     <div className="actions">
-                        {/* CORREÇÃO AQUI: Mudamos de /meus-eventos para /perfil */}
                         <button 
                             onClick={() => router.push('/perfil')} 
                             className="btn-primary"
@@ -49,5 +49,14 @@ export default function SucessoPage() {
 
             <Footer />
         </div>
+    );
+}
+
+// 2. Componente Principal (Wrapper)
+export default function SucessoPage() {
+    return (
+        <Suspense fallback={<div style={{display:'flex', justifyContent:'center', padding:'50px'}}>Carregando confirmação...</div>}>
+            <SucessoContent />
+        </Suspense>
     );
 }
