@@ -7,42 +7,38 @@ const path = require('path');
 const axios = require('axios');
 const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
-const dns = require('dns');
 
-// --- CORREÇÃO DE REDE GLOBAL ---
-// Isso obriga o Node.js a usar IPv4 primeiro, resolvendo problemas de timeout no Render
-if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
-}
-
-// Inicializa o Resend (Manter caso compre domínio no futuro)
+// Inicializa o Resend (caso compre domínio no futuro)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CONFIGURAÇÃO PARA OUTLOOK / HOTMAIL ---
-// O Outlook é mais amigável com servidores de nuvem que o Gmail
+// --- CONFIGURAÇÃO BREVO (SENDINBLUE) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp-mail.outlook.com', // Servidor do Outlook/Hotmail
-    port: 587,
-    secure: false, // TLS (STARTTLS)
+    host: 'smtp-relay.brevo.com', // Servidor do Brevo (O "carteiro")
+    port: 587, // Tente 587. Se der erro no log, mude para 2525
+    secure: false, // false para ambas as portas
     auth: {
-        user: process.env.EMAIL_USER, // Seu email @outlook ou @hotmail
-        pass: process.env.EMAIL_PASS  // Sua senha normal do email
+        user: process.env.EMAIL_USER, // Seu email de login no Brevo
+        pass: process.env.EMAIL_PASS  // Sua CHAVE SMTP do Brevo (Não a senha do Gmail)
     },
     tls: {
-        ciphers: 'SSLv3',
         rejectUnauthorized: false
     },
+    // Configurações para evitar queda de conexão
+    connectionTimeout: 10000, 
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     logger: true,
-    debug: true,
-    connectionTimeout: 10000
+    debug: true
 });
 
-// --- VERIFICAÇÃO AO INICIAR ---
+// --- TIRA-TEIMA: Teste de Conexão ao Iniciar ---
 transporter.verify(function (error, success) {
     if (error) {
-        console.error('❌ ERRO NA CONEXÃO SMTP:', error);
+        console.error('❌ ERRO SMTP (BREVO):', error);
+        console.log('💡 DICA: Verifique se EMAIL_PASS é a chave SMTP do Brevo.');
+        console.log('💡 DICA 2: Se for Timeout, troque a porta no código para 2525.');
     } else {
-        console.log('✅ SMTP CONECTADO (OUTLOOK)! Pronto para enviar.');
+        console.log('✅ SMTP CONECTADO (BREVO)! O sistema está pronto.');
     }
 });
 
@@ -191,7 +187,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             try {
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Tenta Resend (se tiver domínio), senão usa Fallback
+                // Tenta Resend (prioridade), senão Brevo
                 if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
                     await resend.emails.send({
                         from: 'Vibz <ingressos@vibz.com.br>',
@@ -202,10 +198,11 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     });
                     console.log('📧 Email enviado via Resend');
                 } else {
-                    // Fallback para Outlook
-                    console.log('🔄 Tentando enviar via Outlook/Fallback...');
+                    // Fallback para Brevo SMTP
+                    console.log('🔄 Enviando via Brevo SMTP...');
                     const mailOptions = {
-                        from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`,
+                        // IMPORTANTE: O "from" deve ser igual ao e-mail cadastrado em "Senders" no Brevo
+                        from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`, 
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
                         html: `
@@ -220,7 +217,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                         attachments: [{ filename: `Ingresso_${event.title.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer }]
                     };
                     await transporter.sendMail(mailOptions);
-                    console.log('📧 Email enviado via Outlook para:', recipientEmail);
+                    console.log('📧 Email enviado via Brevo para:', recipientEmail);
                 }
             } catch (err) {
                 console.error('❌ Erro no envio de email:', err);
@@ -264,7 +261,7 @@ const validateTicket = async (req, res) => {
             details: { 
                 user: user.name, 
                 event: event.title, 
-                type: ticketType?.name,
+                type: ticketType?.name, 
                 batch: ticketType?.batchName
             } 
         });
