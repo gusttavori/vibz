@@ -1,0 +1,209 @@
+/* --- GERAL DO FOOTER --- */
+.footerWrapper {
+    background-color: #070033; /* Fundo escuro estilo Sympla */
+    color: #b3b3b3; /* Texto cinza claro para bom contraste */
+    font-family: 'Urbanist', sans-serif; /* Fonte padrão do seu projeto */
+    padding: 60px 20px 30px;
+    margin-top: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+/* --- ÁREA PRINCIPAL (LINKS + INFOS) --- */
+.mainContent {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 40px;
+    border-bottom: 1px solid #4d4d4d; /* Linha divisória sutil */
+    padding-bottom: 40px;
+}
+
+/* Coluna Esquerda: Ocupa mais espaço (Flex 2) para os links */
+.leftColumn {
+    flex: 2;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+}
+
+.footerLogo {
+    width: 100px;
+    filter: brightness(0) invert(1); /* Deixa a logo branca */
+    opacity: 0.9;
+}
+
+.navLinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px; /* Espaço entre os grupos de links */
+}
+
+.navGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 140px;
+}
+
+.navTitle {
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+}
+
+.link {
+    color: #b3b3b3;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.link:hover {
+    color: #fff;
+    /* Opcional: Adicionar um toque de roxo no hover */
+    /* color: #a29bfe; */ 
+}
+
+/* Coluna Direita: Ocupa menos espaço (Flex 1) para Pagamento/Segurança */
+.rightColumn {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    /* Alinha o conteúdo ao início (esquerda do bloco) para ficar perto dos links */
+    align-items: flex-start; 
+}
+
+.trustBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+.trustTitle {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+/* Ícones de Pagamento */
+.paymentIcons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 2rem;
+    color: #ccc;
+}
+
+.stripeBadge {
+    background-color: #635bff; /* Roxo oficial do Stripe */
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem; /* Ajuste para o ícone caber bem */
+}
+
+/* Badges de Segurança */
+.securityBadges {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.securityItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #28a745; /* Verde padrão de segurança */
+    border: 1px solid rgba(40, 167, 69, 0.4);
+    background-color: rgba(40, 167, 69, 0.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* --- BARRA INFERIOR (Copyright + Social) --- */
+.bottomBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.copyright {
+    font-size: 0.85rem;
+    color: #888;
+    margin: 0;
+}
+
+.socialIcons {
+    display: flex;
+    gap: 20px;
+}
+
+.socialIcon {
+    color: #ccc;
+    font-size: 1.4rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.socialIcon:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* --- RESPONSIVIDADE --- */
+@media (max-width: 900px) {
+    .mainContent {
+        flex-direction: column;
+        gap: 50px;
+    }
+
+    .rightColumn {
+        width: 100%;
+        border-top: 1px solid #4d4d4d; /* Separação visual no tablet */
+        padding-top: 30px;
+    }
+}
+
+@media (max-width: 600px) {
+    .navLinks {
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .bottomBar {
+        flex-direction: column-reverse; /* Copyright por último no mobile */
+        text-align: center;
+    }
+}

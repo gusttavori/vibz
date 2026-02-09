@@ -1,0 +1,314 @@
+/* --- VIBZ PRO THEME 2.0 --- */
+:root {
+    --primary: #6366f1; /* Indigo moderno */
+    --primary-dark: #4338ca;
+    --bg-app: #f8fafc;
+    --surface: #ffffff;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --success: #10b981;
+    --error: #ef4444;
+    --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.08);
+    --shadow-card: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+/* Reset & Layout Base */
+.validator-page {
+    background-color: var(--bg-app);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-main);
+    overflow: hidden; /* Evita scroll na validação */
+}
+
+/* Cores de fundo dinâmicas baseadas no status */
+.validator-page.success { background-color: #ecfdf5; } /* Verde claro */
+.validator-page.error { background-color: #fef2f2; } /* Vermelho claro */
+
+/* Header Minimalista */
+.validator-nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+}
+
+.nav-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    padding: 8px 16px;
+    border-radius: 30px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-logo { height: 20px; }
+.nav-badge {
+    background: #e0e7ff;
+    color: var(--primary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Main Container Centralizado */
+.validator-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+}
+
+/* --- CARDS DE ESTADO --- */
+.state-card {
+    background: var(--surface);
+    width: 100%;
+    max-width: 380px;
+    border-radius: 32px;
+    padding: 40px 30px;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    z-index: 10;
+}
+
+/* --- IDLE STATE --- */
+.idle .pulse-ring {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.idle .qr-icon-wrapper {
+    font-size: 3rem;
+    color: var(--primary);
+    background: #e0e7ff;
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.idle .pulse-ring::before,
+.idle .pulse-ring::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.2;
+    z-index: 1;
+    animation: ripple 2s infinite ease-out;
+}
+.idle .pulse-ring::after { animation-delay: 1s; }
+
+.idle h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 10px; }
+.idle p { color: var(--text-sub); margin-bottom: 30px; font-size: 0.95rem; }
+
+/* --- SCANNING STATE (FULLSCREEN) --- */
+.state-fullscreen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: black;
+    z-index: 100;
+}
+
+#reader {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    background: black;
+}
+#reader video { 
+    width: 100% !important; 
+    height: 100% !important; 
+    object-fit: cover; 
+}
+
+/* Overlay de "Mira" do Scanner */
+.scan-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 101;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+}
+
+.scan-frame {
+    width: 280px;
+    height: 280px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    position: relative;
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.6); /* Efeito de máscara escura ao redor */
+}
+
+.scan-frame::after { /* Cantos brilhantes */
+    content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px;
+    border: 2px solid transparent;
+    border-top-color: var(--primary);
+    border-bottom-color: var(--primary);
+    border-radius: 20px;
+    animation: breathe 3s infinite;
+}
+
+.laser {
+    width: 100%; height: 2px; background: #ef4444;
+    box-shadow: 0 0 10px #ef4444;
+    position: absolute; top: 0;
+    animation: scan 2s infinite linear;
+}
+
+.scan-instruction {
+    margin-top: 40px;
+    color: white;
+    background: rgba(0,0,0,0.6);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.btn-close-scan {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 102;
+    background: white;
+    color: black;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+
+/* UI HACKS PARA BIBLIOTECA - Esconde elementos indesejados da lib */
+#reader__dashboard_section_csr, #reader__dashboard_section_swaplink { display: none !important; }
+
+/* --- RESULT STATES --- */
+.result-header { margin-bottom: 24px; }
+.icon-result { font-size: 4rem; margin-bottom: 16px; display: block; margin: 0 auto 16px; }
+.success .icon-result { color: var(--success); }
+.error .icon-result { color: var(--error); }
+
+.result h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+.success h2 { color: #065f46; } /* Verde escuro */
+.error h2 { color: #991b1b; } /* Vermelho escuro */
+
+.ticket-details {
+    background: #f1f5f9;
+    padding: 20px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.detail-row:last-child { border-bottom: none; }
+
+.label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-sub); font-weight: 600; text-transform: uppercase; }
+.value { font-weight: 600; color: var(--text-main); font-size: 1rem; text-align: right; }
+.value.highlight { color: var(--primary); }
+
+.error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+
+/* BOTÕES */
+.btn-primary-large {
+    width: 100%;
+    background: var(--text-main);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: transform 0.1s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.btn-primary-large:active { transform: scale(0.97); }
+
+.btn-secondary-large {
+    width: 100%;
+    background: white;
+    border: 2px solid #e2e8f0;
+    color: var(--text-main);
+    padding: 14px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.btn-text {
+    background: none; border: none; color: var(--text-sub); font-weight: 500; cursor: pointer; text-decoration: underline; margin-top: 10px;
+}
+
+/* LOADER */
+.spinner {
+    width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; margin: 0 auto 20px;
+}
+
+/* ANIMAÇÕES */
+@keyframes ripple { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes breathe { 0%, 100% { border-color: transparent; } 50% { border-color: rgba(99, 102, 241, 0.5); } }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.slide-up { animation: slideUp 0.4s ease-out; }

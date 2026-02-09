@@ -1,0 +1,458 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --primary-purple: #4C01B5;
+    --text-dark: #333;
+    --text-medium: #666;
+    --border-light: #eee;
+}
+
+.home-container {
+    font-family: "Urbanist", sans-serif;
+    background: #f8fafc; /* Fundo claro padrão */
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- SEARCH BAR (Limpo, sem fundo roxo) --- */
+.search-bar-container {
+    padding: 30px 20px; /* Espaçamento reduzido */
+    display: flex;
+    justify-content: center;
+    background: transparent; /* Fundo transparente */
+}
+
+.search-outer-border-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    width: 100%;
+    max-width: 700px;
+    height: 50px;
+    border-radius: 50px;
+    border: 1px solid #e2e8f0; 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Sombra suave */
+    position: relative;
+    z-index: 20;
+}
+
+/* Botão de Localização */
+.location-button-styled {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    height: 100%;
+    border-radius: 50px 0 0 50px;
+    border-right: 1px solid #f1f5f9;
+    gap: 6px;
+    color: var(--primary-purple);
+}
+
+.location-icon-styled {
+    width: 18px;
+    height: 18px;
+}
+
+.selected-city-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: capitalize; 
+}
+
+/* Input de Busca */
+.input-wrapper-relative {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    height: 100%;
+    position: relative;
+}
+
+.search-input-field {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    padding: 0 15px;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    background: transparent;
+}
+
+.search-button-styled {
+    background-color: var(--primary-purple);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    margin-right: 6px;
+    color: white;
+    transition: background 0.2s;
+}
+
+.search-button-styled:hover {
+    background-color: #3b008d;
+}
+
+/* Dropdowns (Cidade e Sugestões) */
+.city-dropdown-menu, .suggestions-dropdown {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    z-index: 100;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.city-dropdown-item, .suggestion-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.city-dropdown-item:hover, .suggestion-item:hover {
+    background-color: #f8fafc;
+    color: var(--primary-purple);
+}
+
+.suggestion-image { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; }
+.suggestion-info { display: flex; flex-direction: column; }
+.suggestion-title { font-weight: 600; font-size: 0.9rem; }
+.suggestion-date { font-size: 0.75rem; color: #888; }
+
+/* --- CARROUSEL CONTAINER --- */
+.featured-carousel-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto 30px; /* Margem inferior controlada */
+}
+
+/* --- CATEGORIAS --- */
+.categories-section {
+    padding: 0 20px 40px;
+    text-align: center;
+}
+
+.categories-title {
+    font-size: 1.25rem;
+    color: #1e293b;
+    margin-bottom: 20px;
+    font-weight: 800;
+}
+
+.categories-carousel-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.categories-list {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.category-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 80px;
+    transition: transform 0.2s;
+}
+
+.category-item:hover { transform: translateY(-3px); }
+
+.category-icon {
+    width: 60px;
+    height: 60px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border: 1px solid #f1f5f9;
+}
+
+.category-icon img { width: 30px; height: 30px; }
+.category-name { font-size: 0.8rem; font-weight: 600; color: #475569; }
+
+/* --- LISTA DE EVENTOS --- */
+.events-section {
+    max-width: 1200px;
+    padding: 0 20px;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    color: #1e293b;
+    margin-bottom: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 20px;
+    background: var(--primary-purple);
+    border-radius: 2px;
+}
+
+.filter-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+.filter-button {
+    padding: 6px 16px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.filter-button.active { background: var(--primary-purple); color: white; border-color: var(--primary-purple); }
+
+.event-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+/* --- MKT SECTION (Estilização Profissional) --- */
+.mkt-container-modern {
+    background: linear-gradient(135deg, #1e1b4b 0%, #4C01B5 100%);
+    color: white;
+    padding: 80px 20px;
+    margin-top: 60px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efeito de fundo sutil */
+.mkt-container-modern::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.mkt-content-modern {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.mkt-text-modern h2 {
+    font-family: "Urbanist", sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+}
+
+.mkt-subtitle {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 40px;
+    line-height: 1.6;
+    max-width: 90%;
+}
+
+.mkt-features-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.feature-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.05); /* Efeito vidro */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.feature-icon-wrapper {
+    background-color: #fff;
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary-purple);
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.feature-card h4 {
+    margin: 0 0 5px 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.feature-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+}
+
+.mkt-cta-group {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-primary-mkt {
+    background-color: #fff;
+    color: var(--primary-purple);
+    padding: 14px 28px;
+    border-radius: 50px;
+    border: none;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.btn-primary-mkt:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.btn-secondary-mkt {
+    background-color: transparent;
+    color: #fff;
+    padding: 14px 28px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.4);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary-mkt:hover {
+    background-color: rgba(255,255,255,0.1);
+    border-color: #fff;
+}
+
+.mkt-image-modern {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.mkt-image-modern img {
+    max-width: 100%;
+    width: 400px; /* Tamanho controlado */
+    height: auto;
+    filter: drop-shadow(0 20px 60px rgba(0,0,0,0.5)); /* Sombra forte para destacar do fundo */
+    transform: rotate(-3deg); /* Leve rotação para dar estilo */
+    transition: transform 0.5s ease;
+}
+
+.mkt-image-modern img:hover {
+    transform: rotate(0deg) scale(1.02);
+}
+
+/* Responsividade da Seção MKT */
+@media (max-width: 900px) {
+    .mkt-content-modern {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 40px;
+    }
+
+    .mkt-subtitle {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .mkt-features-grid {
+        align-items: stretch; /* Cards ocupam largura total */
+        text-align: left; /* Texto dos cards alinhado à esquerda para leitura */
+    }
+
+    .mkt-cta-group {
+        justify-content: center;
+    }
+
+    .mkt-image-modern {
+        display: none; 
+    }
+
+    .mkt-text-modern {
+        padding-bottom: 0;
+        text-align: center;
+    }
+}
+
+/* RESPONSIVO */
+@media (max-width: 768px) {
+    .search-outer-border-wrapper { max-width: 100%; }
+    .categories-list { justify-content: flex-start; overflow-x: scroll; padding-bottom: 15px; }
+    .event-list { display: flex; overflow-x: scroll; padding-bottom: 15px; }
+    .search-bar-container {
+    padding: 40px 30px; /* Espaçamento reduzido */
+    display: flex;
+    justify-content: center;
+    background: transparent; /* Fundo transparente */
+}
+}

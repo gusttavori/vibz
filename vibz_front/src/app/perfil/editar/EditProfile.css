@@ -1,0 +1,346 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #4C01B5;
+    --primary-dark: #3A008B;
+    --text-dark: #333;
+    --text-grey: #666;
+    --bg-page: #f8f9fa;
+    --border-color: #e0e0e0;
+    --white: #ffffff;
+    --error-bg: #ffebee;
+    --error-text: #c62828;
+    --success-bg: #e8f5e9;
+    --success-text: #2e7d32;
+}
+
+body {
+    background-color: var(--bg-page);
+    font-family: 'Urbanist', sans-serif;
+    color: var(--text-dark);
+}
+
+.loading-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: var(--text-grey);
+    font-size: 1.2rem;
+}
+
+.edit-profile-page {
+    padding: 40px 20px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+}
+
+.edit-profile-container {
+    width: 100%;
+    max-width: 850px;
+    background-color: var(--white);
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    padding-bottom: 40px;
+}
+
+.title {
+    text-align: center;
+    color: var(--text-dark);
+    margin: 35px 0 15px;
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+/* --- SEÇÃO DE FOTOS --- */
+.photo-section {
+    position: relative;
+    margin-bottom: 90px;
+}
+
+.cover-photo-container {
+    width: 100%;
+    height: 280px;
+    position: relative;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cover-photo-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.default-cover-preview {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #4C01B5, #8e44ad);
+}
+
+.profile-photo-container {
+    position: absolute;
+    bottom: -65px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 5px solid var(--white);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    background-color: var(--white);
+    z-index: 10;
+}
+
+.profile-photo-preview {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Botões de Upload (Overlay) */
+.photo-upload-label {
+    position: absolute;
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.photo-upload-label:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+    transform: scale(1.02);
+}
+
+.photo-upload-label.cover {
+    bottom: 15px;
+    right: 15px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    gap: 8px;
+}
+
+.photo-upload-label.profile {
+    bottom: 0;
+    right: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    border: 3px solid var(--white);
+    background-color: var(--primary-color);
+    opacity: 1;
+}
+
+.photo-upload-label.profile:hover {
+    background-color: var(--primary-dark);
+}
+
+/* --- FORMULÁRIO --- */
+.edit-profile-form {
+    padding: 0 50px;
+}
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 700;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Urbanist', sans-serif;
+    color: var(--text-dark);
+    background-color: #fafafa;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--primary-color);
+    background-color: var(--white);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(76, 1, 181, 0.1);
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* --- OPÇÃO DISCRETA DE SENHA --- */
+.password-toggle-wrapper {
+    margin-top: 10px;
+}
+
+.toggle-password-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    font-family: 'Urbanist', sans-serif;
+    transition: opacity 0.2s;
+}
+
+.toggle-password-btn:hover {
+    opacity: 0.8;
+}
+
+.password-fields-container {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Animação suave para os campos de senha */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Rodapé do Form (Mensagens e Botões) */
+.form-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.message {
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.message.error {
+    background-color: var(--error-bg);
+    color: var(--error-text);
+}
+
+.message.success {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.save-btn, .cancel-btn {
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    font-family: 'Urbanist', sans-serif;
+}
+
+.cancel-btn {
+    background-color: transparent;
+    color: var(--text-grey);
+    border: 1px solid var(--border-color);
+}
+
+.cancel-btn:hover {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.save-btn {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 15px rgba(76, 1, 181, 0.25);
+}
+
+.save-btn:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 1, 181, 0.35);
+}
+
+.save-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .edit-profile-page {
+        padding: 20px 10px;
+    }
+
+    .edit-profile-form {
+        padding: 0 20px;
+    }
+
+    .cover-photo-container {
+        height: 200px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .button-group {
+        flex-direction: column-reverse;
+    }
+
+    .save-btn, .cancel-btn {
+        width: 100%;
+        text-align: center;
+    }
+}

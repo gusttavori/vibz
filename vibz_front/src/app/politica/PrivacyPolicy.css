@@ -1,0 +1,196 @@
+/* --- DEFINIÇÃO DE CORES (Baseado no seu padrão) --- */
+:root {
+    --primary-purple: #4C01B5;
+    --dark-purple: #090040;
+    --medium-purple: #3B008D;
+    --light-purple: #6c5ce7;
+    --text-dark: #333333;
+    --bg-light: #f4f7f6;
+    --white: #ffffff;
+    --border-color: #e0e0e0;
+}
+
+/* Configuração geral da página */
+.privacy-policy-container {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: "Urbanist", sans-serif;
+}
+
+/* --- HEADER (Estilo Unificado) --- */
+.home-header {
+    background: var(--primary-purple);
+    color: var(--white);
+    display: flex;
+    justify-content: space-between;
+    padding: 0.65rem 2rem;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.home-header .logo {
+    width: 80px;
+    height: auto;
+    margin-bottom: 0;
+    filter: brightness(0) invert(1); /* Deixa a logo branca */
+    cursor: pointer;
+}
+
+.menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Botão "Criar evento" */
+.create-event {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--white);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    font-family: "Urbanist", sans-serif;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    transition: opacity 0.3s ease;
+}
+
+.create-event:hover {
+    opacity: 0.8;
+}
+
+.create-event img {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+/* Botão de Usuário/Login */
+.user-button {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    background-color: var(--dark-purple);
+    color: var(--white);
+    border: 1px solid var(--white);
+    padding: 7px 18px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-family: "Urbanist", sans-serif;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.user-button:hover {
+    background-color: var(--medium-purple);
+}
+
+.user-button img {
+    background-color: var(--medium-purple);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px; 
+    box-sizing: border-box;
+}
+
+/* --- ÁREA DE CONTEÚDO DA POLÍTICA --- */
+.privacy-policy-content {
+    max-width: 800px;
+    margin: 3rem auto; /* Centraliza com margem superior */
+    padding: 2.5rem;
+    background-color: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra suave igual ao formulário */
+    flex-grow: 1;
+    width: 90%; /* Responsividade para mobile */
+    box-sizing: border-box;
+}
+
+.policy-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary-purple);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.privacy-policy-content p,
+.privacy-policy-content li {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+}
+
+.policy-section {
+    margin-top: 2rem;
+}
+
+.policy-section .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark-purple);
+    margin-bottom: 0.8rem;
+}
+
+.policy-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.policy-list li {
+    margin-bottom: 0.8rem;
+    padding-left: 10px;
+    border-left: 3px solid var(--light-purple); /* Detalhe visual na lista */
+}
+
+.policy-list li strong {
+    color: var(--dark-purple);
+}
+
+/* --- FOOTER (Igual ao da Home/Cadastro) --- */
+.footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    margin-top: 3rem;
+    border-top: 1px solid var(--border-color);
+    background-color: transparent;
+}
+
+.footer-logo-img {
+    height: 30px;
+    width: auto;
+    filter: none; /* Logo com cores originais */
+    opacity: 0.8;
+}
+
+.footer-logo-img:hover {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0.65rem 1rem;
+    }
+    
+    .privacy-policy-content {
+        padding: 1.5rem;
+        margin: 1.5rem auto;
+    }
+
+    .policy-title {
+        font-size: 1.5rem;
+    }
+}
