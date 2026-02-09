@@ -8,22 +8,22 @@ const axios = require('axios');
 const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
-// Inicializa o Resend (caso compre domínio no futuro)
+// Inicializa o Resend (para futuro uso com domínio)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CONFIGURAÇÃO BREVO (SENDINBLUE) ---
+// --- CONFIGURAÇÃO BREVO (PORTA ALTERNATIVA 2525) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', // Servidor do Brevo (O "carteiro")
-    port: 587, // Tente 587. Se der erro no log, mude para 2525
-    secure: false, // false para ambas as portas
+    host: 'smtp-relay.brevo.com', // Servidor do Brevo
+    port: 2525, // Porta 2525: A "Bala de Prata" contra firewalls
+    secure: false, // false para 2525
     auth: {
-        user: process.env.EMAIL_USER, // Seu email de login no Brevo
-        pass: process.env.EMAIL_PASS  // Sua CHAVE SMTP do Brevo (Não a senha do Gmail)
+        user: process.env.EMAIL_USER, // Seu Login Brevo
+        pass: process.env.EMAIL_PASS  // Sua Chave SMTP
     },
     tls: {
         rejectUnauthorized: false
     },
-    // Configurações para evitar queda de conexão
+    // Configurações de conexão
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     socketTimeout: 10000,
@@ -34,11 +34,9 @@ const transporter = nodemailer.createTransport({
 // --- TIRA-TEIMA: Teste de Conexão ao Iniciar ---
 transporter.verify(function (error, success) {
     if (error) {
-        console.error('❌ ERRO SMTP (BREVO):', error);
-        console.log('💡 DICA: Verifique se EMAIL_PASS é a chave SMTP do Brevo.');
-        console.log('💡 DICA 2: Se for Timeout, troque a porta no código para 2525.');
+        console.error('❌ ERRO SMTP (BREVO/2525):', error);
     } else {
-        console.log('✅ SMTP CONECTADO (BREVO)! O sistema está pronto.');
+        console.log('✅ SMTP CONECTADO (BREVO/2525)! O sistema está pronto.');
     }
 });
 
@@ -153,6 +151,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
+        // Render e Vercel usam o diretório /tmp para arquivos temporários
         const tempDir = path.join('/tmp'); 
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -199,7 +198,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     console.log('📧 Email enviado via Resend');
                 } else {
                     // Fallback para Brevo SMTP
-                    console.log('🔄 Enviando via Brevo SMTP...');
+                    console.log('🔄 Enviando via Brevo SMTP (Porta 2525)...');
                     const mailOptions = {
                         // IMPORTANTE: O "from" deve ser igual ao e-mail cadastrado em "Senders" no Brevo
                         from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`, 
