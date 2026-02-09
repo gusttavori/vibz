@@ -258,7 +258,8 @@ const DashboardContent = () => {
                             <div className="events-management-section">
                                 <div className="section-header-dash">
                                     <h2><FaCalendarAlt /> Meus Eventos</h2>
-                                    <button className="btn-new-event" onClick={() => router.push('/eventos/novo')}>Criar Novo</button>
+                                    {/* CORREÇÃO AQUI: Rota atualizada para /admin/new */}
+                                    <button className="btn-new-event" onClick={() => router.push('/admin/new')}>Criar Novo</button>
                                 </div>
                                 <div className="events-list-dash">
                                     {myEvents.length === 0 ? (
@@ -282,6 +283,7 @@ const DashboardContent = () => {
                                                         <FaList /> Participantes
                                                     </button>
                                                     
+                                                    {/* Atenção: Verifique se a rota de edição também é no /admin */}
                                                     <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
                                                         <FaEdit /> Editar
                                                     </button>
