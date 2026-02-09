@@ -11,11 +11,11 @@ const nodemailer = require('nodemailer');
 // Inicializa o Resend com a chave do arquivo .env
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CORREÇÃO FINAL: Forçando IPv4 para evitar Timeout no Render ---
+// --- CONFIGURAÇÃO SMTP ROBUSTA (GMAIL + RENDER) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // TLS
+    secure: false, // false para porta 587 (usa STARTTLS)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -23,12 +23,25 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    // 👇 ESSA LINHA É O SEGREDO
-    family: 4, // Força o uso de IPv4 (evita que o Node tente IPv6 e trave)
-    // 👇 Opções extras de log para ajudar no debug se precisar
+    // 👇 O SEGREDO: Força IPv4 para evitar que o Render tente IPv6 e trave
+    family: 4, 
+    // Logs para debug
     logger: true,
     debug: true,
-    connectionTimeout: 10000 
+    // Timeouts estendidos
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
+});
+
+// --- VERIFICAÇÃO DE CONEXÃO AO INICIAR ---
+// Isso vai testar o email assim que o servidor subir!
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error('❌ ERRO CRÍTICO NA CONEXÃO SMTP:', error);
+    } else {
+        console.log('✅ SMTP CONECTADO COM SUCESSO! Pronto para enviar emails.');
+    }
 });
 
 async function fetchImage(src) {
@@ -175,13 +188,12 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 
         stream.on('finish', async () => {
             try {
-                // Ler o arquivo para Buffer para enviar
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Tenta enviar via Resend se configurado E verificado
+                // Lógica de Envio: Tenta Resend se verificado, senão vai de Gmail
                 if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
                     await resend.emails.send({
-                        from: 'Vibz <ingressos@vibz.com.br>', // Domínio verificado
+                        from: 'Vibz <ingressos@vibz.com.br>',
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
                         html: `
@@ -203,6 +215,8 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     console.log('📧 Email enviado via Resend para:', recipientEmail);
                 } else {
                     // Fallback para Nodemailer (Gmail Pessoal)
+                    console.log('🔄 Tentando enviar via Gmail (Fallback)...');
+                    
                     const mailOptions = {
                         from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`,
                         to: recipientEmail,
@@ -225,11 +239,11 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     };
 
                     await transporter.sendMail(mailOptions);
-                    console.log('📧 Email enviado via Gmail para:', recipientEmail);
+                    console.log('📧 Email enviado com sucesso via Gmail para:', recipientEmail);
                 }
 
             } catch (err) {
-                console.error('❌ Erro ao enviar email:', err);
+                console.error('❌ Erro CRÍTICO ao enviar email:', err);
             } finally {
                 // Limpa o arquivo temporário
                 try { fs.unlinkSync(pdfPath); } catch(e) {}
@@ -271,7 +285,7 @@ const validateTicket = async (req, res) => {
             details: { 
                 user: user.name, 
                 event: event.title, 
-                type: ticketType?.name,
+                type: ticketType?.name, 
                 batch: ticketType?.batchName
             } 
         });
