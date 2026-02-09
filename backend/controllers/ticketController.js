@@ -11,19 +11,18 @@ const nodemailer = require('nodemailer');
 // Inicializa o Resend (para futuro uso com domínio)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CONFIGURAÇÃO BREVO (PORTA ALTERNATIVA 2525) ---
+// --- CONFIGURAÇÃO BREVO (PORTA 2525) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', // Servidor do Brevo
-    port: 2525, // Porta 2525: A "Bala de Prata" contra firewalls
-    secure: false, // false para 2525
+    host: 'smtp-relay.brevo.com',
+    port: 2525, 
+    secure: false,
     auth: {
-        user: process.env.EMAIL_USER, // Seu Login Brevo
-        pass: process.env.EMAIL_PASS  // Sua Chave SMTP
+        user: process.env.EMAIL_USER, // Usa o login técnico (a1f800001...) configurado no Render
+        pass: process.env.EMAIL_PASS  // Usa a chave SMTP
     },
     tls: {
         rejectUnauthorized: false
     },
-    // Configurações de conexão
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     socketTimeout: 10000,
@@ -31,12 +30,12 @@ const transporter = nodemailer.createTransport({
     debug: true
 });
 
-// --- TIRA-TEIMA: Teste de Conexão ao Iniciar ---
+// --- TIRA-TEIMA ---
 transporter.verify(function (error, success) {
     if (error) {
-        console.error('❌ ERRO SMTP (BREVO/2525):', error);
+        console.error('❌ ERRO SMTP:', error);
     } else {
-        console.log('✅ SMTP CONECTADO (BREVO/2525)! O sistema está pronto.');
+        console.log('✅ SMTP CONECTADO! Autenticação técnica funcionou.');
     }
 });
 
@@ -199,9 +198,12 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                 } else {
                     // Fallback para Brevo SMTP
                     console.log('🔄 Enviando via Brevo SMTP (Porta 2525)...');
+                    
                     const mailOptions = {
-                        // IMPORTANTE: O "from" deve ser igual ao e-mail cadastrado em "Senders" no Brevo
-                        from: `"Vibz Ingressos" <${process.env.EMAIL_USER}>`, 
+                        // --- CORREÇÃO CRÍTICA AQUI ---
+                        // O "from" TEM que ser o e-mail validado no Brevo (vibzeventos@gmail.com), 
+                        // e NÃO o login técnico (a1f800001...) que está na variável EMAIL_USER.
+                        from: `"Vibz Ingressos" <vibzeventos@gmail.com>`, 
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
                         html: `
@@ -215,6 +217,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                         `,
                         attachments: [{ filename: `Ingresso_${event.title.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer }]
                     };
+                    
                     await transporter.sendMail(mailOptions);
                     console.log('📧 Email enviado via Brevo para:', recipientEmail);
                 }
