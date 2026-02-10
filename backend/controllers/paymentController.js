@@ -52,7 +52,6 @@ const validateCoupon = async (req, res) => {
 
 const createCheckoutSession = async (req, res) => {
     try {
-        // Validação de segurança
         if (!req.user || !req.user.id) {
             return res.status(401).json({ message: 'Sessão expirada.' });
         }
@@ -147,7 +146,7 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- LÓGICA DE EVENTO GRATUITO (CORRIGIDA) ---
+        // --- LÓGICA DE EVENTO GRATUITO ---
         if (totalPaid === 0) {
             console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
 
@@ -159,8 +158,7 @@ const createCheckoutSession = async (req, res) => {
                     subtotal: 0,
                     totalAmount: 0,
                     platformFee: 0,
-                    status: 'paid', // Status finalizado
-                    // REMOVIDO: paymentStatus: 'paid' (Campo não existe no schema)
+                    status: 'paid',
                     paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                     items: { create: orderItemsData }
                 },
@@ -182,12 +180,15 @@ const createCheckoutSession = async (req, res) => {
                         if (pData) customData = pData.data;
                     }
 
+                    // --- CRIAÇÃO DO TICKET COM RELAÇÕES PADRONIZADAS ---
+                    // Usamos connect para TUDO para evitar erros de "Argument missing"
                     await prisma.ticket.create({
                         data: {
-                            userId: userId,
-                            eventId: eventId,
-                            ticketTypeId: item.ticketTypeId,
-                            order: { connect: { id: order.id } }, // Conexão correta
+                            user: { connect: { id: userId } },
+                            event: { connect: { id: eventId } },
+                            ticketType: { connect: { id: item.ticketTypeId } },
+                            order: { connect: { id: order.id } },
+                            
                             qrCodeData: uniqueCode,
                             status: 'valid',
                             price: 0,
@@ -334,13 +335,14 @@ const handleStripeWebhook = async (req, res) => {
                     for (let i = 0; i < item.quantity; i++) {
                         const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
                         
+                        // Atualizado também aqui para usar connect em tudo
                         await prisma.ticket.create({
                             data: {
-                                ticketTypeId: item.ticketTypeId,
-                                eventId: updatedOrder.eventId,
-                                userId: updatedOrder.userId,
-                                // CORREÇÃO: Adicionada conexão com Order aqui também
+                                ticketType: { connect: { id: item.ticketTypeId } },
+                                event: { connect: { id: updatedOrder.eventId } },
+                                user: { connect: { id: updatedOrder.userId } },
                                 order: { connect: { id: updatedOrder.id } },
+                                
                                 qrCodeData: `${orderId}-${item.id}-${i}-${Date.now()}`,
                                 price: item.unitPrice,
                                 status: 'valid',
