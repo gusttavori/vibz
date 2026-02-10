@@ -24,8 +24,6 @@ export default function Participantes() {
     const [data, setData] = useState({ participants: [], formSchema: [], eventTitle: '', eventImageUrl: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const [processingCheckin, setProcessingCheckin] = useState(null);
-    
-    // Estado para controlar o Modal de Detalhes
     const [selectedParticipant, setSelectedParticipant] = useState(null);
 
     useEffect(() => {
@@ -60,7 +58,6 @@ export default function Participantes() {
     };
 
     const handleManualCheckIn = async (qrCode, ticketId) => {
-        // Se estiver no modal, não pede confirmação dupla chata, só valida
         setProcessingCheckin(ticketId);
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
@@ -78,16 +75,12 @@ export default function Participantes() {
 
             if (response.ok && result.valid) {
                 toast.success("Check-in realizado!");
-                
-                // Atualiza a lista principal
                 setData(prev => ({
                     ...prev,
                     participants: prev.participants.map(p => 
                         p.id === ticketId ? { ...p, status: 'used' } : p
                     )
                 }));
-
-                // Se o modal estiver aberto, atualiza ele também visualmente
                 if (selectedParticipant && selectedParticipant.id === ticketId) {
                     setSelectedParticipant(prev => ({ ...prev, status: 'used' }));
                 }
@@ -112,7 +105,6 @@ export default function Participantes() {
     const handleExportCSV = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
         
-        // ... (Lógica de exportação mantém igual pois ela PRECISA ter todos os dados)
         let headers = ["Status", "Código", "Comprador", "Email", "Ingresso", "Lote", "Data Compra"];
         const dynamicHeaders = data.formSchema ? data.formSchema.map(q => q.label) : [];
         headers = [...headers, ...dynamicHeaders];
@@ -141,7 +133,51 @@ export default function Participantes() {
         document.body.removeChild(link);
     };
 
-    if (loading) return <div className="loading-container">Carregando lista...</div>;
+    // --- NOVA TELA DE CARREGAMENTO (SKELETON) ---
+    if (loading) {
+        return (
+            <div className="participants-page">
+                <Header />
+                <main className="main-content-participants">
+                    {/* Header Skeleton */}
+                    <div className="page-header">
+                        <div className="skeleton skeleton-btn" style={{width: '120px', marginBottom: '25px'}}></div>
+                        <div className="header-title-row">
+                            <div className="title-wrapper">
+                                <div className="skeleton header-event-thumb"></div>
+                                <div className="title-block">
+                                    <div className="skeleton skeleton-text" style={{width: '250px', height: '32px', marginBottom: '10px'}}></div>
+                                    <div className="skeleton skeleton-text" style={{width: '180px', height: '18px'}}></div>
+                                </div>
+                            </div>
+                            <div className="skeleton" style={{width: '150px', height: '36px', borderRadius: '50px'}}></div>
+                        </div>
+                    </div>
+
+                    {/* Toolbar Skeleton */}
+                    <div className="toolbar">
+                        <div className="skeleton" style={{flex: 1, height: '48px', borderRadius: '10px'}}></div>
+                        <div className="skeleton" style={{width: '180px', height: '48px', borderRadius: '10px'}}></div>
+                    </div>
+
+                    {/* Table Skeleton */}
+                    <div className="table-container">
+                        <div className="skeleton-table-header"></div>
+                        {/* Gera 6 linhas falsas */}
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="skeleton-table-row">
+                                <div className="skeleton" style={{width: '30px', height: '30px', borderRadius: '50%'}}></div>
+                                <div className="skeleton skeleton-text" style={{width: '40%'}}></div>
+                                <div className="skeleton skeleton-text" style={{width: '30%'}}></div>
+                                <div className="skeleton" style={{width: '36px', height: '36px', borderRadius: '8px'}}></div>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     return (
         <div className="participants-page">
@@ -196,7 +232,6 @@ export default function Participantes() {
                                         <td>
                                             <div className="user-cell">
                                                 <span className="user-name">{p.buyerName}</span>
-                                                {/* Escondemos o email aqui para limpar, aparece no modal */}
                                             </div>
                                         </td>
                                         <td>
@@ -207,10 +242,7 @@ export default function Participantes() {
                                         </td>
                                         <td style={{textAlign: 'right'}}>
                                             <div className="action-buttons-row">
-                                                <button className="icon-btn-view" onClick={() => setSelectedParticipant(p)} title="Ver Detalhes">
-                                                    <FaEye />
-                                                </button>
-                                                
+                                                <button className="icon-btn-view" onClick={() => setSelectedParticipant(p)} title="Ver Detalhes"><FaEye /></button>
                                                 {p.status === 'valid' ? (
                                                     <button 
                                                         className="icon-btn-checkin" 
@@ -242,64 +274,37 @@ export default function Participantes() {
                 </div>
             </main>
 
-            {/* --- MODAL DE DETALHES --- */}
+            {/* MODAL (Mantido igual) */}
             {selectedParticipant && (
                 <div className="modal-overlay" onClick={() => setSelectedParticipant(null)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>Detalhes do Participante</h2>
-                            <button className="close-modal-btn" onClick={() => setSelectedParticipant(null)}>
-                                <FaTimes />
-                            </button>
+                            <button className="close-modal-btn" onClick={() => setSelectedParticipant(null)}><FaTimes /></button>
                         </div>
-                        
                         <div className="modal-body">
                             <div className="modal-status-banner" style={{background: selectedParticipant.status === 'used' ? '#f1f5f9' : '#d1fae5', color: selectedParticipant.status === 'used' ? '#64748b' : '#065f46'}}>
                                 <strong>Status:</strong> {selectedParticipant.status === 'used' ? 'JÁ UTILIZADO (Entrou)' : 'VÁLIDO (Pendente)'}
                             </div>
-
                             <div className="info-grid">
-                                <div className="info-item">
-                                    <label>Nome Completo</label>
-                                    <p>{selectedParticipant.buyerName}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>E-mail</label>
-                                    <p>{selectedParticipant.buyerEmail}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>Código do Ingresso</label>
-                                    <p className="code-display">{selectedParticipant.code}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>Data da Compra</label>
-                                    <p>{new Date(selectedParticipant.purchaseDate).toLocaleString('pt-BR')}</p>
-                                </div>
+                                <div className="info-item"><label>Nome Completo</label><p>{selectedParticipant.buyerName}</p></div>
+                                <div className="info-item"><label>E-mail</label><p>{selectedParticipant.buyerEmail}</p></div>
+                                <div className="info-item"><label>Código do Ingresso</label><p className="code-display">{selectedParticipant.code}</p></div>
+                                <div className="info-item"><label>Data da Compra</label><p>{new Date(selectedParticipant.purchaseDate).toLocaleString('pt-BR')}</p></div>
                             </div>
-
-                            {/* DADOS PERSONALIZADOS (FORMULÁRIO) */}
                             {data.formSchema && data.formSchema.length > 0 && (
                                 <div className="custom-data-section">
                                     <h3>Respostas do Formulário</h3>
                                     <div className="custom-grid">
                                         {data.formSchema.map((q, i) => (
-                                            <div key={i} className="custom-item">
-                                                <label>{q.label}</label>
-                                                <p>{selectedParticipant[q.label] || '-'}</p>
-                                            </div>
+                                            <div key={i} className="custom-item"><label>{q.label}</label><p>{selectedParticipant[q.label] || '-'}</p></div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-
-                            {/* BOTÃO GRANDE DE CHECK-IN NO MODAL */}
                             {selectedParticipant.status === 'valid' && (
                                 <div className="modal-footer">
-                                    <button 
-                                        className="big-checkin-btn" 
-                                        onClick={() => handleManualCheckIn(selectedParticipant.code, selectedParticipant.id)}
-                                        disabled={processingCheckin === selectedParticipant.id}
-                                    >
+                                    <button className="big-checkin-btn" onClick={() => handleManualCheckIn(selectedParticipant.code, selectedParticipant.id)} disabled={processingCheckin === selectedParticipant.id}>
                                         {processingCheckin === selectedParticipant.id ? 'Processando...' : 'CONFIRMAR ENTRADA (CHECK-IN)'}
                                     </button>
                                 </div>
@@ -308,7 +313,6 @@ export default function Participantes() {
                     </div>
                 </div>
             )}
-
             <Footer />
         </div>
     );
