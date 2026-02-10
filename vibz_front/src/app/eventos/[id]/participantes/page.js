@@ -4,7 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck } from 'react-icons/fa';
+import { 
+    FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, 
+    FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes 
+} from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 import './Participantes.css';
 
@@ -21,6 +24,9 @@ export default function Participantes() {
     const [data, setData] = useState({ participants: [], formSchema: [], eventTitle: '', eventImageUrl: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const [processingCheckin, setProcessingCheckin] = useState(null);
+    
+    // Estado para controlar o Modal de Detalhes
+    const [selectedParticipant, setSelectedParticipant] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -36,7 +42,7 @@ export default function Participantes() {
                     const result = await response.json();
                     setData(result);
                 } else {
-                    toast.error("Erro ao carregar lista de participantes.");
+                    toast.error("Erro ao carregar lista.");
                 }
             } catch (error) {
                 console.error(error);
@@ -50,14 +56,11 @@ export default function Participantes() {
 
     const formatText = (text) => {
         if (!text) return '';
-        return text.toString()
-            .replace(/(\d+)\s*[oO°]/g, '$1º')
-            .replace(/(\d+)\s*[aAª]/g, '$1ª');
+        return text.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª');
     };
 
     const handleManualCheckIn = async (qrCode, ticketId) => {
-        if (!confirm("Confirmar check-in manual para este participante?")) return;
-
+        // Se estiver no modal, não pede confirmação dupla chata, só valida
         setProcessingCheckin(ticketId);
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
@@ -75,12 +78,19 @@ export default function Participantes() {
 
             if (response.ok && result.valid) {
                 toast.success("Check-in realizado!");
+                
+                // Atualiza a lista principal
                 setData(prev => ({
                     ...prev,
                     participants: prev.participants.map(p => 
                         p.id === ticketId ? { ...p, status: 'used' } : p
                     )
                 }));
+
+                // Se o modal estiver aberto, atualiza ele também visualmente
+                if (selectedParticipant && selectedParticipant.id === ticketId) {
+                    setSelectedParticipant(prev => ({ ...prev, status: 'used' }));
+                }
             } else {
                 toast.error(result.message || "Erro ao validar.");
             }
@@ -101,7 +111,8 @@ export default function Participantes() {
 
     const handleExportCSV = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
-
+        
+        // ... (Lógica de exportação mantém igual pois ela PRECISA ter todos os dados)
         let headers = ["Status", "Código", "Comprador", "Email", "Ingresso", "Lote", "Data Compra"];
         const dynamicHeaders = data.formSchema ? data.formSchema.map(q => q.label) : [];
         headers = [...headers, ...dynamicHeaders];
@@ -109,19 +120,14 @@ export default function Participantes() {
         const rows = filteredParticipants.map(p => {
             const fixedData = [
                 p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
-                p.code,
-                p.buyerName,
-                p.buyerEmail,
-                formatText(p.ticketType), 
-                formatText(p.batch),      
+                p.code, p.buyerName, p.buyerEmail,
+                formatText(p.ticketType), formatText(p.batch),      
                 new Date(p.purchaseDate).toLocaleDateString('pt-BR')
             ];
-            
             const dynamicData = dynamicHeaders.map(header => {
                 const answer = p[header]; 
                 return answer ? answer.toString().replace(/"/g, '""') : '-';
             });
-            
             return [...fixedData, ...dynamicData].map(field => `"${field}"`).join(",");
         });
 
@@ -129,7 +135,7 @@ export default function Participantes() {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `lista_participantes_${data.eventTitle || 'evento'}.csv`);
+        link.setAttribute("download", `lista_${data.eventTitle}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -147,18 +153,16 @@ export default function Participantes() {
                     <button className="back-btn" onClick={() => router.back()}><FaArrowLeft /> Voltar ao Painel</button>
                     <div className="header-title-row">
                         <div className="title-wrapper">
-                            {data.eventImageUrl && (
-                                <img src={data.eventImageUrl} alt="Evento" className="header-event-thumb" />
-                            )}
+                            {data.eventImageUrl && <img src={data.eventImageUrl} alt="Evento" className="header-event-thumb" />}
                             <div className="title-block">
                                 <h1>{data.eventTitle}</h1>
                                 <p className="subtitle">Gestão de Participantes</p>
                             </div>
                         </div>
                         <div style={{display: 'flex', gap: '15px'}}>
-                            <span className="badge-total"><FaUserFriends /> {data.participants.length} Inscritos</span>
+                            <span className="badge-total"><FaUserFriends /> {data.participants.length}</span>
                             <span className="badge-total" style={{backgroundColor: '#10b981', color: '#fff'}}>
-                                <FaClipboardCheck /> {checkinsCount} Presentes
+                                <FaClipboardCheck /> {checkinsCount}
                             </span>
                         </div>
                     </div>
@@ -167,90 +171,65 @@ export default function Participantes() {
                 <div className="toolbar">
                     <div className="search-box">
                         <FaSearch className="search-icon"/>
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por nome, email ou código..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <input type="text" placeholder="Buscar participante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
                     </div>
-                    <button className="export-btn" onClick={handleExportCSV}>
-                        <FaFileCsv /> Exportar Lista (Excel)
-                    </button>
+                    <button className="export-btn" onClick={handleExportCSV}><FaFileCsv /> Exportar Excel</button>
                 </div>
 
                 <div className="table-container">
                     <table className="participants-table">
                         <thead>
                             <tr>
-                                <th className="col-status">Status</th>
-                                <th className="col-code">Código</th>
-                                <th className="col-name">Participante</th>
-                                <th className="col-ticket">Ingresso</th>
-                                {data.formSchema && data.formSchema.map((q, i) => (
-                                    <th key={i} className="col-dynamic">{q.label}</th>
-                                ))}
-                                <th className="col-date">Data Compra</th>
-                                <th className="col-action">Ação</th>
+                                <th style={{width: '50px'}}>Status</th>
+                                <th>Participante</th>
+                                <th>Ingresso</th>
+                                <th style={{textAlign: 'right', paddingRight: '30px'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredParticipants.length > 0 ? (
                                 filteredParticipants.map((p) => (
                                     <tr key={p.id} className={p.status === 'used' ? 'row-used' : ''}>
-                                        <td className="col-status" data-label="Status">
+                                        <td style={{textAlign: 'center'}}>
                                             <span className={`status-dot ${p.status}`} title={p.status === 'used' ? 'Utilizado' : 'Válido'}></span>
-                                            <span className="mobile-label">{p.status === 'used' ? 'Utilizado' : 'Válido'}</span>
                                         </td>
-                                        <td className="col-code" data-label="Código">
-                                            <span className="code-tag">{p.code.split('-')[1]}...</span>
-                                        </td>
-                                        <td className="col-name" data-label="Participante">
+                                        <td>
                                             <div className="user-cell">
                                                 <span className="user-name">{p.buyerName}</span>
-                                                <span className="user-email">{p.buyerEmail}</span>
+                                                {/* Escondemos o email aqui para limpar, aparece no modal */}
                                             </div>
                                         </td>
-                                        <td className="col-ticket" data-label="Ingresso">
+                                        <td>
                                             <div className="ticket-badge-wrapper">
                                                 <span className="ticket-type-name">{formatText(p.ticketType)}</span>
                                                 <span className="ticket-batch-name">{formatText(p.batch)}</span>
                                             </div>
                                         </td>
-                                        {data.formSchema && data.formSchema.map((q, i) => (
-                                            <td key={i} className="col-dynamic" data-label={q.label}>
-                                                {p[q.label] ? (
-                                                    <span className="form-answer">{p[q.label]}</span>
-                                                ) : (
-                                                    <span className="empty-dash">-</span>
-                                                )}
-                                            </td>
-                                        ))}
-                                        <td className="col-date" data-label="Data Compra">
-                                            {new Date(p.purchaseDate).toLocaleDateString('pt-BR')}
-                                            <small style={{marginLeft: '5px'}}>{new Date(p.purchaseDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
-                                        </td>
-                                        <td className="col-action" data-label="Check-in">
-                                            {p.status === 'valid' ? (
-                                                <button 
-                                                    className="btn-checkin" 
-                                                    onClick={() => handleManualCheckIn(p.code, p.id)}
-                                                    disabled={processingCheckin === p.id}
-                                                    title="Validar Entrada"
-                                                >
-                                                    {processingCheckin === p.id ? <FaSpinner className="spin" /> : <FaCheck />} Validar
+                                        <td style={{textAlign: 'right'}}>
+                                            <div className="action-buttons-row">
+                                                <button className="icon-btn-view" onClick={() => setSelectedParticipant(p)} title="Ver Detalhes">
+                                                    <FaEye />
                                                 </button>
-                                            ) : (
-                                                <span className="badge-checked">
-                                                    <FaCheckCircle /> Validado
-                                                </span>
-                                            )}
+                                                
+                                                {p.status === 'valid' ? (
+                                                    <button 
+                                                        className="icon-btn-checkin" 
+                                                        onClick={() => handleManualCheckIn(p.code, p.id)}
+                                                        disabled={processingCheckin === p.id}
+                                                        title="Fazer Check-in"
+                                                    >
+                                                        {processingCheckin === p.id ? <FaSpinner className="spin" /> : <FaCheck />}
+                                                    </button>
+                                                ) : (
+                                                    <span className="checked-icon"><FaCheckCircle /></span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7 + (data.formSchema ? data.formSchema.length : 0)} className="empty-state">
+                                    <td colSpan={4} className="empty-state">
                                         <div className="empty-content">
                                             <FaTicketAlt size={40} />
                                             <p>Nenhum participante encontrado.</p>
@@ -262,6 +241,74 @@ export default function Participantes() {
                     </table>
                 </div>
             </main>
+
+            {/* --- MODAL DE DETALHES --- */}
+            {selectedParticipant && (
+                <div className="modal-overlay" onClick={() => setSelectedParticipant(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Detalhes do Participante</h2>
+                            <button className="close-modal-btn" onClick={() => setSelectedParticipant(null)}>
+                                <FaTimes />
+                            </button>
+                        </div>
+                        
+                        <div className="modal-body">
+                            <div className="modal-status-banner" style={{background: selectedParticipant.status === 'used' ? '#f1f5f9' : '#d1fae5', color: selectedParticipant.status === 'used' ? '#64748b' : '#065f46'}}>
+                                <strong>Status:</strong> {selectedParticipant.status === 'used' ? 'JÁ UTILIZADO (Entrou)' : 'VÁLIDO (Pendente)'}
+                            </div>
+
+                            <div className="info-grid">
+                                <div className="info-item">
+                                    <label>Nome Completo</label>
+                                    <p>{selectedParticipant.buyerName}</p>
+                                </div>
+                                <div className="info-item">
+                                    <label>E-mail</label>
+                                    <p>{selectedParticipant.buyerEmail}</p>
+                                </div>
+                                <div className="info-item">
+                                    <label>Código do Ingresso</label>
+                                    <p className="code-display">{selectedParticipant.code}</p>
+                                </div>
+                                <div className="info-item">
+                                    <label>Data da Compra</label>
+                                    <p>{new Date(selectedParticipant.purchaseDate).toLocaleString('pt-BR')}</p>
+                                </div>
+                            </div>
+
+                            {/* DADOS PERSONALIZADOS (FORMULÁRIO) */}
+                            {data.formSchema && data.formSchema.length > 0 && (
+                                <div className="custom-data-section">
+                                    <h3>Respostas do Formulário</h3>
+                                    <div className="custom-grid">
+                                        {data.formSchema.map((q, i) => (
+                                            <div key={i} className="custom-item">
+                                                <label>{q.label}</label>
+                                                <p>{selectedParticipant[q.label] || '-'}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* BOTÃO GRANDE DE CHECK-IN NO MODAL */}
+                            {selectedParticipant.status === 'valid' && (
+                                <div className="modal-footer">
+                                    <button 
+                                        className="big-checkin-btn" 
+                                        onClick={() => handleManualCheckIn(selectedParticipant.code, selectedParticipant.id)}
+                                        disabled={processingCheckin === selectedParticipant.id}
+                                    >
+                                        {processingCheckin === selectedParticipant.id ? 'Processando...' : 'CONFIRMAR ENTRADA (CHECK-IN)'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Footer />
         </div>
     );
