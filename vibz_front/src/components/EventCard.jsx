@@ -1,32 +1,44 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation'; 
-import './EventCard.css'; 
+import { useRouter } from 'next/navigation';
+import { FaHeart, FaRegHeart, FaMapMarkerAlt } from 'react-icons/fa';
+import './EventCard.css';
 
 export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isFavorited }) {
-    const router = useRouter(); 
+    const router = useRouter();
 
     const handleCardClick = () => {
-        router.push(`/evento/${event._id}`);
+        // Suporta tanto id (SQL) quanto _id (NoSQL/Legado)
+        const eventId = event.id || event._id;
+        router.push(`/evento/${eventId}`);
     };
 
     const handleFavoriteClick = (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); // Impede que o clique abra os detalhes do evento
+
         if (isUserLoggedIn) {
-            onToggleFavorite(event._id, !isFavorited);
+            // Chama a função passada pelo componente pai (Home ou UserProfile)
+            const eventId = event.id || event._id;
+            onToggleFavorite(eventId, !isFavorited);
         } else {
-            if(confirm("Faça login para favoritar.")) router.push('/login');
+            // Redireciona para login se não estiver logado
+            if (confirm("Você precisa fazer login para favoritar eventos. Deseja ir para o login agora?")) {
+                router.push('/login');
+            }
         }
     };
 
     // --- LÓGICA DE DATA ROBUSTA ---
     const getDisplayDate = () => {
-        // 1. Tenta pegar a data raiz (calculada pelo backend)
-        if (event.date) return new Date(event.date);
+        // 1. Tenta pegar a data raiz
+        if (event.date || event.eventDate) {
+            return new Date(event.date || event.eventDate);
+        }
         
         // 2. Se não tiver, tenta pegar a primeira sessão da lista
-        if (event.sessions && event.sessions.length > 0) {
+        if (event.sessions && Array.isArray(event.sessions) && event.sessions.length > 0) {
+            // Ordena sessões para pegar a mais próxima
             const sorted = [...event.sessions].sort((a,b) => new Date(a.date) - new Date(b.date));
             return new Date(sorted[0].date);
         }
@@ -38,6 +50,7 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
         if (!date || isNaN(date.getTime())) return null;
 
         const day = date.getDate().toString().padStart(2, '0');
+        // Meses abreviados em Português
         const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN','JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
         const month = monthNames[date.getMonth()];
 
@@ -57,27 +70,41 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
             <div className="event-card-image" 
                  style={{ 
                      backgroundImage: event.imageUrl ? `${gradientOverlay}, url(${event.imageUrl})` : 'none', 
-                     backgroundColor: '#eee' 
+                     backgroundColor: '#e2e8f0' 
                  }}>
-            </div>
-
-            <div className="event-card-content">
-                {/* Badge de Data */}
-                {displayDate && (
+                 
+                 {/* Badge de Data Flutuante */}
+                 {displayDate && (
                     <div className="event-card-date-badge">
                         {displayDate}
                     </div>
-                )}
+                 )}
+            </div>
 
-                <div className="event-card-footer">
+            <div className="event-card-content">
+                <div className="event-card-header">
                     <h4 className="event-card-title">{event.title}</h4>
-                    {event.location && <div className="event-card-location">{event.location}</div>}
+                </div>
+                
+                <div className="event-card-footer">
+                    {/* Localização */}
+                    {(event.location || event.city) && (
+                        <div className="event-card-location">
+                            <FaMapMarkerAlt className="location-icon" />
+                            <span>{event.city || event.location}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="event-card-favorite" onClick={handleFavoriteClick}>
-                <img src={isFavorited ? "/img/heartFav.png" : "/img/heart.png"} className="heart-icon" alt="Favorito" />
-            </div>
+            {/* Botão de Favoritar */}
+            <button 
+                className={`event-card-favorite ${isFavorited ? 'active' : ''}`} 
+                onClick={handleFavoriteClick}
+                title={isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            >
+                {isFavorited ? <FaHeart /> : <FaRegHeart />}
+            </button>
         </div>
     );
 }

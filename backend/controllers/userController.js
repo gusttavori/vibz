@@ -29,6 +29,7 @@ const getLoggedInUserProfile = async (req, res) => {
         res.status(200).json({ 
             user: userWithoutPassword, 
             myEvents, 
+            // Garante que a lista de favoritos seja enviada explicitamente
             favoritedEvents: user.favoritedEvents || [] 
         });
 
@@ -88,7 +89,7 @@ const editUserProfile = async (req, res) => {
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: updateData,
-            include: { favoritedEvents: true } // Retorna atualizado com favoritos
+            include: { favoritedEvents: true }
         });
         
         const { password, ...userWithoutPassword } = updatedUser;

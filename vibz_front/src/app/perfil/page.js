@@ -7,7 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard'; 
 import toast, { Toaster } from 'react-hot-toast';
-import { FaEdit, FaTicketAlt, FaChartLine, FaSearch, FaChevronRight, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaEdit, FaTicketAlt, FaChartLine, FaSearch, FaChevronRight } from 'react-icons/fa';
 import './UserProfile.css'; 
 
 const getApiBaseUrl = () => {
@@ -74,7 +74,6 @@ const UserProfile = () => {
 
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
-        const userId = localStorage.getItem('userId');
         
         if (!token) return router.push('/login');
 
@@ -88,6 +87,7 @@ const UserProfile = () => {
 
             // Fallback para rota de events (caso a rota /users/ não exista no server.js)
             if (!res.ok && res.status === 404) {
+                 const userId = localStorage.getItem('userId');
                  res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
