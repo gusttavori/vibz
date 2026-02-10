@@ -1,4 +1,4 @@
-// URL de conexão limpa (sem o comando 'psql' na frente)
+// URL de conexão limpa
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -45,7 +45,7 @@ enum DiscountType {
 model SystemConfig {
   id            String   @id @default(uuid())
   platformFee   Float    @default(0.08) // 8% padrão
-  minFee        Float    @default(2.00) // Taxa mínima em R$ se a % for muito baixa
+  minFee        Float    @default(2.00) // Taxa mínima em R$
   premiumPrice  Float    @default(100.00)
   standardPrice Float    @default(50.00)
   updatedAt     DateTime @updatedAt
@@ -107,6 +107,9 @@ model Event {
   ageRating   String? // Ex: "Livre", "18+"
   status      EventStatus @default(pending)
 
+  // Link externo (para eventos informativos)
+  externalUrl String? 
+
   // Configurações Financeiras e Destaque
   priceFrom           Float
   refundPolicy        String
@@ -121,12 +124,12 @@ model Event {
   sessions  Json? // Para eventos com múltiplas datas/sessões
 
   // Formulário Personalizado (FASE 2)
-  formSchema Json? // Estrutura das perguntas (Ex: [{label: "RG", type: "text"}])
+  formSchema Json? // Estrutura das perguntas
 
   // Relations
-  organizerInfo Json? // Dados extras do organizador para exibição
+  organizerInfo Json? // Dados extras do organizador
   organizerId   String
-  organizer     User   @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizer     User    @relation("EventOrganizer", fields: [organizerId], references: [id])
 
   favoritedBy User[] @relation("UserFavorites")
 
@@ -149,7 +152,7 @@ model TicketType {
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])
 
-  name        String  @default("Ingresso") // Ex: "Pista", "Camarote", "Estudante"
+  name        String  @default("Ingresso")
   description String?
   price       Float // Se 0.00, é Cortesia/Gratuito
 
@@ -158,12 +161,12 @@ model TicketType {
   sold     Int @default(0) // Quantidade vendida
 
   // Lógica de Lotes (Batch)
-  batchName  String? // Ex: "1º Lote", "Lote Promocional"
-  salesStart DateTime? // Data para abrir vendas deste lote
-  salesEnd   DateTime? // Data para encerrar vendas deste lote
+  batchName  String? // Ex: "1º Lote"
+  salesStart DateTime?
+  salesEnd   DateTime?
 
   isHalfPrice Boolean @default(false) // Meia-entrada
-  category    String? // Agrupamento (Ex: "Ingresso Unissex")
+  category    String? // Agrupamento
 
   maxPerUser Int @default(4)
   minPerUser Int @default(1)
@@ -179,33 +182,32 @@ model TicketType {
 
 model Coupon {
   id          String  @id @default(uuid())
-  code        String  @unique // O código em si (ex: "VIBZ10")
+  code        String  @unique
   description String?
 
   // Configuração do Desconto
   discountType  DiscountType // PERCENTAGE ou FIXED
-  discountValue Float // O valor (ex: 10 ou 20.00)
+  discountValue Float
 
   // Regras de Uso
-  maxUses           Int? // Limite global de usos (ex: 100 primeiros)
-  usedCount         Int    @default(0) // Quantas vezes já foi usado
-  usageLimitPerUser Int    @default(1) // Quantas vezes o mesmo usuário pode usar
-  minPurchaseAmount Float? // Valor mínimo de compra para aplicar
+  maxUses           Int?
+  usedCount         Int    @default(0)
+  usageLimitPerUser Int    @default(1)
+  minPurchaseAmount Float?
 
-  validFrom  DateTime?
+  validFrom DateTime?
   validUntil DateTime?
   isActive   Boolean   @default(true)
 
-  // Vínculos (Opcionais)
-  eventId String? // Se preenchido, só vale para este evento
+  // Vínculos
+  eventId String?
   event   Event?  @relation(fields: [eventId], references: [id])
 
-  partnerId String? // Se preenchido, pertence a um parceiro (para comissão)
+  partnerId String?
   partner   Partner? @relation(fields: [partnerId], references: [id])
 
-  // Lógica antiga de parceiro (mantida para compatibilidade ou uso futuro)
   platformFeeMin Float  @default(4)
-  partnerShare   Float? // % da comissão do parceiro
+  partnerShare   Float?
 
   orders Order[]
 
@@ -228,16 +230,19 @@ model Order {
   coupon   Coupon? @relation(fields: [couponId], references: [id])
 
   items OrderItem[]
+  
+  // 👇 RELAÇÃO ADICIONADA: Um pedido gera vários ingressos
+  tickets Ticket[] 
 
   // Valores Financeiros
-  subtotal       Float // Valor dos ingressos sem taxas
-  discountAmount Float @default(0) // Valor abatido pelo cupom
-  platformFee    Float // Taxa da VIBZ
-  totalAmount    Float // Valor final pago pelo usuário (Subtotal - Desconto + Taxa)
+  subtotal       Float
+  discountAmount Float       @default(0)
+  platformFee    Float
+  totalAmount    Float
 
   // Status e Pagamento
   status          OrderStatus @default(pending)
-  paymentIntentId String? // ID do pagamento no Stripe
+  paymentIntentId String? // ID do pagamento no Stripe (ou "free_xyz" se grátis)
   paymentMethod   String? // Ex: "credit_card", "pix"
 
   createdAt DateTime @default(now())
@@ -255,7 +260,7 @@ model OrderItem {
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
 
   quantity  Int
-  unitPrice Float // Preço unitário no momento da compra (snapshot)
+  unitPrice Float
 
   @@map("order_items")
 }
@@ -272,13 +277,17 @@ model Ticket {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  qrCodeData String @unique // Token único para validação
+  // 👇 RELAÇÃO ADICIONADA: O ingresso pertence a um pedido
+  orderId String
+  order   Order @relation(fields: [orderId], references: [id])
 
-  price  Float // Preço pago (pode ser 0 se for cortesia)
+  qrCodeData String @unique
+
+  price  Float // Preço pago (pode ser 0)
   status String @default("valid") // valid, used, cancelled
 
   // Dados do Participante (FASE 2)
-  participantData Json? // Respostas do formulário (Ex: { rg: "123", camisa: "M" })
+  participantData Json? // Ex: { matricula: "123" }
 
   usedAt    DateTime? // Data do Check-in
   createdAt DateTime  @default(now())

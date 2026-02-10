@@ -52,9 +52,9 @@ const validateCoupon = async (req, res) => {
 
 const createCheckoutSession = async (req, res) => {
     try {
-        // Validação de segurança básica
+        // Validação de segurança
         if (!req.user || !req.user.id) {
-            return res.status(401).json({ message: 'Usuário não autenticado.' });
+            return res.status(401).json({ message: 'Sessão expirada.' });
         }
 
         const { eventId, tickets, couponCode, participantData } = req.body;
@@ -121,7 +121,7 @@ const createCheckoutSession = async (req, res) => {
                 const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
                 grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
             } else {
-                grossUnitTotal = 0; // Grátis
+                grossUnitTotal = 0;
             }
 
             totalBaseAmount += (unitPrice * quantity);
@@ -147,7 +147,7 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- CORREÇÃO: LÓGICA DE INGRESSO GRATUITO ---
+        // --- LÓGICA DE EVENTO GRATUITO (CORRIGIDA) ---
         if (totalPaid === 0) {
             console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
 
@@ -159,9 +159,9 @@ const createCheckoutSession = async (req, res) => {
                     subtotal: 0,
                     totalAmount: 0,
                     platformFee: 0,
-                    status: 'paid', // Aprovado direto
+                    status: 'paid', // Status finalizado
+                    // REMOVIDO: paymentStatus: 'paid' (Campo não existe no schema)
                     paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    paymentStatus: 'paid',
                     items: { create: orderItemsData }
                 },
                 include: { items: true } 
@@ -182,14 +182,12 @@ const createCheckoutSession = async (req, res) => {
                         if (pData) customData = pData.data;
                     }
 
-                    // --- CORREÇÃO CRÍTICA AQUI ---
-                    // Usamos 'connect' para vincular o pedido, pois 'orderId' não é um campo direto no create
                     await prisma.ticket.create({
                         data: {
                             userId: userId,
                             eventId: eventId,
                             ticketTypeId: item.ticketTypeId,
-                            order: { connect: { id: order.id } }, // <--- FORMA CORRETA
+                            order: { connect: { id: order.id } }, // Conexão correta
                             qrCodeData: uniqueCode,
                             status: 'valid',
                             price: 0,
@@ -213,7 +211,7 @@ const createCheckoutSession = async (req, res) => {
             });
         }
 
-        // --- FLUXO NORMAL (PAGO) ---
+        // --- FLUXO PAGO (STRIPE) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -259,7 +257,7 @@ const createCheckoutSession = async (req, res) => {
 
     } catch (error) {
         console.error("Erro checkout:", error);
-        res.status(500).json({ message: 'Erro ao processar checkout.', error: error.message });
+        res.status(500).json({ message: 'Erro ao processar pedido.', error: error.message });
     }
 };
 
