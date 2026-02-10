@@ -129,7 +129,7 @@ const createCheckoutSession = async (req, res) => {
             orderItemsData.push({
                 ticketTypeId: tType.id,
                 quantity: quantity,
-                unitPrice: unitPrice // Salva o preço original (pode ser 0)
+                unitPrice: unitPrice 
             });
 
             // Só adiciona ao Stripe se tiver valor > 0
@@ -149,7 +149,8 @@ const createCheckoutSession = async (req, res) => {
         if (totalPaid === 0) {
             console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
 
-            // 1. Cria o Pedido 'completed'
+            // 1. Cria o Pedido 'paid' imediatamente
+            // Usamos um ID fictício 'free_...' para o paymentIntentId
             const order = await prisma.order.create({
                 data: {
                     userId,
@@ -158,15 +159,14 @@ const createCheckoutSession = async (req, res) => {
                     subtotal: 0,
                     totalAmount: 0,
                     platformFee: 0,
-                    status: 'completed', // Aprovado direto
-                    paymentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    paymentStatus: 'paid',
+                    status: 'paid', 
+                    paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                     items: { create: orderItemsData }
                 },
-                include: { items: true } // Importante incluir items para o loop abaixo
+                include: { items: true } 
             });
 
-            // 2. Gera os Tickets no Banco
+            // 2. Processa os Ingressos no Banco
             for (const item of order.items) {
                 // Atualiza contagem de vendidos
                 await prisma.ticketType.update({
@@ -178,7 +178,7 @@ const createCheckoutSession = async (req, res) => {
                 for (let i = 0; i < item.quantity; i++) {
                     const uniqueCode = `${order.id}-${item.id}-${i}-${Date.now()}`;
                     
-                    // Busca dados do participante se houver
+                    // Busca dados do participante se houver (Formulário)
                     let customData = {};
                     if (participantData && Array.isArray(participantData)) {
                         const pData = participantData.find(p => p.ticketTypeId === item.ticketTypeId);
@@ -200,14 +200,20 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
 
-            // 3. Envia E-mail
-            // Busca usuário para ter o e-mail certo
-            const user = await prisma.user.findUnique({ where: { id: userId } });
-            await generateAndSendTickets(order, user.email, user.name);
+            // 3. Envia E-mail (Se falhar, não trava o retorno)
+            try {
+                const user = await prisma.user.findUnique({ where: { id: userId } });
+                if (user) {
+                    await generateAndSendTickets(order, user.email, user.name);
+                }
+            } catch (emailError) {
+                console.error("Erro ao enviar email grátis:", emailError);
+            }
 
-            // 4. Retorno de Sucesso Imediato
+            // 4. Retorno de Sucesso Imediato para o Frontend
+            // O frontend vai receber essa URL e redirecionar o usuário
             return res.json({ 
-                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentId}&is_free=true` 
+                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true` 
             });
         }
 
@@ -237,7 +243,7 @@ const createCheckoutSession = async (req, res) => {
             }
         });
 
-        // Limita tamanho do metadata para evitar erro da Stripe
+        // Limita tamanho do metadata para evitar erro da Stripe (max 500 chars)
         const participantsJSON = JSON.stringify(participantData || []).substring(0, 499); 
 
         const session = await stripe.checkout.sessions.create({
