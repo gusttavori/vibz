@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, FaCheck, FaCheckCircle, FaSpinner } from 'react-icons/fa';
+import { FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 import './Participantes.css';
 
@@ -98,6 +98,9 @@ export default function Participantes() {
         (p.code && p.code.includes(searchTerm))
     );
 
+    // Contagem de Check-ins (Importante para a Unex)
+    const checkinsCount = data.participants.filter(p => p.status === 'used').length;
+
     const handleExportCSV = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
 
@@ -107,12 +110,12 @@ export default function Participantes() {
 
         const rows = filteredParticipants.map(p => {
             const fixedData = [
-                p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
+                p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO', // Isso permite filtrar facilmente no Excel
                 p.code,
                 p.buyerName,
                 p.buyerEmail,
-                formatText(p.ticketType), // Aplica formatação
-                formatText(p.batch),      // Aplica formatação
+                formatText(p.ticketType), 
+                formatText(p.batch),      
                 new Date(p.purchaseDate).toLocaleDateString('pt-BR')
             ];
             
@@ -154,7 +157,13 @@ export default function Participantes() {
                                 <p className="subtitle">Gestão de Participantes</p>
                             </div>
                         </div>
-                        <span className="badge-total"><FaUserFriends /> {filteredParticipants.length} Participantes</span>
+                        {/* Resumo de Presença Visual */}
+                        <div style={{display: 'flex', gap: '15px'}}>
+                            <span className="badge-total"><FaUserFriends /> {data.participants.length} Inscritos</span>
+                            <span className="badge-total" style={{backgroundColor: '#10b981', color: '#fff'}}>
+                                <FaClipboardCheck /> {checkinsCount} Presentes
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -206,9 +215,7 @@ export default function Participantes() {
                                         </td>
                                         <td>
                                             <div className="ticket-badge-wrapper">
-                                                {/* Formatação no Nome do Ingresso */}
                                                 <span className="ticket-type-name">{formatText(p.ticketType)}</span>
-                                                {/* Formatação no Nome do Lote */}
                                                 <span className="ticket-batch-name">{formatText(p.batch)}</span>
                                             </div>
                                         </td>
@@ -245,7 +252,7 @@ export default function Participantes() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6 + (data.formSchema ? data.formSchema.length : 0)} className="empty-state">
+                                    <td colSpan={7 + (data.formSchema ? data.formSchema.length : 0)} className="empty-state">
                                         <div className="empty-content">
                                             <FaTicketAlt size={40} />
                                             <p>Nenhum participante encontrado.</p>

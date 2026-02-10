@@ -31,17 +31,17 @@ export default function Home() {
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     
-    // AJUSTE 1: Categorias alinhadas com o banco de dados
+    // ATUALIZADO: Adicionada a chave 'academico'
     const [categoryEvents, setCategoryEvents] = useState({
-        festas: [], teatro: [], esportes: [], gastronomia: [], cursos: []
+        academico: [], festas: [], teatro: [], esportes: [], gastronomia: [], cursos: []
     });
 
     const [loadingCategories, setLoadingCategories] = useState({
-        festas: true, teatro: true, esportes: true, gastronomia: true, cursos: true
+        academico: true, festas: true, teatro: true, esportes: true, gastronomia: true, cursos: true
     });
 
     const [activeFilters, setActiveFilters] = useState({
-        festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos'
+        academico: 'Todos', festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos'
     });
 
     const [searchResults, setSearchResults] = useState([]);
@@ -50,13 +50,15 @@ export default function Home() {
     
     const searchWrapperRef = useRef(null); 
 
+    // Referência nova para a seção acadêmica
+    const academicoRef = useRef(null);
     const festasRef = useRef(null);
     const teatroRef = useRef(null);
     const esportesRef = useRef(null);
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // ... (Lógica de busca e autocomplete permanece igual)
+    // ... (UseEffect do Autocomplete mantido igual) ...
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
@@ -156,7 +158,9 @@ export default function Home() {
                 return eventStartOfDay >= today && eventDate <= endOfWeek;
             }
             if (filter === 'Grátis') {
-                return event.price === 0 || event.isFree === true;
+                // Ajuste para pegar preço 0 ou isFree
+                const hasFreeTicket = event.tickets && event.tickets.some(t => parseFloat(t.price) === 0);
+                return event.price === 0 || event.isFree === true || hasFreeTicket;
             }
             return true;
         });
@@ -164,7 +168,6 @@ export default function Home() {
 
     const fetchCategory = async (categoryName, key) => {
         try {
-            // Encode garante que "Festas e Shows" vire "Festas%20e%20Shows"
             const url = `${API_BASE_URL}/events/category/${encodeURIComponent(categoryName)}`;
             const response = await fetch(url);
             if (response.ok) {
@@ -181,15 +184,17 @@ export default function Home() {
         }
     };
 
-    // AJUSTE 2: Buscando pelos nomes EXATOS salvos no banco
+    // ATUALIZADO: Buscando a nova categoria Acadêmica
     useEffect(() => {
-        fetchCategory('Festas e Shows', 'festas'); // Nome composto do banco
+        fetchCategory('Acadêmico / Congresso', 'academico');
+        fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro', 'teatro');
         fetchCategory('Esportes', 'esportes');
         fetchCategory('Gastronomia', 'gastronomia');
-        fetchCategory('Cursos', 'cursos');
+        fetchCategory('Cursos', 'cursos'); // Fallback para Cursos e Workshops se necessário
     }, []);
 
+    // ... (Lógica de Login e Favoritos mantida igual) ...
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
@@ -283,7 +288,9 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
+    // ATUALIZADO: Configuração das categorias para o menu
     const categoriesConfig = [
+        { name: 'Acadêmico', icon: '/img/theater.svg', ref: academicoRef, key: 'academico' }, // Ícone provisório
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
         { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
@@ -300,7 +307,6 @@ export default function Home() {
         const loading = loadingCategories[categoryKey];
         const activeFilter = activeFilters[categoryKey];
 
-        // Se carregou e não tem eventos, não renderiza a seção
         if (!loading && (!events || events.length === 0)) return null;
 
         const filteredEvents = getFilteredEvents(events, activeFilter);
@@ -334,9 +340,9 @@ export default function Home() {
     return (
         <div className="home-container">
             <Toaster position="top-center" reverseOrder={false} />
-            
             <Header />
 
+            {/* Barra de Busca (Mantida Igual) */}
             <div className="search-bar-container">
                 <div className="search-outer-border-wrapper" ref={searchWrapperRef}>
                     <button className="location-button-styled" onClick={() => setShowCityMenu(!showCityMenu)}>
@@ -432,12 +438,15 @@ export default function Home() {
                 </div>
             </div>
 
+            {/* Renderiza as seções, incluindo a nova Acadêmica */}
+            {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
             {renderSection("Festas e Shows", 'festas', festasRef)}
             {renderSection("Teatro", 'teatro', teatroRef)}
             {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
             {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
             {renderSection("Cursos", 'cursos', cursosRef)}
 
+            {/* Banner Marketing */}
             <div className="mkt-container-modern">
                 <div className="mkt-content-modern">
                     <div className="mkt-text-modern">

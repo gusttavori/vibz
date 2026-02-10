@@ -8,7 +8,7 @@ import {
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaStar, FaCalendarAlt, FaMapMarkerAlt,
     FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList,
-    FaInfoCircle
+    FaInfoCircle, FaUniversity
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -43,21 +43,23 @@ const CadastroEvento = () => {
     const [organizerName, setOrganizerName] = useState('');
     const [organizerInstagram, setOrganizerInstagram] = useState('');
     
-    // --- NOVO: Flag para evento sem vendas ---
+    // --- NOVO: Flag para evento sem vendas (Apenas Informativo) ---
+    // ATENÇÃO: Para o evento da UNEX, deixe isso DESMARCADO (FALSE),
+    // pois você QUER que eles "comprem" o ingresso gratuito para gerar o registro.
     const [isInformational, setIsInformational] = useState(false);
 
-    // Ingressos (Inicializa vazio se for informativo, ou com 1 padrão se venda)
+    // Ingressos (Inicializa com preço 0 para facilitar eventos gratuitos)
     const [ticketTypes, setTicketTypes] = useState([
         { 
             name: '', category: 'Inteira', isHalfPrice: false,
-            batches: [{ name: '1º Lote', price: '', quantity: '' }]
+            batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }
     ]);
 
-    // FASE 2: Formulário Personalizado (Campos do Participante)
+    // Formulário Personalizado (Campos do Participante)
     const [customQuestions, setCustomQuestions] = useState([]);
 
-    const [refundPolicy, setRefundPolicy] = useState('O cancelamento pode ser solicitado em até 7 dias após a compra, desde que a solicitação seja feita até 48h antes do evento.');
+    const [refundPolicy, setRefundPolicy] = useState('O cancelamento pode ser solicitado em até 7 dias após a compra.');
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
     const FEATURED_FEE = 9.90;
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -93,11 +95,11 @@ const CadastroEvento = () => {
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
-            batches: [{ name: '1º Lote', price: '', quantity: '' }]
+            batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }]);
     };
     const handleRemoveTicketType = (index) => {
-        if (ticketTypes.length === 1) return toast.error("Mínimo de 1 tipo de ingresso (ou marque como Informativo).");
+        if (ticketTypes.length === 1) return toast.error("Mínimo de 1 tipo de ingresso.");
         setTicketTypes(ticketTypes.filter((_, i) => i !== index));
     };
     const handleChangeTicketType = (index, field, value) => {
@@ -108,7 +110,7 @@ const CadastroEvento = () => {
     const handleAddBatch = (typeIndex) => {
         const updated = [...ticketTypes];
         const nextBatchNum = updated[typeIndex].batches.length + 1;
-        updated[typeIndex].batches.push({ name: `${nextBatchNum}º Lote`, price: '', quantity: '' });
+        updated[typeIndex].batches.push({ name: `${nextBatchNum}º Lote`, price: '0', quantity: '' });
         setTicketTypes(updated);
     };
     const handleRemoveBatch = (typeIndex, batchIndex) => {
@@ -153,11 +155,16 @@ const CadastroEvento = () => {
 
         // Validação de Tickets (SÓ SE NÃO FOR INFORMATIVO)
         if (!isInformational) {
-            if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso ou marque como 'Evento Informativo'.");
+            if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso.");
             for (const type of ticketTypes) {
-                if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório (ex: Pista).");
+                if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório (ex: Inscrição Aluno).");
                 for (const batch of type.batches) {
-                    if (!batch.price || !batch.quantity) return toast.error(`Preencha preço e quantidade para ${type.name} - ${batch.name}`);
+                    // --- CORREÇÃO IMPORTANTE ---
+                    // Verifica se o preço está vazio ou null, mas ACEITA "0" (Grátis)
+                    if (batch.price === '' || batch.price === null || batch.price === undefined) {
+                        return toast.error(`Preencha o preço para ${type.name} (coloque 0 se for grátis).`);
+                    }
+                    if (!batch.quantity) return toast.error(`Preencha a quantidade de vagas para ${type.name}.`);
                 }
             }
         }
@@ -228,7 +235,7 @@ const CadastroEvento = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Erro ao criar evento.');
 
-            toast.success(isInformational ? 'Evento informativo criado!' : 'Evento de vendas criado!');
+            toast.success('Evento criado com sucesso!');
             setTimeout(() => router.push('/dashboard'), 2000); 
         } catch (err) {
             console.error(err);
@@ -248,8 +255,8 @@ const CadastroEvento = () => {
                     <button className={styles.backBtn} onClick={() => router.back()}>
                         <FaArrowLeft /> Voltar
                     </button>
-                    <h1>Criar Novo Evento</h1>
-                    <p>Preencha as informações do evento.</p>
+                    <h1>Criar Evento Acadêmico / Geral</h1>
+                    <p>Preencha os dados. Para eventos gratuitos da faculdade, coloque o preço do ingresso como R$ 0,00.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className={styles.formContainer}>
@@ -266,15 +273,26 @@ const CadastroEvento = () => {
                         <div className={styles.gridTwo}>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
                                 <label className={styles.label}>Nome do Evento</label>
-                                <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Festival de Verão"/></div>
+                                <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Jornada Acadêmica Unex"/></div>
                             </div>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
                                 <label className={styles.label}>Descrição</label>
-                                <textarea className={styles.textarea} value={description} onChange={e=>setDescription(e.target.value)} required placeholder="Detalhes do evento..."/>
+                                <textarea className={styles.textarea} value={description} onChange={e=>setDescription(e.target.value)} required placeholder="Detalhes, cronograma, palestrantes..."/>
                             </div>
                             <div className={styles.inputGroup}>
                                 <label className={styles.label}>Categoria</label>
-                                <div className={styles.inputWrapper}><FaLayerGroup className={styles.inputIcon}/><select className={styles.select} value={category} onChange={e=>setCategory(e.target.value)} required><option value="">Selecione...</option><option>Festas e Shows</option><option>Teatro</option><option>Esportes</option><option>Gastronomia</option><option>Cursos</option></select></div>
+                                <div className={styles.inputWrapper}>
+                                    <FaLayerGroup className={styles.inputIcon}/>
+                                    <select className={styles.select} value={category} onChange={e=>setCategory(e.target.value)} required>
+                                        <option value="">Selecione...</option>
+                                        <option>Acadêmico / Congresso</option> {/* Opção ideal para a Unex */}
+                                        <option>Cursos e Workshops</option>
+                                        <option>Festas e Shows</option>
+                                        <option>Teatro e Cultura</option>
+                                        <option>Esportes</option>
+                                        <option>Gastronomia</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className={styles.inputGroup}>
                                 <label className={styles.label}>Classificação</label>
@@ -288,7 +306,7 @@ const CadastroEvento = () => {
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaCalendarAlt /></div><h3>Data e Local</h3></div>
                         {sessions.map((s,i)=>(
                             <div key={i} className={styles.sessionCard}>
-                                <div className={styles.sessionHeader}><h4>Data #{i+1}</h4>{sessions.length>1 && <button type="button" onClick={()=>handleRemoveSession(i)} className={styles.trashBtn}><FaTrashAlt/></button>}</div>
+                                <div className={styles.sessionHeader}><h4>Sessão #{i+1}</h4>{sessions.length>1 && <button type="button" onClick={()=>handleRemoveSession(i)} className={styles.trashBtn}><FaTrashAlt/></button>}</div>
                                 <div className={styles.gridTwo}>
                                     <div className={styles.inputGroup}><label className={styles.label}>Início</label><div className={styles.gridDateTime}><input type="date" className={styles.input} value={s.date} onChange={e=>handleChangeSession(i,'date',e.target.value)} required/><input type="time" className={styles.input} value={s.time} onChange={e=>handleChangeSession(i,'time',e.target.value)} required/></div></div>
                                     <div className={styles.inputGroup}><label className={styles.label}>Fim (Opcional)</label><div className={styles.gridDateTime}><input type="date" className={styles.input} value={s.endDate} onChange={e=>handleChangeSession(i,'endDate',e.target.value)}/><input type="time" className={styles.input} value={s.endTime} onChange={e=>handleChangeSession(i,'endTime',e.target.value)}/></div></div>
@@ -298,7 +316,7 @@ const CadastroEvento = () => {
                         <button type="button" onClick={handleAddSession} className={styles.addBtnSmall}><FaPlus /> Adicionar data</button>
                         
                         <div className={styles.divider}></div>
-                        <div className={styles.inputGroupFull}><label className={styles.label}>Local</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName} onChange={e=>setLocationName(e.target.value)} required placeholder="Nome do espaço"/></div></div>
+                        <div className={styles.inputGroupFull}><label className={styles.label}>Local</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName} onChange={e=>setLocationName(e.target.value)} required placeholder="Ex: Auditório Unex"/></div></div>
                         <div className={styles.gridAddressTop}>
                             <div className={styles.inputGroup}><label className={styles.label}>CEP</label><input className={styles.input} value={addressZipCode} onChange={e=>setAddressZipCode(e.target.value)} required/></div>
                             <div className={styles.inputGroup}><label className={styles.label}>Cidade</label><input className={styles.input} value={addressCity} onChange={e=>setAddressCity(e.target.value)} required/></div>
@@ -315,7 +333,7 @@ const CadastroEvento = () => {
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaTicketAlt /></div>
-                            <h3>Ingressos e Lotes</h3>
+                            <h3>Inscrições / Ingressos</h3>
                         </div>
                         
                         {/* SWITCH DE INFORMATIVO */}
@@ -330,8 +348,8 @@ const CadastroEvento = () => {
                                 <span className={styles.slider}></span>
                             </div>
                             <div>
-                                <strong style={{display: 'block', color: '#1e293b'}}>Evento apenas informativo / Divulgação</strong>
-                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se você não venderá ingressos pelo site agora.</span>
+                                <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição)</strong>
+                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque apenas se NÃO precisar de lista de presença.</span>
                             </div>
                         </div>
 
@@ -341,67 +359,81 @@ const CadastroEvento = () => {
                                     {ticketTypes.map((type, typeIdx) => (
                                         <div key={typeIdx} className={styles.ticketTypeCard}>
                                             <div className={styles.ticketTypeHeader}>
-                                                        <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Pista" required /></div>
-                                                        <div className={styles.inputGroup} style={{flex: 1}}><label className={styles.label}>Categoria</label><select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia</option><option>VIP</option><option>Cortesia</option></select></div>
-                                                        {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
+                                                <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Inscrição Aluno" required /></div>
+                                                <div className={styles.inputGroup} style={{flex: 1}}><label className={styles.label}>Categoria</label><select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia / Estudante</option><option>VIP</option><option>Cortesia</option></select></div>
+                                                {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                             </div>
                                             <div className={styles.batchesContainer}>
-                                                        <h4 className={styles.batchTitle}>Lotes:</h4>
-                                                        {type.batches.map((batch, batchIdx) => (
-                                                            <div key={batchIdx} className={styles.batchRow}>
-                                                                <div className={styles.inputGroup}><input className={styles.inputSmall} type="text" value={batch.name} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" /></div>
-                                                                <div className={styles.inputGroup}><div className={styles.inputWrapper}><span className={styles.currencyPrefix}>R$</span><input className={styles.inputSmall} type="number" value={batch.price} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} placeholder="0,00" min="0" step="0.01" required /></div></div>
-                                                                <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Qtd" min="1" required /></div>
-                                                                {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
+                                                <h4 className={styles.batchTitle}>Lotes:</h4>
+                                                {type.batches.map((batch, batchIdx) => (
+                                                    <div key={batchIdx} className={styles.batchRow}>
+                                                        <div className={styles.inputGroup}><input className={styles.inputSmall} type="text" value={batch.name} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" /></div>
+                                                        <div className={styles.inputGroup}>
+                                                            <div className={styles.inputWrapper}>
+                                                                <span className={styles.currencyPrefix}>R$</span>
+                                                                <input 
+                                                                    className={styles.inputSmall} 
+                                                                    type="number" 
+                                                                    value={batch.price} 
+                                                                    onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} 
+                                                                    placeholder="0,00" 
+                                                                    min="0" 
+                                                                    step="0.01" 
+                                                                    required 
+                                                                />
                                                             </div>
-                                                        ))}
-                                                        <button type="button" onClick={() => handleAddBatch(typeIdx)} className={styles.addBatchBtn}><FaPlus size={12} /> Adicionar Lote</button>
+                                                            {/* Dica Visual para Gratuidade */}
+                                                            {parseFloat(batch.price) === 0 && <span style={{fontSize:'0.7rem', color:'green', fontWeight:'bold', marginTop: '2px', display:'block'}}>GRÁTIS (Check-in)</span>}
+                                                        </div>
+                                                        <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Vagas" min="1" required /></div>
+                                                        {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
+                                                    </div>
+                                                ))}
+                                                <button type="button" onClick={() => handleAddBatch(typeIdx)} className={styles.addBatchBtn}><FaPlus size={12} /> Adicionar Lote</button>
                                             </div>
-                                            <div className={styles.ticketFooter}><label className={styles.checkboxLabel}><input className={styles.checkbox} type="checkbox" checked={type.isHalfPrice} onChange={e => handleChangeTicketType(typeIdx, 'isHalfPrice', e.target.checked)} /> Disponibilizar meia-entrada</label></div>
                                         </div>
                                     ))}
                                 </div>
-                                <button type="button" onClick={handleAddTicketType} className={styles.addBtnFull}><FaPlus /> Adicionar Ingresso</button>
+                                <button type="button" onClick={handleAddTicketType} className={styles.addBtnFull}><FaPlus /> Adicionar Tipo de Inscrição</button>
                             </>
                         )}
                     </section>
 
-                    {/* 4. FORMULÁRIO PERSONALIZADO (FASE 2) */}
-                    {/* Só mostra formulário de participante se houver ingressos */}
+                    {/* 4. FORMULÁRIO DO PARTICIPANTE (ESSENCIAL PARA A UNEX) */}
                     {!isInformational && (
                         <section className={styles.card}>
-                            <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Formulário do Participante</h3></div>
+                            <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Aluno (Para Certificado)</h3></div>
                             <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '24px', lineHeight: '1.5'}}>
-                                Adicione perguntas específicas que o participante deve responder para cada ingresso comprado. 
-                                <br/><small>(Ex: Nome completo, RG, Tamanho da Camiseta, Restrição Alimentar)</small>
+                                Configure aqui os dados que o aluno precisa preencher ao se inscrever.
+                                <br/><small>(Ex: Matrícula, Curso, Semestre)</small>
                             </p>
                             
                             <div className={styles.questionList}>
                                 {customQuestions.map((q, idx) => (
                                     <div key={idx} className={styles.questionCard}>
                                         <div className={styles.questionRow}>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Pergunta</label>
-                                                    <input 
-                                                        className={styles.input} 
-                                                        value={q.label} 
-                                                        onChange={e => handleChangeQuestion(idx, 'label', e.target.value)} 
-                                                        placeholder="Ex: Qual o número do seu RG?" 
-                                                        required 
-                                                    />
-                                                </div>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Tipo de Resposta</label>
-                                                    <select 
-                                                        className={styles.select} 
-                                                        value={q.type} 
-                                                        onChange={e => handleChangeQuestion(idx, 'type', e.target.value)}
-                                                    >
-                                                        <option value="text">Texto Curto</option>
-                                                        <option value="select">Seleção (Dropdown)</option>
-                                                        <option value="checkbox">Caixa de Seleção (Sim/Não)</option>
-                                                    </select>
-                                                </div>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Pergunta</label>
+                                                <input 
+                                                    className={styles.input} 
+                                                    value={q.label} 
+                                                    onChange={e => handleChangeQuestion(idx, 'label', e.target.value)} 
+                                                    placeholder="Ex: Qual sua Matrícula?" 
+                                                    required 
+                                                />
+                                            </div>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Tipo de Resposta</label>
+                                                <select 
+                                                    className={styles.select} 
+                                                    value={q.type} 
+                                                    onChange={e => handleChangeQuestion(idx, 'type', e.target.value)}
+                                                >
+                                                    <option value="text">Texto Curto</option>
+                                                    <option value="select">Seleção (Dropdown)</option>
+                                                    <option value="checkbox">Caixa de Seleção (Sim/Não)</option>
+                                                </select>
+                                            </div>
                                         </div>
 
                                         {q.type === 'select' && (
@@ -412,33 +444,33 @@ const CadastroEvento = () => {
                                                         className={styles.input} 
                                                         value={q.options} 
                                                         onChange={e => handleChangeQuestion(idx, 'options', e.target.value)} 
-                                                        placeholder="Ex: P, M, G, GG" 
+                                                        placeholder="Ex: Direito, Enfermagem, Engenharia" 
                                                     />
                                                 </div>
                                             </div>
                                         )}
 
                                         <div className={styles.questionFooter}>
-                                                <label className={styles.switchLabel}>
-                                                    <input 
-                                                        className={styles.checkbox} 
-                                                        type="checkbox" 
-                                                        checked={q.required} 
-                                                        onChange={e => handleChangeQuestion(idx, 'required', e.target.checked)} 
-                                                    /> 
-                                                    Resposta Obrigatória
-                                                </label>
+                                            <label className={styles.switchLabel}>
+                                                <input 
+                                                    className={styles.checkbox} 
+                                                    type="checkbox" 
+                                                    checked={q.required} 
+                                                    onChange={e => handleChangeQuestion(idx, 'required', e.target.checked)} 
+                                                /> 
+                                                Resposta Obrigatória
+                                            </label>
 
-                                                <button type="button" onClick={() => handleRemoveQuestion(idx)} className={styles.deleteQuestionBtn}>
-                                                    <FaTrashAlt size={14} /> Excluir Pergunta
-                                                </button>
+                                            <button type="button" onClick={() => handleRemoveQuestion(idx)} className={styles.deleteQuestionBtn}>
+                                                <FaTrashAlt size={14} /> Excluir
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             
                             <button type="button" onClick={handleAddQuestion} className={styles.addQuestionBtn}>
-                                <FaPlus /> Adicionar Pergunta
+                                <FaPlus /> Adicionar Pergunta Personalizada
                             </button>
                         </section>
                     )}
@@ -447,7 +479,7 @@ const CadastroEvento = () => {
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Organizador</h3></div>
                         <div className={styles.gridTwo}>
-                            <input className={styles.input} placeholder="Nome do Produtor" value={organizerName} onChange={e=>setOrganizerName(e.target.value)} required/>
+                            <input className={styles.input} placeholder="Nome do Centro Acadêmico / Faculdade" value={organizerName} onChange={e=>setOrganizerName(e.target.value)} required/>
                             <div className={styles.inputWrapper}><FaInstagram className={styles.inputIcon}/><input className={styles.input} placeholder="@instagram" value={organizerInstagram} onChange={e=>setOrganizerInstagram(e.target.value)}/></div>
                         </div>
                     </section>
@@ -472,7 +504,7 @@ const CadastroEvento = () => {
                             <input className={styles.checkbox} type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} />
                             <label style={{marginLeft: '10px'}}>Li e concordo com os Termos.</label>
                         </div>
-                        <button type="submit" className={styles.submitButton} disabled={loading}>{loading ? 'Criando...' : 'CRIAR EVENTO'}</button>
+                        <button type="submit" className={styles.submitButton} disabled={loading}>{loading ? 'Criando...' : 'PUBLICAR EVENTO'}</button>
                     </div>
                 </form>
             </main>
