@@ -6,9 +6,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { 
     FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, 
-    FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes 
+    FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes, FaFileExcel 
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
+import * as XLSX from 'xlsx'; // <--- IMPORTANTE: Importe a biblioteca aqui
 import './Participantes.css';
 
 const getApiBaseUrl = () => {
@@ -102,44 +103,67 @@ export default function Participantes() {
 
     const checkinsCount = data.participants.filter(p => p.status === 'used').length;
 
-    const handleExportCSV = () => {
+    // --- NOVA FUNÇÃO DE EXPORTAÇÃO (EXCEL REAL) ---
+    const handleExportExcel = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
-        
-        let headers = ["Status", "Código", "Comprador", "Email", "Ingresso", "Lote", "Data Compra"];
-        const dynamicHeaders = data.formSchema ? data.formSchema.map(q => q.label) : [];
-        headers = [...headers, ...dynamicHeaders];
 
-        const rows = filteredParticipants.map(p => {
-            const fixedData = [
-                p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
-                p.code, p.buyerName, p.buyerEmail,
-                formatText(p.ticketType), formatText(p.batch),      
-                new Date(p.purchaseDate).toLocaleDateString('pt-BR')
-            ];
-            const dynamicData = dynamicHeaders.map(header => {
-                const answer = p[header]; 
-                return answer ? answer.toString().replace(/"/g, '""') : '-';
-            });
-            return [...fixedData, ...dynamicData].map(field => `"${field}"`).join(",");
+        // 1. Prepara os dados limpos para o Excel
+        const dataToExport = filteredParticipants.map(p => {
+            // Dados fixos
+            const row = {
+                "Status": p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
+                "Código": p.code,
+                "Nome do Participante": p.buyerName,
+                "E-mail": p.buyerEmail,
+                "Tipo de Ingresso": formatText(p.ticketType),
+                "Lote": formatText(p.batch),
+                "Data da Compra": new Date(p.purchaseDate).toLocaleString('pt-BR')
+            };
+
+            // Adiciona colunas dinâmicas (Formulário Personalizado)
+            if (data.formSchema) {
+                data.formSchema.forEach(q => {
+                    row[q.label] = p[q.label] || '-';
+                });
+            }
+
+            return row;
         });
 
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `lista_${data.eventTitle}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // 2. Cria a Planilha (Worksheet)
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+        // 3. Ajusta a largura das colunas automaticamente (Para ficar bonito)
+        const columnWidths = [
+            { wch: 15 }, // Status
+            { wch: 30 }, // Código (Largo)
+            { wch: 30 }, // Nome
+            { wch: 30 }, // Email
+            { wch: 20 }, // Ingresso
+            { wch: 15 }, // Lote
+            { wch: 20 }, // Data
+        ];
+        
+        // Adiciona largura para colunas extras do formulário
+        if (data.formSchema) {
+            data.formSchema.forEach(() => columnWidths.push({ wch: 25 }));
+        }
+        worksheet['!cols'] = columnWidths;
+
+        // 4. Cria o Arquivo (Workbook) e Baixa
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Participantes");
+        
+        // Gera o nome do arquivo limpo
+        const cleanTitle = data.eventTitle ? data.eventTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'evento';
+        XLSX.writeFile(workbook, `lista_${cleanTitle}.xlsx`);
     };
 
-    // --- NOVA TELA DE CARREGAMENTO (SKELETON) ---
     if (loading) {
         return (
             <div className="participants-page">
                 <Header />
                 <main className="main-content-participants">
-                    {/* Header Skeleton */}
                     <div className="page-header">
                         <div className="skeleton skeleton-btn" style={{width: '120px', marginBottom: '25px'}}></div>
                         <div className="header-title-row">
@@ -153,17 +177,12 @@ export default function Participantes() {
                             <div className="skeleton" style={{width: '150px', height: '36px', borderRadius: '50px'}}></div>
                         </div>
                     </div>
-
-                    {/* Toolbar Skeleton */}
                     <div className="toolbar">
                         <div className="skeleton" style={{flex: 1, height: '48px', borderRadius: '10px'}}></div>
                         <div className="skeleton" style={{width: '180px', height: '48px', borderRadius: '10px'}}></div>
                     </div>
-
-                    {/* Table Skeleton */}
                     <div className="table-container">
                         <div className="skeleton-table-header"></div>
-                        {/* Gera 6 linhas falsas */}
                         {[1, 2, 3, 4, 5, 6].map((i) => (
                             <div key={i} className="skeleton-table-row">
                                 <div className="skeleton" style={{width: '30px', height: '30px', borderRadius: '50%'}}></div>
@@ -209,7 +228,10 @@ export default function Participantes() {
                         <FaSearch className="search-icon"/>
                         <input type="text" placeholder="Buscar participante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
                     </div>
-                    <button className="export-btn" onClick={handleExportCSV}><FaFileCsv /> Exportar Excel</button>
+                    {/* Botão Atualizado para chamar handleExportExcel */}
+                    <button className="export-btn" onClick={handleExportExcel}>
+                        <FaFileExcel /> Baixar Excel
+                    </button>
                 </div>
 
                 <div className="table-container">
@@ -274,7 +296,7 @@ export default function Participantes() {
                 </div>
             </main>
 
-            {/* MODAL (Mantido igual) */}
+            {/* MODAL */}
             {selectedParticipant && (
                 <div className="modal-overlay" onClick={() => setSelectedParticipant(null)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
