@@ -43,12 +43,10 @@ const CadastroEvento = () => {
     const [organizerName, setOrganizerName] = useState('');
     const [organizerInstagram, setOrganizerInstagram] = useState('');
     
-    // --- NOVO: Flag para evento sem vendas (Apenas Informativo) ---
-    // ATENÇÃO: Para o evento da UNEX, deixe isso DESMARCADO (FALSE),
-    // pois você QUER que eles "comprem" o ingresso gratuito para gerar o registro.
+    // Flag para evento sem vendas (Apenas Informativo)
     const [isInformational, setIsInformational] = useState(false);
 
-    // Ingressos (Inicializa com preço 0 para facilitar eventos gratuitos)
+    // Ingressos
     const [ticketTypes, setTicketTypes] = useState([
         { 
             name: '', category: 'Inteira', isHalfPrice: false,
@@ -56,7 +54,7 @@ const CadastroEvento = () => {
         }
     ]);
 
-    // Formulário Personalizado (Campos do Participante)
+    // Formulário Personalizado
     const [customQuestions, setCustomQuestions] = useState([]);
 
     const [refundPolicy, setRefundPolicy] = useState('O cancelamento pode ser solicitado em até 7 dias após a compra.');
@@ -153,14 +151,12 @@ const CadastroEvento = () => {
             if (!sessions[i].date || !sessions[i].time) return toast.error(`Preencha data e hora da sessão ${i + 1}`);
         }
 
-        // Validação de Tickets (SÓ SE NÃO FOR INFORMATIVO)
+        // Validação de Tickets
         if (!isInformational) {
             if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso.");
             for (const type of ticketTypes) {
-                if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório (ex: Inscrição Aluno).");
+                if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório.");
                 for (const batch of type.batches) {
-                    // --- CORREÇÃO IMPORTANTE ---
-                    // Verifica se o preço está vazio ou null, mas ACEITA "0" (Grátis)
                     if (batch.price === '' || batch.price === null || batch.price === undefined) {
                         return toast.error(`Preencha o preço para ${type.name} (coloque 0 se for grátis).`);
                     }
@@ -169,7 +165,7 @@ const CadastroEvento = () => {
             }
         }
 
-        // Validação básica do formulário personalizado
+        // Validação do Form
         for (const q of customQuestions) {
             if (!q.label) return toast.error("Preencha a pergunta do formulário do participante.");
             if (q.type === 'select' && !q.options) return toast.error("Adicione opções para a pergunta de seleção.");
@@ -200,7 +196,6 @@ const CadastroEvento = () => {
             city: addressCity, state: addressState, zipCode: addressZipCode
         }));
         
-        // Se for informativo, envia array vazio de tickets
         const flatTickets = [];
         if (!isInformational) {
             ticketTypes.forEach(type => {
@@ -221,8 +216,6 @@ const CadastroEvento = () => {
         formData.append('organizerInstagram', organizerInstagram);
         formData.append('organizer', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
         formData.append('isFeaturedRequested', isFeaturedRequested);
-
-        // Envia o formulário personalizado
         formData.append('formSchema', JSON.stringify(customQuestions));
 
         try {
@@ -255,8 +248,8 @@ const CadastroEvento = () => {
                     <button className={styles.backBtn} onClick={() => router.back()}>
                         <FaArrowLeft /> Voltar
                     </button>
-                    <h1>Criar Evento Acadêmico / Geral</h1>
-                    <p>Preencha os dados. Para eventos gratuitos da faculdade, coloque o preço do ingresso como R$ 0,00.</p>
+                    <h1>Criar Novo Evento</h1>
+                    <p>Divulgue, gerencie e venda ingressos de forma simples.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className={styles.formContainer}>
@@ -273,11 +266,12 @@ const CadastroEvento = () => {
                         <div className={styles.gridTwo}>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
                                 <label className={styles.label}>Nome do Evento</label>
-                                <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Jornada Acadêmica Unex"/></div>
+                                {/* Placeholder genérico */}
+                                <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Festival de Música ou Workshop Profissional"/></div>
                             </div>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
                                 <label className={styles.label}>Descrição</label>
-                                <textarea className={styles.textarea} value={description} onChange={e=>setDescription(e.target.value)} required placeholder="Detalhes, cronograma, palestrantes..."/>
+                                <textarea className={styles.textarea} value={description} onChange={e=>setDescription(e.target.value)} required placeholder="Detalhes, atrações, cronograma, sobre o curso..."/>
                             </div>
                             <div className={styles.inputGroup}>
                                 <label className={styles.label}>Categoria</label>
@@ -285,9 +279,9 @@ const CadastroEvento = () => {
                                     <FaLayerGroup className={styles.inputIcon}/>
                                     <select className={styles.select} value={category} onChange={e=>setCategory(e.target.value)} required>
                                         <option value="">Selecione...</option>
-                                        <option>Acadêmico / Congresso</option> {/* Opção ideal para a Unex */}
-                                        <option>Cursos e Workshops</option>
                                         <option>Festas e Shows</option>
+                                        <option>Acadêmico / Congresso</option>
+                                        <option>Cursos e Workshops</option>
                                         <option>Teatro e Cultura</option>
                                         <option>Esportes</option>
                                         <option>Gastronomia</option>
@@ -316,7 +310,7 @@ const CadastroEvento = () => {
                         <button type="button" onClick={handleAddSession} className={styles.addBtnSmall}><FaPlus /> Adicionar data</button>
                         
                         <div className={styles.divider}></div>
-                        <div className={styles.inputGroupFull}><label className={styles.label}>Local</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName} onChange={e=>setLocationName(e.target.value)} required placeholder="Ex: Auditório Unex"/></div></div>
+                        <div className={styles.inputGroupFull}><label className={styles.label}>Local</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName} onChange={e=>setLocationName(e.target.value)} required placeholder="Ex: Espaço de Eventos, Teatro ou Auditório"/></div></div>
                         <div className={styles.gridAddressTop}>
                             <div className={styles.inputGroup}><label className={styles.label}>CEP</label><input className={styles.input} value={addressZipCode} onChange={e=>setAddressZipCode(e.target.value)} required/></div>
                             <div className={styles.inputGroup}><label className={styles.label}>Cidade</label><input className={styles.input} value={addressCity} onChange={e=>setAddressCity(e.target.value)} required/></div>
@@ -348,8 +342,8 @@ const CadastroEvento = () => {
                                 <span className={styles.slider}></span>
                             </div>
                             <div>
-                                <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição)</strong>
-                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque apenas se NÃO precisar de lista de presença.</span>
+                                <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição/Venda)</strong>
+                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se o evento não tiver lista de presença ou ingressos.</span>
                             </div>
                         </div>
 
@@ -359,7 +353,7 @@ const CadastroEvento = () => {
                                     {ticketTypes.map((type, typeIdx) => (
                                         <div key={typeIdx} className={styles.ticketTypeCard}>
                                             <div className={styles.ticketTypeHeader}>
-                                                <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Inscrição Aluno" required /></div>
+                                                <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Pista, Área VIP ou Inscrição Geral" required /></div>
                                                 <div className={styles.inputGroup} style={{flex: 1}}><label className={styles.label}>Categoria</label><select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia / Estudante</option><option>VIP</option><option>Cortesia</option></select></div>
                                                 {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                             </div>
@@ -383,7 +377,7 @@ const CadastroEvento = () => {
                                                                 />
                                                             </div>
                                                             {/* Dica Visual para Gratuidade */}
-                                                            {parseFloat(batch.price) === 0 && <span style={{fontSize:'0.7rem', color:'green', fontWeight:'bold', marginTop: '2px', display:'block'}}>GRÁTIS (Check-in)</span>}
+                                                            {parseFloat(batch.price) === 0 && <span style={{fontSize:'0.7rem', color:'green', fontWeight:'bold', marginTop: '2px', display:'block'}}>GRÁTIS</span>}
                                                         </div>
                                                         <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Vagas" min="1" required /></div>
                                                         {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
@@ -399,13 +393,13 @@ const CadastroEvento = () => {
                         )}
                     </section>
 
-                    {/* 4. FORMULÁRIO DO PARTICIPANTE (ESSENCIAL PARA A UNEX) */}
+                    {/* 4. FORMULÁRIO DO PARTICIPANTE */}
                     {!isInformational && (
                         <section className={styles.card}>
-                            <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Aluno (Para Certificado)</h3></div>
+                            <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
                             <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '24px', lineHeight: '1.5'}}>
-                                Configure aqui os dados que o aluno precisa preencher ao se inscrever.
-                                <br/><small>(Ex: Matrícula, Curso, Semestre)</small>
+                                Configure aqui os dados extras que você precisa coletar de cada pessoa.
+                                <br/><small>(Ex: RG, Tamanho da Camiseta, Matrícula, Empresa)</small>
                             </p>
                             
                             <div className={styles.questionList}>
@@ -418,7 +412,7 @@ const CadastroEvento = () => {
                                                     className={styles.input} 
                                                     value={q.label} 
                                                     onChange={e => handleChangeQuestion(idx, 'label', e.target.value)} 
-                                                    placeholder="Ex: Qual sua Matrícula?" 
+                                                    placeholder="Ex: Qual o número do seu RG?" 
                                                     required 
                                                 />
                                             </div>
@@ -444,7 +438,7 @@ const CadastroEvento = () => {
                                                         className={styles.input} 
                                                         value={q.options} 
                                                         onChange={e => handleChangeQuestion(idx, 'options', e.target.value)} 
-                                                        placeholder="Ex: Direito, Enfermagem, Engenharia" 
+                                                        placeholder="Ex: P, M, G, GG ou Manhã, Tarde" 
                                                     />
                                                 </div>
                                             </div>
@@ -479,7 +473,7 @@ const CadastroEvento = () => {
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Organizador</h3></div>
                         <div className={styles.gridTwo}>
-                            <input className={styles.input} placeholder="Nome do Centro Acadêmico / Faculdade" value={organizerName} onChange={e=>setOrganizerName(e.target.value)} required/>
+                            <input className={styles.input} placeholder="Nome da Produtora ou Organizador" value={organizerName} onChange={e=>setOrganizerName(e.target.value)} required/>
                             <div className={styles.inputWrapper}><FaInstagram className={styles.inputIcon}/><input className={styles.input} placeholder="@instagram" value={organizerInstagram} onChange={e=>setOrganizerInstagram(e.target.value)}/></div>
                         </div>
                     </section>
