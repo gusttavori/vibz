@@ -52,8 +52,9 @@ const validateCoupon = async (req, res) => {
 
 const createCheckoutSession = async (req, res) => {
     try {
+        // Validação de segurança básica
         if (!req.user || !req.user.id) {
-            return res.status(401).json({ message: 'Sessão expirada. Faça login novamente.' });
+            return res.status(401).json({ message: 'Usuário não autenticado.' });
         }
 
         const { eventId, tickets, couponCode, participantData } = req.body;
@@ -120,7 +121,7 @@ const createCheckoutSession = async (req, res) => {
                 const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
                 grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
             } else {
-                grossUnitTotal = 0;
+                grossUnitTotal = 0; // Grátis
             }
 
             totalBaseAmount += (unitPrice * quantity);
@@ -146,7 +147,7 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- CORREÇÃO AQUI: BYPASS STRIPE PARA GRATUITO ---
+        // --- CORREÇÃO: LÓGICA DE INGRESSO GRATUITO ---
         if (totalPaid === 0) {
             console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
 
@@ -158,7 +159,7 @@ const createCheckoutSession = async (req, res) => {
                     subtotal: 0,
                     totalAmount: 0,
                     platformFee: 0,
-                    status: 'paid', 
+                    status: 'paid', // Aprovado direto
                     paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                     paymentStatus: 'paid',
                     items: { create: orderItemsData }
@@ -181,19 +182,14 @@ const createCheckoutSession = async (req, res) => {
                         if (pData) customData = pData.data;
                     }
 
-                    // --- CORREÇÃO DA SINTAXE DE CRIAÇÃO DO TICKET ---
-                    // Se o seu schema não tiver orderId, ele ignora. Se tiver relação, usamos connect.
-                    // Para garantir compatibilidade com o erro que deu, usei a forma mais segura:
-                    // Removido 'orderId' direto e adicionado 'order: { connect... }'
-                    
+                    // --- CORREÇÃO CRÍTICA AQUI ---
+                    // Usamos 'connect' para vincular o pedido, pois 'orderId' não é um campo direto no create
                     await prisma.ticket.create({
                         data: {
                             userId: userId,
                             eventId: eventId,
                             ticketTypeId: item.ticketTypeId,
-                            // AQUI ESTAVA O ERRO: orderId: order.id
-                            // MUDADO PARA:
-                            order: { connect: { id: order.id } }, 
+                            order: { connect: { id: order.id } }, // <--- FORMA CORRETA
                             qrCodeData: uniqueCode,
                             status: 'valid',
                             price: 0,
@@ -213,11 +209,11 @@ const createCheckoutSession = async (req, res) => {
             }
 
             return res.json({ 
-                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentId}&is_free=true` 
+                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true` 
             });
         }
 
-        // --- PAGAMENTO PAGO (STRIPE) ---
+        // --- FLUXO NORMAL (PAGO) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -263,8 +259,7 @@ const createCheckoutSession = async (req, res) => {
 
     } catch (error) {
         console.error("Erro checkout:", error);
-        // Retorna erro detalhado para facilitar debug no console do navegador se precisar
-        res.status(500).json({ message: 'Erro ao processar pedido.', error: error.message });
+        res.status(500).json({ message: 'Erro ao processar checkout.', error: error.message });
     }
 };
 
@@ -346,7 +341,7 @@ const handleStripeWebhook = async (req, res) => {
                                 ticketTypeId: item.ticketTypeId,
                                 eventId: updatedOrder.eventId,
                                 userId: updatedOrder.userId,
-                                // Aqui usamos connect também para garantir
+                                // CORREÇÃO: Adicionada conexão com Order aqui também
                                 order: { connect: { id: updatedOrder.id } },
                                 qrCodeData: `${orderId}-${item.id}-${i}-${Date.now()}`,
                                 price: item.unitPrice,
