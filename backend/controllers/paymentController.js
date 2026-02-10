@@ -52,6 +52,10 @@ const validateCoupon = async (req, res) => {
 
 const createCheckoutSession = async (req, res) => {
     try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ message: 'Sessão expirada. Faça login novamente.' });
+        }
+
         const { eventId, tickets, couponCode, participantData } = req.body;
         const userId = req.user.id;
 
@@ -92,7 +96,6 @@ const createCheckoutSession = async (req, res) => {
         let totalPartnerCommission = 0;
         let totalPaid = 0;
 
-        // Itera sobre os ingressos para calcular totais
         for (const [ticketTypeId, quantity] of Object.entries(tickets)) {
             if (quantity <= 0) continue;
 
@@ -107,7 +110,6 @@ const createCheckoutSession = async (req, res) => {
 
             const unitPrice = parseFloat(tType.price); 
             
-            // Lógica de Taxas (apenas se preço > 0)
             let unitPlatformFee = 0;
             let unitPartnerFee = 0;
             let grossUnitTotal = 0;
@@ -118,7 +120,7 @@ const createCheckoutSession = async (req, res) => {
                 const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
                 grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
             } else {
-                grossUnitTotal = 0; // Grátis é grátis
+                grossUnitTotal = 0;
             }
 
             totalBaseAmount += (unitPrice * quantity);
@@ -132,7 +134,6 @@ const createCheckoutSession = async (req, res) => {
                 unitPrice: unitPrice 
             });
 
-            // Só adiciona ao Stripe se tiver valor > 0
             if (grossUnitTotal > 0) {
                 line_items.push({
                     price_data: {
@@ -145,12 +146,10 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- BYPASS STRIPE PARA EVENTOS GRATUITOS (Total = 0) ---
+        // --- CORREÇÃO AQUI: BYPASS STRIPE PARA GRATUITO ---
         if (totalPaid === 0) {
             console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
 
-            // 1. Cria o Pedido 'paid' imediatamente
-            // Usamos um ID fictício 'free_...' para o paymentIntentId
             const order = await prisma.order.create({
                 data: {
                     userId,
@@ -161,36 +160,40 @@ const createCheckoutSession = async (req, res) => {
                     platformFee: 0,
                     status: 'paid', 
                     paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    paymentStatus: 'paid',
                     items: { create: orderItemsData }
                 },
                 include: { items: true } 
             });
 
-            // 2. Processa os Ingressos no Banco
             for (const item of order.items) {
-                // Atualiza contagem de vendidos
                 await prisma.ticketType.update({
                     where: { id: item.ticketTypeId },
                     data: { sold: { increment: item.quantity } }
                 });
 
-                // Cria os tickets individuais
                 for (let i = 0; i < item.quantity; i++) {
                     const uniqueCode = `${order.id}-${item.id}-${i}-${Date.now()}`;
                     
-                    // Busca dados do participante se houver (Formulário)
                     let customData = {};
                     if (participantData && Array.isArray(participantData)) {
                         const pData = participantData.find(p => p.ticketTypeId === item.ticketTypeId);
                         if (pData) customData = pData.data;
                     }
 
+                    // --- CORREÇÃO DA SINTAXE DE CRIAÇÃO DO TICKET ---
+                    // Se o seu schema não tiver orderId, ele ignora. Se tiver relação, usamos connect.
+                    // Para garantir compatibilidade com o erro que deu, usei a forma mais segura:
+                    // Removido 'orderId' direto e adicionado 'order: { connect... }'
+                    
                     await prisma.ticket.create({
                         data: {
-                            userId,
-                            eventId,
+                            userId: userId,
+                            eventId: eventId,
                             ticketTypeId: item.ticketTypeId,
-                            orderId: order.id,
+                            // AQUI ESTAVA O ERRO: orderId: order.id
+                            // MUDADO PARA:
+                            order: { connect: { id: order.id } }, 
                             qrCodeData: uniqueCode,
                             status: 'valid',
                             price: 0,
@@ -200,7 +203,6 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
 
-            // 3. Envia E-mail (Se falhar, não trava o retorno)
             try {
                 const user = await prisma.user.findUnique({ where: { id: userId } });
                 if (user) {
@@ -210,14 +212,12 @@ const createCheckoutSession = async (req, res) => {
                 console.error("Erro ao enviar email grátis:", emailError);
             }
 
-            // 4. Retorno de Sucesso Imediato para o Frontend
-            // O frontend vai receber essa URL e redirecionar o usuário
             return res.json({ 
-                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true` 
+                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentId}&is_free=true` 
             });
         }
 
-        // --- FLUXO NORMAL (PAGO) COM STRIPE ---
+        // --- PAGAMENTO PAGO (STRIPE) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -243,7 +243,6 @@ const createCheckoutSession = async (req, res) => {
             }
         });
 
-        // Limita tamanho do metadata para evitar erro da Stripe (max 500 chars)
         const participantsJSON = JSON.stringify(participantData || []).substring(0, 499); 
 
         const session = await stripe.checkout.sessions.create({
@@ -264,7 +263,8 @@ const createCheckoutSession = async (req, res) => {
 
     } catch (error) {
         console.error("Erro checkout:", error);
-        res.status(500).json({ message: 'Erro ao processar checkout.' });
+        // Retorna erro detalhado para facilitar debug no console do navegador se precisar
+        res.status(500).json({ message: 'Erro ao processar pedido.', error: error.message });
     }
 };
 
@@ -346,6 +346,8 @@ const handleStripeWebhook = async (req, res) => {
                                 ticketTypeId: item.ticketTypeId,
                                 eventId: updatedOrder.eventId,
                                 userId: updatedOrder.userId,
+                                // Aqui usamos connect também para garantir
+                                order: { connect: { id: updatedOrder.id } },
                                 qrCodeData: `${orderId}-${item.id}-${i}-${Date.now()}`,
                                 price: item.unitPrice,
                                 status: 'valid',
