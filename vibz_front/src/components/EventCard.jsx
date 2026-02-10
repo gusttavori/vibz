@@ -9,7 +9,6 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     const router = useRouter();
 
     const handleCardClick = () => {
-        // Suporta tanto id (SQL) quanto _id (NoSQL/Legado)
         const eventId = event.id || event._id;
         if (eventId) {
             router.push(`/evento/${eventId}`);
@@ -17,53 +16,33 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     };
 
     const handleFavoriteClick = (e) => {
-        e.stopPropagation(); // Impede que o clique abra os detalhes do evento
-
+        e.stopPropagation(); 
         const eventId = event.id || event._id;
 
         if (isUserLoggedIn) {
             if (eventId) {
-                // Chama a função passada pelo pai
+                // Envia o ID e o NOVO estado desejado (inverso do atual)
                 onToggleFavorite(eventId, !isFavorited);
             } else {
-                console.error("ID do evento inválido", event);
+                console.error("ID inválido", event);
             }
         } else {
-            // Redireciona para login se não estiver logado
-            if (confirm("Você precisa fazer login para favoritar eventos. Deseja ir para o login agora?")) {
-                router.push('/login');
-            }
+            if (confirm("Faça login para favoritar.")) router.push('/login');
         }
     };
 
-    // --- LÓGICA DE DATA ROBUSTA ---
     const getDisplayDate = () => {
         if (event.date || event.eventDate) return new Date(event.date || event.eventDate);
-        
-        if (event.sessions && Array.isArray(event.sessions) && event.sessions.length > 0) {
+        if (event.sessions?.length > 0) {
             const sorted = [...event.sessions].sort((a,b) => new Date(a.date) - new Date(b.date));
             return new Date(sorted[0].date);
         }
         return null;
     };
 
-    const formatDate = () => {
-        const date = getDisplayDate();
-        if (!date || isNaN(date.getTime())) return null;
-
-        const day = date.getDate().toString().padStart(2, '0');
-        const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN','JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-        const month = monthNames[date.getMonth()];
-
-        return (
-            <>
-                <span className="day">{day}</span>
-                <span className="month">{month}</span>
-            </>
-        );
-    };
-
-    const displayDate = formatDate();
+    const displayDate = getDisplayDate();
+    const day = displayDate && !isNaN(displayDate) ? displayDate.getDate().toString().padStart(2, '0') : null;
+    const month = displayDate && !isNaN(displayDate) ? displayDate.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '') : null;
     const gradientOverlay = 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%)';
 
     return (
@@ -73,10 +52,10 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                      backgroundImage: event.imageUrl ? `${gradientOverlay}, url(${event.imageUrl})` : 'none', 
                      backgroundColor: '#e2e8f0' 
                  }}>
-                 
-                 {displayDate && (
+                 {day && (
                     <div className="event-card-date-badge">
-                        {displayDate}
+                        <span className="day">{day}</span>
+                        <span className="month">{month}</span>
                     </div>
                  )}
             </div>
@@ -85,7 +64,6 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                 <div className="event-card-header">
                     <h4 className="event-card-title">{event.title}</h4>
                 </div>
-                
                 <div className="event-card-footer">
                     {(event.location || event.city) && (
                         <div className="event-card-location">
@@ -99,10 +77,9 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
             <button 
                 className={`event-card-favorite ${isFavorited ? 'active' : ''}`} 
                 onClick={handleFavoriteClick}
-                type="button"
-                title={isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                type="button" 
+                title={isFavorited ? "Remover" : "Favoritar"}
             >
-                {/* Força a cor vermelha se estiver favoritado */}
                 {isFavorited ? <FaHeart color="#ff4757" /> : <FaRegHeart color="#fff" />}
             </button>
         </div>

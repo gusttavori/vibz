@@ -30,15 +30,14 @@ const UserProfile = () => {
             if (!token) return router.push('/login');
 
             try {
-                // 1. Busca Perfil + Favoritos
+                // 1. Perfil e Favoritos
                 const profileRes = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!profileRes.ok) throw new Error("Falha ao carregar perfil");
+                if (!profileRes.ok) throw new Error("Erro ao carregar perfil");
                 
                 const profileData = await profileRes.json();
-                
                 const userObj = profileData.user || profileData;
                 setUserData(userObj);
                 
@@ -48,27 +47,24 @@ const UserProfile = () => {
                     setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name)}&background=random&color=fff`);
                 }
 
-                // Define favoritos (tenta na raiz da resposta ou dentro do user)
-                const favs = profileData.favoritedEvents || userObj.favoritedEvents || [];
-                setFavoritedEvents(favs);
+                // Carrega favoritos
+                setFavoritedEvents(profileData.favoritedEvents || userObj.favoritedEvents || []);
 
-                // 2. Busca Ingressos
+                // 2. Ingressos
                 const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                
                 if (ticketsRes.ok) {
                     const ticketsData = await ticketsRes.json();
                     setTickets(ticketsData.slice(0, 3)); 
                 }
             } catch (err) {
                 console.error(err);
-                toast.error("Erro ao carregar dados do perfil.");
+                toast.error("Erro ao carregar dados.");
             } finally {
                 setLoading(false);
             }
         };
-
         fetchAllData();
     }, [router, API_BASE_URL]);
 
@@ -76,22 +72,21 @@ const UserProfile = () => {
         const token = localStorage.getItem('userToken');
         if (!token) return router.push('/login');
 
-        // --- OPTIMISTIC UI: Atualiza a tela ANTES da resposta do servidor ---
+        // OPTIMISTIC UI: Remove imediatamente da tela se for desfavoritar
         if (!isFavoriting) {
-            // Se está desfavoritando, remove da lista imediatamente
             setFavoritedEvents(prev => prev.filter(e => (e.id || e._id) !== eventId));
             toast.success("Removido dos favoritos.");
         }
 
         try {
-            // Tenta a rota user (padrão)
+            // Tenta rota padrão
             let res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                 body: JSON.stringify({ eventId }) 
             });
 
-            // Fallback: Se a rota users falhar (404), tenta a rota events
+            // Fallback
             if (!res.ok && res.status === 404) {
                  const userId = localStorage.getItem('userId');
                  res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
@@ -102,30 +97,24 @@ const UserProfile = () => {
             }
 
             if (!res.ok) {
-                // Se o servidor deu erro, reverte a mudança visual
                 if (!isFavoriting) {
                     toast.error("Erro ao sincronizar. Recarregando...");
-                    // Recarrega suavemente após 1.5s para restaurar o estado real
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    toast.error("Erro ao adicionar favorito.");
+                    toast.error("Erro ao adicionar.");
                 }
             } else {
-                // Sucesso confirmado pelo servidor
-                if (isFavoriting) {
-                    toast.success("Adicionado aos favoritos!");
-                }
+                if (isFavoriting) toast.success("Evento favoritado!");
             }
 
         } catch(e) { 
             console.error(e);
-            toast.error("Erro de conexão.");
-            // Reverte em caso de erro de rede
+            toast.error("Erro de conexão."); 
             if (!isFavoriting) setTimeout(() => window.location.reload(), 1000);
         }
     };
 
-    if (loading) return <div className="loading-screen">Carregando perfil...</div>;
+    if (loading) return <div className="loading-screen">Carregando...</div>;
 
     return (
         <div className="user-profile-container">
@@ -142,68 +131,35 @@ const UserProfile = () => {
                                 <div className="default-cover-gradient"></div>
                             )}
                         </div>
-                        
                         <div className="profile-details-container">
                             <div className="profile-avatar">
-                                <img 
-                                    src={profileImage} 
-                                    alt="Perfil" 
-                                    onError={() => setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`)}
-                                />
+                                <img src={profileImage} alt="Perfil" onError={() => setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`)} />
                             </div>
-                            
                             <div className="profile-texts">
                                 <h1>{userData.name}</h1>
                                 <p>{userData.email}</p> 
                             </div>
-
                             <div className="profile-buttons">
-                                <Link href="/dashboard" className="btn-outline">
-                                    <FaChartLine /> Painel do Organizador
-                                </Link>
-                                <button className="btn-outline" onClick={() => router.push('/perfil/editar')}>
-                                    <FaEdit /> Editar
-                                </button>
+                                <Link href="/dashboard" className="btn-outline"><FaChartLine /> Painel</Link>
+                                <button className="btn-outline" onClick={() => router.push('/perfil/editar')}><FaEdit /> Editar</button>
                             </div>
                         </div>
                     </div>
 
                     <div className="profile-body">
-                        
-                        {/* SEÇÃO DE INGRESSOS */}
                         <div className="mini-tickets-section">
                             <div className="section-header-row">
-                                <div className="section-title">
-                                    <FaTicketAlt className="icon-purple" />
-                                    <h2>Ingressos Recentes</h2>
-                                </div>
-                                <Link href="/meus-ingressos" className="link-view-all">
-                                    Ver Carteira Completa <FaChevronRight />
-                                </Link>
+                                <div className="section-title"><FaTicketAlt className="icon-purple" /><h2>Ingressos Recentes</h2></div>
+                                <Link href="/meus-ingressos" className="link-view-all">Ver Todos <FaChevronRight /></Link>
                             </div>
-
                             {tickets.length === 0 ? (
-                                <div className="empty-box-small">
-                                    <p>Nenhum ingresso ativo.</p>
-                                    <Link href="/" className="link-explore">Explorar Eventos</Link>
-                                </div>
+                                <div className="empty-box-small"><p>Nenhum ingresso ativo.</p><Link href="/" className="link-explore">Explorar</Link></div>
                             ) : (
                                 <div className="mini-tickets-list">
-                                    {tickets.map((ticket) => (
-                                        <div key={ticket.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
-                                            <div className="mini-date">
-                                                <span className="day">{new Date(ticket.event?.eventDate || ticket.event?.date || Date.now()).getDate()}</span>
-                                                <span className="month">{new Date(ticket.event?.eventDate || ticket.event?.date || Date.now()).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}</span>
-                                            </div>
-                                            <div className="mini-info">
-                                                <h4>{ticket.event?.title}</h4>
-                                                <div className="mini-meta">
-                                                    <span>{ticket.ticketType?.name}</span> • <span>{ticket.event?.city}</span>
-                                                </div>
-                                            </div>
-                                            <div className="mini-arrow">
-                                                <FaChevronRight />
-                                            </div>
+                                    {tickets.map((t) => (
+                                        <div key={t.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
+                                            <div className="mini-info"><h4>{t.event?.title}</h4></div>
+                                            <FaChevronRight className="mini-arrow"/>
                                         </div>
                                     ))}
                                 </div>
@@ -212,20 +168,16 @@ const UserProfile = () => {
 
                         <div className="divider"></div>
 
-                        {/* SEÇÃO DE FAVORITOS */}
-                        <div className="section-title">
-                            <h2>Meus Favoritos</h2>
-                        </div>
+                        <div className="section-title"><h2>Meus Favoritos</h2></div>
 
                         {favoritedEvents.length > 0 ? (
                             <div className="favorites-grid">
                                 {favoritedEvents.map(event => (
                                     <EventCard 
                                         key={event.id || event._id} 
-                                        event={{...event, id: event.id || event._id}} // Garante ID
+                                        event={{...event, id: event.id || event._id}}
                                         isUserLoggedIn={true}
                                         onToggleFavorite={handleToggleFavorite}
-                                        // Na lista de favoritos, o item sempre é true
                                         isFavorited={true} 
                                     />
                                 ))}
@@ -233,16 +185,12 @@ const UserProfile = () => {
                         ) : (
                             <div className="empty-simple">
                                 <p>Nenhum evento favoritado.</p>
-                                <Link href="/" className="btn-explore-purple">
-                                    <FaSearch /> Explorar Eventos
-                                </Link>
+                                <Link href="/" className="btn-explore-purple"><FaSearch /> Explorar Eventos</Link>
                             </div>
                         )}
-
                     </div>
                 </>
             )}
-            
             <Footer />
         </div>
     );

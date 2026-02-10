@@ -10,10 +10,11 @@ router.get('/my-tickets', authMiddleware, userController.getMyTickets);
 router.get('/:id/favorites', authMiddleware, userController.getFavoritedEvents);
 router.get('/:userId', userController.getPublicUserProfile);
 
-// Rotas de Escrita (Atualização)
+// Rotas de Escrita
 router.put('/me', authMiddleware, upload.fields([{ name: 'profilePicture', maxCount: 1 }, { name: 'coverPicture', maxCount: 1 }]), userController.editUserProfile);
 
-// 👇 ROTA CRÍTICA PARA O FAVORITO FUNCIONAR
+// --- ROTA DE FAVORITAR ---
+// Garante que o caminho seja exatamente este
 router.post('/toggle-favorite', authMiddleware, userController.toggleFavorite);
 
 module.exports = router;
