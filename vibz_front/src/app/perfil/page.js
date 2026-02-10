@@ -39,10 +39,6 @@ const UserProfile = () => {
                 
                 const profileData = await profileRes.json();
                 
-                // O Backend retorna { user: {...}, myEvents: [...], favoritedEvents: [...] }
-                // Ou retorna o user direto com favoritedEvents dentro, dependendo da implementação anterior.
-                // A implementação atualizada do controller retorna { user, myEvents, favoritedEvents }
-                
                 const userObj = profileData.user || profileData;
                 setUserData(userObj);
                 
@@ -52,12 +48,11 @@ const UserProfile = () => {
                     setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name)}&background=random&color=fff`);
                 }
 
-                // CORREÇÃO CRÍTICA: Prioriza a lista explícita 'favoritedEvents' da resposta
-                // Se não existir, tenta pegar de dentro do objeto user
+                // Carrega favoritos (prioriza lista explícita, senão pega de dentro do user)
                 const favs = profileData.favoritedEvents || userObj.favoritedEvents || [];
                 setFavoritedEvents(favs);
 
-                // 2. Busca Ingressos (Apenas os 3 mais recentes para o resumo)
+                // 2. Busca Ingressos
                 const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -84,33 +79,38 @@ const UserProfile = () => {
         if (!token) return router.push('/login');
 
         try {
-            const res = await fetch(`${API_BASE_URL}/events/toggle-favorite`, { // Ajustado endpoint para bater com rota comum se necessário
+            // Tenta a rota user (padrão)
+            let res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-                body: JSON.stringify({ eventId }) // toggle-favorite geralmente só precisa do eventId no body
+                body: JSON.stringify({ eventId }) 
             });
-            
-            // Se o endpoint for diferente, mantém o original:
+
+            // Fallback para rota de events (caso a rota /users/ não exista no server.js)
             if (!res.ok && res.status === 404) {
-                 // Fallback para rota antiga se a de cima falhar (depende da sua rota definida no server.js)
-                 await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+                 res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                     body: JSON.stringify({ userId, isFavoriting })
                 });
             }
 
-            // Atualiza a lista visualmente na hora (Optimistic UI)
-            if (!isFavoriting) {
-                setFavoritedEvents(prev => prev.filter(e => e.id !== eventId && e._id !== eventId));
-                toast.success("Removido dos favoritos.");
+            if (res.ok) {
+                if (isFavoriting) {
+                    toast.success("Adicionado aos favoritos!");
+                    // Em um cenário ideal, recarregaríamos o evento para adicionar na lista,
+                    // mas na tela de perfil a ação principal é remover.
+                } else {
+                    toast.success("Removido dos favoritos.");
+                    setFavoritedEvents(prev => prev.filter(e => e.id !== eventId && e._id !== eventId));
+                }
             } else {
-                // Se fosse adicionar, precisaria recarregar para pegar os dados do evento, 
-                // mas na tela de perfil geralmente só removemos.
+                toast.error("Erro ao atualizar favorito.");
             }
+
         } catch(e) { 
             console.error(e);
-            toast.error("Erro ao atualizar favorito."); 
+            toast.error("Erro de conexão."); 
         }
     };
 

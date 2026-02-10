@@ -29,8 +29,6 @@ const getLoggedInUserProfile = async (req, res) => {
         res.status(200).json({ 
             user: userWithoutPassword, 
             myEvents, 
-            // Garante que a lista de favoritos seja enviada explicitamente,
-            // embora ela já esteja dentro de userWithoutPassword.favoritedEvents
             favoritedEvents: user.favoritedEvents || [] 
         });
 
@@ -131,8 +129,8 @@ const toggleFavorite = async (req, res) => {
             return res.status(400).json({ message: "ID do evento é obrigatório." });
         }
 
-        // Primeiro verifica se já favoritou
-        const user = await prisma.user.findUnique({
+        // Verifica se já existe a relação
+        const userCheck = await prisma.user.findUnique({
             where: { id: userId },
             include: { 
                 favoritedEvents: { 
@@ -141,11 +139,13 @@ const toggleFavorite = async (req, res) => {
             }
         });
 
-        if (!user) return res.status(404).json({ message: "Usuário não encontrado." });
+        if (!userCheck) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
+        }
 
-        const isFavorited = user.favoritedEvents.length > 0;
+        const isAlreadyFavorited = userCheck.favoritedEvents.length > 0;
 
-        if (isFavorited) {
+        if (isAlreadyFavorited) {
             // Remove dos favoritos
             await prisma.user.update({
                 where: { id: userId },
@@ -170,8 +170,8 @@ const toggleFavorite = async (req, res) => {
         }
 
     } catch (error) {
-        console.error("Erro ao favoritar:", error);
-        res.status(500).json({ message: 'Erro interno do servidor.' });
+        console.error("Erro no toggleFavorite:", error);
+        res.status(500).json({ message: 'Erro interno ao favoritar.', error: error.message });
     }
 };
 
