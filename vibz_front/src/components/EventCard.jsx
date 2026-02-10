@@ -9,7 +9,7 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     const router = useRouter();
 
     const handleCardClick = () => {
-        // Suporta tanto id (SQL) quanto _id (NoSQL/Legado)
+        // Garante suporte para ID do Prisma (id) ou MongoDB (_id)
         const eventId = event.id || event._id;
         if (eventId) {
             router.push(`/evento/${eventId}`);
@@ -17,31 +17,27 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     };
 
     const handleFavoriteClick = (e) => {
-        e.stopPropagation(); // Impede que o clique abra os detalhes do evento
+        e.stopPropagation(); // Impede abrir o evento ao clicar no coração
 
         const eventId = event.id || event._id;
 
-        if (isUserLoggedIn && eventId) {
-            // Chama a função passada pelo componente pai (Home ou UserProfile)
-            onToggleFavorite(eventId, !isFavorited);
+        if (isUserLoggedIn) {
+            if (eventId) {
+                onToggleFavorite(eventId, !isFavorited);
+            } else {
+                console.error("ID do evento inválido", event);
+            }
         } else {
-            // Redireciona para login se não estiver logado
             if (confirm("Você precisa fazer login para favoritar eventos. Deseja ir para o login agora?")) {
                 router.push('/login');
             }
         }
     };
 
-    // --- LÓGICA DE DATA ROBUSTA ---
+    // --- LÓGICA DE DATA ---
     const getDisplayDate = () => {
-        // 1. Tenta pegar a data raiz
-        if (event.date || event.eventDate) {
-            return new Date(event.date || event.eventDate);
-        }
-        
-        // 2. Se não tiver, tenta pegar a primeira sessão da lista
+        if (event.date || event.eventDate) return new Date(event.date || event.eventDate);
         if (event.sessions && Array.isArray(event.sessions) && event.sessions.length > 0) {
-            // Ordena sessões para pegar a mais próxima
             const sorted = [...event.sessions].sort((a,b) => new Date(a.date) - new Date(b.date));
             return new Date(sorted[0].date);
         }
@@ -53,7 +49,6 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
         if (!date || isNaN(date.getTime())) return null;
 
         const day = date.getDate().toString().padStart(2, '0');
-        // Meses abreviados em Português
         const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN','JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
         const month = monthNames[date.getMonth()];
 
@@ -76,7 +71,6 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                      backgroundColor: '#e2e8f0' 
                  }}>
                  
-                 {/* Badge de Data Flutuante */}
                  {displayDate && (
                     <div className="event-card-date-badge">
                         {displayDate}
@@ -90,7 +84,6 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                 </div>
                 
                 <div className="event-card-footer">
-                    {/* Localização */}
                     {(event.location || event.city) && (
                         <div className="event-card-location">
                             <FaMapMarkerAlt className="location-icon" />
@@ -100,13 +93,12 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                 </div>
             </div>
 
-            {/* Botão de Favoritar */}
             <button 
                 className={`event-card-favorite ${isFavorited ? 'active' : ''}`} 
                 onClick={handleFavoriteClick}
                 title={isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
             >
-                {isFavorited ? <FaHeart /> : <FaRegHeart />}
+                {isFavorited ? <FaHeart className="heart-icon" /> : <FaRegHeart className="heart-icon" />}
             </button>
         </div>
     );

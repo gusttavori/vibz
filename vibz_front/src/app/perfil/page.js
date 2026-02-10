@@ -30,7 +30,7 @@ const UserProfile = () => {
             if (!token) return router.push('/login');
 
             try {
-                // 1. Busca Perfil + Favoritos
+                // 1. Perfil e Favoritos
                 const profileRes = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -38,7 +38,6 @@ const UserProfile = () => {
                 if (!profileRes.ok) throw new Error("Falha ao carregar perfil");
                 
                 const profileData = await profileRes.json();
-                
                 const userObj = profileData.user || profileData;
                 setUserData(userObj);
                 
@@ -48,11 +47,11 @@ const UserProfile = () => {
                     setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name)}&background=random&color=fff`);
                 }
 
-                // Carrega favoritos (prioriza lista explícita, senão pega de dentro do user)
+                // Pega a lista de favoritos retornada pelo backend
                 const favs = profileData.favoritedEvents || userObj.favoritedEvents || [];
                 setFavoritedEvents(favs);
 
-                // 2. Busca Ingressos
+                // 2. Ingressos
                 const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -63,7 +62,7 @@ const UserProfile = () => {
                 }
             } catch (err) {
                 console.error(err);
-                toast.error("Erro ao carregar dados do perfil.");
+                toast.error("Erro ao carregar dados.");
             } finally {
                 setLoading(false);
             }
@@ -74,40 +73,26 @@ const UserProfile = () => {
 
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
-        
         if (!token) return router.push('/login');
 
+        // Otimismo: Atualiza a tela antes da resposta
+        if (!isFavoriting) {
+            setFavoritedEvents(prev => prev.filter(e => (e.id || e._id) !== eventId));
+            toast.success("Removido dos favoritos.");
+        }
+
         try {
-            // Tenta a rota user (padrão)
-            let res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
+            const res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                 body: JSON.stringify({ eventId }) 
             });
 
-            // Fallback para rota de events (caso a rota /users/ não exista no server.js)
-            if (!res.ok && res.status === 404) {
-                 const userId = localStorage.getItem('userId');
-                 res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-                    body: JSON.stringify({ userId, isFavoriting })
-                });
+            if (!res.ok) {
+                // Se der erro, desfaz a remoção visual e avisa
+                toast.error("Erro ao sincronizar favorito.");
+                setTimeout(() => window.location.reload(), 1500);
             }
-
-            if (res.ok) {
-                if (isFavoriting) {
-                    toast.success("Adicionado aos favoritos!");
-                    // Em um cenário ideal, recarregaríamos o evento para adicionar na lista,
-                    // mas na tela de perfil a ação principal é remover.
-                } else {
-                    toast.success("Removido dos favoritos.");
-                    setFavoritedEvents(prev => prev.filter(e => e.id !== eventId && e._id !== eventId));
-                }
-            } else {
-                toast.error("Erro ao atualizar favorito.");
-            }
-
         } catch(e) { 
             console.error(e);
             toast.error("Erro de conexão."); 
@@ -158,17 +143,14 @@ const UserProfile = () => {
                     </div>
 
                     <div className="profile-body">
-                        
-                        {/* SEÇÃO DE INGRESSOS */}
+                        {/* INGRESSOS */}
                         <div className="mini-tickets-section">
                             <div className="section-header-row">
                                 <div className="section-title">
                                     <FaTicketAlt className="icon-purple" />
                                     <h2>Ingressos Recentes</h2>
                                 </div>
-                                <Link href="/meus-ingressos" className="link-view-all">
-                                    Ver Carteira Completa <FaChevronRight />
-                                </Link>
+                                <Link href="/meus-ingressos" className="link-view-all">Ver Todos <FaChevronRight /></Link>
                             </div>
 
                             {tickets.length === 0 ? (
@@ -186,13 +168,8 @@ const UserProfile = () => {
                                             </div>
                                             <div className="mini-info">
                                                 <h4>{ticket.event?.title}</h4>
-                                                <div className="mini-meta">
-                                                    <span>{ticket.ticketType?.name}</span> • <span>{ticket.event?.city}</span>
-                                                </div>
                                             </div>
-                                            <div className="mini-arrow">
-                                                <FaChevronRight />
-                                            </div>
+                                            <div className="mini-arrow"><FaChevronRight /></div>
                                         </div>
                                     ))}
                                 </div>
@@ -201,17 +178,15 @@ const UserProfile = () => {
 
                         <div className="divider"></div>
 
-                        {/* SEÇÃO DE FAVORITOS */}
-                        <div className="section-title">
-                            <h2>Meus Favoritos</h2>
-                        </div>
+                        {/* FAVORITOS */}
+                        <div className="section-title"><h2>Meus Favoritos</h2></div>
 
                         {favoritedEvents.length > 0 ? (
                             <div className="favorites-grid">
                                 {favoritedEvents.map(event => (
                                     <EventCard 
                                         key={event.id || event._id} 
-                                        event={{...event, _id: event.id || event._id}} // Garante compatibilidade de ID
+                                        event={{...event, id: event.id || event._id}} // Garante ID
                                         isUserLoggedIn={true}
                                         onToggleFavorite={handleToggleFavorite}
                                         isFavorited={true} 
@@ -226,11 +201,9 @@ const UserProfile = () => {
                                 </Link>
                             </div>
                         )}
-
                     </div>
                 </>
             )}
-            
             <Footer />
         </div>
     );

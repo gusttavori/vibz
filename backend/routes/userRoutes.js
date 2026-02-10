@@ -10,7 +10,7 @@ router.put('/me', authMiddleware, upload.fields([{ name: 'profilePicture', maxCo
 router.get('/:id/favorites', authMiddleware, userController.getFavoritedEvents);
 router.get('/:userId', userController.getPublicUserProfile);
 
-// ROTA IMPORTANTE ADICIONADA:
+// ROTA FUNDAMENTAL
 router.post('/toggle-favorite', authMiddleware, userController.toggleFavorite);
 
 module.exports = router;
