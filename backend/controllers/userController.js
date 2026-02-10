@@ -89,7 +89,7 @@ const editUserProfile = async (req, res) => {
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: updateData,
-            include: { favoritedEvents: true }
+            include: { favoritedEvents: true } // Retorna atualizado com favoritos
         });
         
         const { password, ...userWithoutPassword } = updatedUser;

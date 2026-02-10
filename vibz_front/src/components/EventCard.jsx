@@ -11,15 +11,18 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     const handleCardClick = () => {
         // Suporta tanto id (SQL) quanto _id (NoSQL/Legado)
         const eventId = event.id || event._id;
-        router.push(`/evento/${eventId}`);
+        if (eventId) {
+            router.push(`/evento/${eventId}`);
+        }
     };
 
     const handleFavoriteClick = (e) => {
         e.stopPropagation(); // Impede que o clique abra os detalhes do evento
 
-        if (isUserLoggedIn) {
+        const eventId = event.id || event._id;
+
+        if (isUserLoggedIn && eventId) {
             // Chama a função passada pelo componente pai (Home ou UserProfile)
-            const eventId = event.id || event._id;
             onToggleFavorite(eventId, !isFavorited);
         } else {
             // Redireciona para login se não estiver logado
