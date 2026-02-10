@@ -6,15 +6,21 @@ const getLoggedInUserProfile = async (req, res) => {
     try {
         const userId = req.user.id;
         
+        // Busca o usuário logado e INCLUI os eventos favoritados
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: { favoritedEvents: true } 
+            include: { 
+                favoritedEvents: true // Essencial para listar favoritos no perfil
+            } 
         });
         
-        if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
+        if (!user) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
 
         const { password, ...userWithoutPassword } = user;
 
+        // Busca eventos organizados pelo usuário
         const myEvents = await prisma.event.findMany({
             where: { organizerId: userId }
         });
@@ -22,6 +28,7 @@ const getLoggedInUserProfile = async (req, res) => {
         res.status(200).json({ 
             user: userWithoutPassword, 
             myEvents, 
+            // Garante que a lista exista mesmo se vazia
             favoritedEvents: user.favoritedEvents || [] 
         });
 
@@ -38,11 +45,13 @@ const getPublicUserProfile = async (req, res) => {
             where: { id: userId },
             select: { name: true, profilePicture: true, coverPicture: true, createdAt: true, bio: true }
         });
+        
         if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
 
         const userEvents = await prisma.event.findMany({
             where: { organizerId: userId, status: 'approved' }
         });
+        
         res.status(200).json({ user, userEvents });
     } catch (error) {
         res.status(500).json({ message: 'Erro interno do servidor.' });
@@ -79,7 +88,7 @@ const editUserProfile = async (req, res) => {
         });
         
         const { password, ...userWithoutPassword } = updatedUser;
-        res.status(200).json({ message: 'Perfil atualizado!', user: userWithoutPassword });
+        res.status(200).json({ message: 'Perfil atualizado com sucesso!', user: userWithoutPassword });
 
     } catch (error) {
         res.status(500).json({ message: 'Erro interno do servidor.' });
@@ -93,6 +102,7 @@ const getFavoritedEvents = async (req, res) => {
             where: { id },
             include: { favoritedEvents: true }
         });
+
         if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
         res.status(200).json(user.favoritedEvents || []);
     } catch (error) {
@@ -100,7 +110,6 @@ const getFavoritedEvents = async (req, res) => {
     }
 };
 
-// --- LÓGICA DE FAVORITAR CORRIGIDA ---
 const toggleFavorite = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -108,7 +117,7 @@ const toggleFavorite = async (req, res) => {
 
         if (!eventId) return res.status(400).json({ message: "ID do evento é obrigatório." });
 
-        // Verifica se o usuário já tem esse evento favoritado
+        // Verifica se já existe a relação e se o usuário existe
         const userCheck = await prisma.user.findUnique({
             where: { id: userId },
             include: { 
@@ -121,24 +130,24 @@ const toggleFavorite = async (req, res) => {
         const isFavorited = userCheck.favoritedEvents.length > 0;
 
         if (isFavorited) {
-            // Desconecta (Remove)
+            // Remove dos favoritos
             await prisma.user.update({
                 where: { id: userId },
                 data: { favoritedEvents: { disconnect: { id: eventId } } }
             });
-            return res.status(200).json({ message: "Removido dos favoritos.", isFavorited: false });
+            return res.status(200).json({ message: "Evento removido dos favoritos.", isFavorited: false });
         } else {
-            // Conecta (Adiciona)
+            // Adiciona aos favoritos
             await prisma.user.update({
                 where: { id: userId },
                 data: { favoritedEvents: { connect: { id: eventId } } }
             });
-            return res.status(200).json({ message: "Adicionado aos favoritos.", isFavorited: true });
+            return res.status(200).json({ message: "Evento adicionado aos favoritos.", isFavorited: true });
         }
 
     } catch (error) {
-        console.error("Erro toggleFavorite:", error);
-        res.status(500).json({ message: 'Erro ao favoritar.', error: error.message });
+        console.error("Erro no toggleFavorite:", error);
+        res.status(500).json({ message: 'Erro interno ao favoritar.', error: error.message });
     }
 };
 
@@ -154,7 +163,7 @@ const getMyTickets = async (req, res) => {
         });
         res.json(tickets);
     } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar ingressos.' });
+        res.status(500).json({ message: 'Erro ao buscar seus ingressos.' });
     }
 };
 

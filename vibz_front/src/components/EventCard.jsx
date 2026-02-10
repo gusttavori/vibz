@@ -9,7 +9,7 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     const router = useRouter();
 
     const handleCardClick = () => {
-        // Garante suporte para ID do Prisma (id) ou MongoDB (_id)
+        // Suporta tanto id (SQL) quanto _id (NoSQL/Legado)
         const eventId = event.id || event._id;
         if (eventId) {
             router.push(`/evento/${eventId}`);
@@ -17,26 +17,29 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     };
 
     const handleFavoriteClick = (e) => {
-        e.stopPropagation(); // Impede abrir o evento ao clicar no coração
+        e.stopPropagation(); // Impede que o clique abra os detalhes do evento
 
         const eventId = event.id || event._id;
 
         if (isUserLoggedIn) {
             if (eventId) {
+                // Chama a função passada pelo pai
                 onToggleFavorite(eventId, !isFavorited);
             } else {
                 console.error("ID do evento inválido", event);
             }
         } else {
+            // Redireciona para login se não estiver logado
             if (confirm("Você precisa fazer login para favoritar eventos. Deseja ir para o login agora?")) {
                 router.push('/login');
             }
         }
     };
 
-    // --- LÓGICA DE DATA ---
+    // --- LÓGICA DE DATA ROBUSTA ---
     const getDisplayDate = () => {
         if (event.date || event.eventDate) return new Date(event.date || event.eventDate);
+        
         if (event.sessions && Array.isArray(event.sessions) && event.sessions.length > 0) {
             const sorted = [...event.sessions].sort((a,b) => new Date(a.date) - new Date(b.date));
             return new Date(sorted[0].date);
@@ -96,9 +99,11 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
             <button 
                 className={`event-card-favorite ${isFavorited ? 'active' : ''}`} 
                 onClick={handleFavoriteClick}
+                type="button"
                 title={isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
             >
-                {isFavorited ? <FaHeart className="heart-icon" /> : <FaRegHeart className="heart-icon" />}
+                {/* Força a cor vermelha se estiver favoritado */}
+                {isFavorited ? <FaHeart color="#ff4757" /> : <FaRegHeart color="#fff" />}
             </button>
         </div>
     );
