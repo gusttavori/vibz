@@ -6,9 +6,12 @@ const getLoggedInUserProfile = async (req, res) => {
     try {
         const userId = req.user.id;
         
+        // Busca o usuário logado e INCLUI os eventos favoritados
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: { favoritedEvents: true } 
+            include: { 
+                favoritedEvents: true // Essencial para listar favoritos no perfil
+            } 
         });
         
         if (!user) {
@@ -17,17 +20,22 @@ const getLoggedInUserProfile = async (req, res) => {
 
         const { password, ...userWithoutPassword } = user;
 
+        // Busca eventos organizados pelo usuário
         const myEvents = await prisma.event.findMany({
             where: { organizerId: userId }
         });
         
+        // Retorna o objeto completo para o frontend
         res.status(200).json({ 
             user: userWithoutPassword, 
             myEvents, 
-            favoritedEvents: user.favoritedEvents 
+            // Garante que a lista de favoritos seja enviada explicitamente,
+            // embora ela já esteja dentro de userWithoutPassword.favoritedEvents
+            favoritedEvents: user.favoritedEvents || [] 
         });
 
     } catch (error) {
+        console.error("Erro ao buscar perfil:", error);
         res.status(500).json({ message: 'Erro interno do servidor.' });
     }
 };
@@ -81,7 +89,8 @@ const editUserProfile = async (req, res) => {
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: updateData
+            data: updateData,
+            include: { favoritedEvents: true } // Retorna atualizado com favoritos
         });
         
         const { password, ...userWithoutPassword } = updatedUser;
@@ -122,6 +131,7 @@ const toggleFavorite = async (req, res) => {
             return res.status(400).json({ message: "ID do evento é obrigatório." });
         }
 
+        // Primeiro verifica se já favoritou
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { 
@@ -131,9 +141,12 @@ const toggleFavorite = async (req, res) => {
             }
         });
 
+        if (!user) return res.status(404).json({ message: "Usuário não encontrado." });
+
         const isFavorited = user.favoritedEvents.length > 0;
 
         if (isFavorited) {
+            // Remove dos favoritos
             await prisma.user.update({
                 where: { id: userId },
                 data: {
@@ -144,6 +157,7 @@ const toggleFavorite = async (req, res) => {
             });
             return res.status(200).json({ message: "Evento removido dos favoritos.", isFavorited: false });
         } else {
+            // Adiciona aos favoritos
             await prisma.user.update({
                 where: { id: userId },
                 data: {
@@ -156,6 +170,7 @@ const toggleFavorite = async (req, res) => {
         }
 
     } catch (error) {
+        console.error("Erro ao favoritar:", error);
         res.status(500).json({ message: 'Erro interno do servidor.' });
     }
 };

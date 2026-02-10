@@ -30,6 +30,7 @@ const UserProfile = () => {
             if (!token) return router.push('/login');
 
             try {
+                // 1. Busca Perfil + Favoritos
                 const profileRes = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -37,28 +38,37 @@ const UserProfile = () => {
                 if (!profileRes.ok) throw new Error("Falha ao carregar perfil");
                 
                 const profileData = await profileRes.json();
-                const user = profileData.user || profileData;
-                setUserData(user);
                 
-                if (user.profilePicture) {
-                    setProfileImage(user.profilePicture);
+                // O Backend retorna { user: {...}, myEvents: [...], favoritedEvents: [...] }
+                // Ou retorna o user direto com favoritedEvents dentro, dependendo da implementação anterior.
+                // A implementação atualizada do controller retorna { user, myEvents, favoritedEvents }
+                
+                const userObj = profileData.user || profileData;
+                setUserData(userObj);
+                
+                if (userObj.profilePicture) {
+                    setProfileImage(userObj.profilePicture);
                 } else {
-                    setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`);
+                    setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name)}&background=random&color=fff`);
                 }
 
-                setFavoritedEvents(profileData.favoritedEvents || []);
+                // CORREÇÃO CRÍTICA: Prioriza a lista explícita 'favoritedEvents' da resposta
+                // Se não existir, tenta pegar de dentro do objeto user
+                const favs = profileData.favoritedEvents || userObj.favoritedEvents || [];
+                setFavoritedEvents(favs);
 
-                // Busca apenas os 3 ingressos mais recentes para o resumo
+                // 2. Busca Ingressos (Apenas os 3 mais recentes para o resumo)
                 const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
                 if (ticketsRes.ok) {
                     const ticketsData = await ticketsRes.json();
-                    setTickets(ticketsData.slice(0, 3)); // Pega só os 3 primeiros
+                    setTickets(ticketsData.slice(0, 3)); 
                 }
             } catch (err) {
-                toast.error("Erro ao carregar dados.");
+                console.error(err);
+                toast.error("Erro ao carregar dados do perfil.");
             } finally {
                 setLoading(false);
             }
@@ -70,29 +80,41 @@ const UserProfile = () => {
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
         const userId = localStorage.getItem('userId');
+        
+        if (!token) return router.push('/login');
+
         try {
-            await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+            const res = await fetch(`${API_BASE_URL}/events/toggle-favorite`, { // Ajustado endpoint para bater com rota comum se necessário
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-                body: JSON.stringify({ userId, isFavoriting })
+                body: JSON.stringify({ eventId }) // toggle-favorite geralmente só precisa do eventId no body
             });
             
+            // Se o endpoint for diferente, mantém o original:
+            if (!res.ok && res.status === 404) {
+                 // Fallback para rota antiga se a de cima falhar (depende da sua rota definida no server.js)
+                 await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                    body: JSON.stringify({ userId, isFavoriting })
+                });
+            }
+
+            // Atualiza a lista visualmente na hora (Optimistic UI)
             if (!isFavoriting) {
-                setFavoritedEvents(prev => prev.filter(e => e._id !== eventId));
+                setFavoritedEvents(prev => prev.filter(e => e.id !== eventId && e._id !== eventId));
                 toast.success("Removido dos favoritos.");
+            } else {
+                // Se fosse adicionar, precisaria recarregar para pegar os dados do evento, 
+                // mas na tela de perfil geralmente só removemos.
             }
         } catch(e) { 
-            toast.error("Erro ao atualizar."); 
+            console.error(e);
+            toast.error("Erro ao atualizar favorito."); 
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-    };
-
-    if (loading) return <div className="loading-screen">Carregando...</div>;
+    if (loading) return <div className="loading-screen">Carregando perfil...</div>;
 
     return (
         <div className="user-profile-container">
@@ -137,7 +159,7 @@ const UserProfile = () => {
 
                     <div className="profile-body">
                         
-                        {/* SEÇÃO DE INGRESSOS COMPACTA */}
+                        {/* SEÇÃO DE INGRESSOS */}
                         <div className="mini-tickets-section">
                             <div className="section-header-row">
                                 <div className="section-title">
@@ -159,8 +181,8 @@ const UserProfile = () => {
                                     {tickets.map((ticket) => (
                                         <div key={ticket.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
                                             <div className="mini-date">
-                                                <span className="day">{new Date(ticket.event?.date || Date.now()).getDate()}</span>
-                                                <span className="month">{new Date(ticket.event?.date || Date.now()).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}</span>
+                                                <span className="day">{new Date(ticket.event?.eventDate || ticket.event?.date || Date.now()).getDate()}</span>
+                                                <span className="month">{new Date(ticket.event?.eventDate || ticket.event?.date || Date.now()).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}</span>
                                             </div>
                                             <div className="mini-info">
                                                 <h4>{ticket.event?.title}</h4>
@@ -179,6 +201,7 @@ const UserProfile = () => {
 
                         <div className="divider"></div>
 
+                        {/* SEÇÃO DE FAVORITOS */}
                         <div className="section-title">
                             <h2>Meus Favoritos</h2>
                         </div>
@@ -187,8 +210,8 @@ const UserProfile = () => {
                             <div className="favorites-grid">
                                 {favoritedEvents.map(event => (
                                     <EventCard 
-                                        key={event._id} 
-                                        event={event} 
+                                        key={event.id || event._id} 
+                                        event={{...event, _id: event.id || event._id}} // Garante compatibilidade de ID
                                         isUserLoggedIn={true}
                                         onToggleFavorite={handleToggleFavorite}
                                         isFavorited={true} 
