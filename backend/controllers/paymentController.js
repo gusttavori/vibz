@@ -92,6 +92,7 @@ const createCheckoutSession = async (req, res) => {
         let totalPartnerCommission = 0;
         let totalPaid = 0;
 
+        // Itera sobre os ingressos para calcular totais
         for (const [ticketTypeId, quantity] of Object.entries(tickets)) {
             if (quantity <= 0) continue;
 
@@ -104,13 +105,21 @@ const createCheckoutSession = async (req, res) => {
                 return res.status(400).json({ message: `O ingresso "${tType.name}" esgotou ou não tem quantidade suficiente.` });
             }
 
-            const unitPrice = tType.price; 
+            const unitPrice = parseFloat(tType.price); 
             
-            const unitPlatformFee = unitPrice * platformRate;
-            const unitPartnerFee = unitPrice * partnerRate;
-            
-            const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
-            const grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
+            // Lógica de Taxas (apenas se preço > 0)
+            let unitPlatformFee = 0;
+            let unitPartnerFee = 0;
+            let grossUnitTotal = 0;
+
+            if (unitPrice > 0) {
+                unitPlatformFee = unitPrice * platformRate;
+                unitPartnerFee = unitPrice * partnerRate;
+                const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
+                grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
+            } else {
+                grossUnitTotal = 0; // Grátis é grátis
+            }
 
             totalBaseAmount += (unitPrice * quantity);
             totalPlatformFee += (unitPlatformFee * quantity);
@@ -120,19 +129,89 @@ const createCheckoutSession = async (req, res) => {
             orderItemsData.push({
                 ticketTypeId: tType.id,
                 quantity: quantity,
-                unitPrice: unitPrice 
+                unitPrice: unitPrice // Salva o preço original (pode ser 0)
             });
 
-            line_items.push({
-                price_data: {
-                    currency: 'brl',
-                    product_data: { name: `${tType.name} - ${tType.batchName || 'Lote Único'}` },
-                    unit_amount: Math.round(grossUnitTotal * 100),
+            // Só adiciona ao Stripe se tiver valor > 0
+            if (grossUnitTotal > 0) {
+                line_items.push({
+                    price_data: {
+                        currency: 'brl',
+                        product_data: { name: `${tType.name} - ${tType.batchName || 'Lote Único'}` },
+                        unit_amount: Math.round(grossUnitTotal * 100),
+                    },
+                    quantity: quantity,
+                });
+            }
+        }
+
+        // --- BYPASS STRIPE PARA EVENTOS GRATUITOS (Total = 0) ---
+        if (totalPaid === 0) {
+            console.log("🎟️ Evento Gratuito detectado. Processando sem Stripe...");
+
+            // 1. Cria o Pedido 'completed'
+            const order = await prisma.order.create({
+                data: {
+                    userId,
+                    eventId,
+                    couponId: validCoupon?.id,
+                    subtotal: 0,
+                    totalAmount: 0,
+                    platformFee: 0,
+                    status: 'completed', // Aprovado direto
+                    paymentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    paymentStatus: 'paid',
+                    items: { create: orderItemsData }
                 },
-                quantity: quantity,
+                include: { items: true } // Importante incluir items para o loop abaixo
+            });
+
+            // 2. Gera os Tickets no Banco
+            for (const item of order.items) {
+                // Atualiza contagem de vendidos
+                await prisma.ticketType.update({
+                    where: { id: item.ticketTypeId },
+                    data: { sold: { increment: item.quantity } }
+                });
+
+                // Cria os tickets individuais
+                for (let i = 0; i < item.quantity; i++) {
+                    const uniqueCode = `${order.id}-${item.id}-${i}-${Date.now()}`;
+                    
+                    // Busca dados do participante se houver
+                    let customData = {};
+                    if (participantData && Array.isArray(participantData)) {
+                        const pData = participantData.find(p => p.ticketTypeId === item.ticketTypeId);
+                        if (pData) customData = pData.data;
+                    }
+
+                    await prisma.ticket.create({
+                        data: {
+                            userId,
+                            eventId,
+                            ticketTypeId: item.ticketTypeId,
+                            orderId: order.id,
+                            qrCodeData: uniqueCode,
+                            status: 'valid',
+                            price: 0,
+                            participantData: customData
+                        }
+                    });
+                }
+            }
+
+            // 3. Envia E-mail
+            // Busca usuário para ter o e-mail certo
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            await generateAndSendTickets(order, user.email, user.name);
+
+            // 4. Retorno de Sucesso Imediato
+            return res.json({ 
+                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentId}&is_free=true` 
             });
         }
 
+        // --- FLUXO NORMAL (PAGO) COM STRIPE ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -158,6 +237,7 @@ const createCheckoutSession = async (req, res) => {
             }
         });
 
+        // Limita tamanho do metadata para evitar erro da Stripe
         const participantsJSON = JSON.stringify(participantData || []).substring(0, 499); 
 
         const session = await stripe.checkout.sessions.create({
@@ -175,6 +255,7 @@ const createCheckoutSession = async (req, res) => {
         });
 
         res.json({ url: session.url });
+
     } catch (error) {
         console.error("Erro checkout:", error);
         res.status(500).json({ message: 'Erro ao processar checkout.' });
