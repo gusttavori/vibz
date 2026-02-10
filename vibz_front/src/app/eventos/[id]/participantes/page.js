@@ -48,7 +48,6 @@ export default function Participantes() {
         fetchData();
     }, [params.id, router, API_BASE_URL]);
 
-    // Função de formatação para Ingresso e Lote
     const formatText = (text) => {
         if (!text) return '';
         return text.toString()
@@ -75,7 +74,7 @@ export default function Participantes() {
             const result = await response.json();
 
             if (response.ok && result.valid) {
-                toast.success("Check-in realizado com sucesso!");
+                toast.success("Check-in realizado!");
                 setData(prev => ({
                     ...prev,
                     participants: prev.participants.map(p => 
@@ -98,7 +97,6 @@ export default function Participantes() {
         (p.code && p.code.includes(searchTerm))
     );
 
-    // Contagem de Check-ins (Importante para a Unex)
     const checkinsCount = data.participants.filter(p => p.status === 'used').length;
 
     const handleExportCSV = () => {
@@ -110,7 +108,7 @@ export default function Participantes() {
 
         const rows = filteredParticipants.map(p => {
             const fixedData = [
-                p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO', // Isso permite filtrar facilmente no Excel
+                p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
                 p.code,
                 p.buyerName,
                 p.buyerEmail,
@@ -157,7 +155,6 @@ export default function Participantes() {
                                 <p className="subtitle">Gestão de Participantes</p>
                             </div>
                         </div>
-                        {/* Resumo de Presença Visual */}
                         <div style={{display: 'flex', gap: '15px'}}>
                             <span className="badge-total"><FaUserFriends /> {data.participants.length} Inscritos</span>
                             <span className="badge-total" style={{backgroundColor: '#10b981', color: '#fff'}}>
@@ -186,41 +183,42 @@ export default function Participantes() {
                     <table className="participants-table">
                         <thead>
                             <tr>
-                                <th style={{width: '60px', textAlign: 'center'}}>St</th>
-                                <th>Código</th>
-                                <th>Participante</th>
-                                <th>Ingresso</th>
+                                <th className="col-status">Status</th>
+                                <th className="col-code">Código</th>
+                                <th className="col-name">Participante</th>
+                                <th className="col-ticket">Ingresso</th>
                                 {data.formSchema && data.formSchema.map((q, i) => (
-                                    <th key={i}>{q.label}</th>
+                                    <th key={i} className="col-dynamic">{q.label}</th>
                                 ))}
-                                <th>Data Compra</th>
-                                <th style={{textAlign: 'center'}}>Check-in</th>
+                                <th className="col-date">Data Compra</th>
+                                <th className="col-action">Ação</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredParticipants.length > 0 ? (
                                 filteredParticipants.map((p) => (
                                     <tr key={p.id} className={p.status === 'used' ? 'row-used' : ''}>
-                                        <td style={{textAlign: 'center'}}>
+                                        <td className="col-status" data-label="Status">
                                             <span className={`status-dot ${p.status}`} title={p.status === 'used' ? 'Utilizado' : 'Válido'}></span>
+                                            <span className="mobile-label">{p.status === 'used' ? 'Utilizado' : 'Válido'}</span>
                                         </td>
-                                        <td className="code-col">
+                                        <td className="col-code" data-label="Código">
                                             <span className="code-tag">{p.code.split('-')[1]}...</span>
                                         </td>
-                                        <td>
+                                        <td className="col-name" data-label="Participante">
                                             <div className="user-cell">
                                                 <span className="user-name">{p.buyerName}</span>
                                                 <span className="user-email">{p.buyerEmail}</span>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td className="col-ticket" data-label="Ingresso">
                                             <div className="ticket-badge-wrapper">
                                                 <span className="ticket-type-name">{formatText(p.ticketType)}</span>
                                                 <span className="ticket-batch-name">{formatText(p.batch)}</span>
                                             </div>
                                         </td>
                                         {data.formSchema && data.formSchema.map((q, i) => (
-                                            <td key={i}>
+                                            <td key={i} className="col-dynamic" data-label={q.label}>
                                                 {p[q.label] ? (
                                                     <span className="form-answer">{p[q.label]}</span>
                                                 ) : (
@@ -228,11 +226,11 @@ export default function Participantes() {
                                                 )}
                                             </td>
                                         ))}
-                                        <td className="date-col">
-                                            {new Date(p.purchaseDate).toLocaleDateString('pt-BR')} <br/>
-                                            <small>{new Date(p.purchaseDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
+                                        <td className="col-date" data-label="Data Compra">
+                                            {new Date(p.purchaseDate).toLocaleDateString('pt-BR')}
+                                            <small style={{marginLeft: '5px'}}>{new Date(p.purchaseDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
                                         </td>
-                                        <td className="action-col">
+                                        <td className="col-action" data-label="Check-in">
                                             {p.status === 'valid' ? (
                                                 <button 
                                                     className="btn-checkin" 
@@ -240,7 +238,7 @@ export default function Participantes() {
                                                     disabled={processingCheckin === p.id}
                                                     title="Validar Entrada"
                                                 >
-                                                    {processingCheckin === p.id ? <FaSpinner className="spin" /> : <FaCheck />}
+                                                    {processingCheckin === p.id ? <FaSpinner className="spin" /> : <FaCheck />} Validar
                                                 </button>
                                             ) : (
                                                 <span className="badge-checked">
