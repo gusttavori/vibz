@@ -68,6 +68,7 @@ const createEvent = async (req, res) => {
         let parsedAddress, parsedTicketsFlat, parsedSessions, parsedFormSchema;
         try {
             parsedAddress = req.body.address ? JSON.parse(req.body.address) : {};
+            // Se não vier tickets ou vier vazio, assume array vazio
             parsedTicketsFlat = req.body.tickets ? JSON.parse(req.body.tickets) : [];
             parsedSessions = req.body.sessions ? JSON.parse(req.body.sessions) : [];
             parsedFormSchema = req.body.formSchema ? JSON.parse(req.body.formSchema) : [];
@@ -99,48 +100,63 @@ const createEvent = async (req, res) => {
             instagram: organizerInstagram || ""
         };
 
-        const minPrice = parsedTicketsFlat.reduce((min, t) => {
-            const p = parseFloat(t.price);
-            return p < min ? p : min;
-        }, parseFloat(parsedTicketsFlat[0]?.price || 0));
+        // Calcula preço mínimo apenas se houver ingressos
+        let minPrice = 0;
+        if (parsedTicketsFlat.length > 0) {
+            minPrice = parsedTicketsFlat.reduce((min, t) => {
+                const p = parseFloat(t.price);
+                return p < min ? p : min;
+            }, parseFloat(parsedTicketsFlat[0]?.price || 0));
+        }
+
+        // Monta o objeto data do Prisma
+        const eventData = {
+            title,
+            description,
+            imageUrl,
+            city,
+            location: location || parsedAddress.street,
+            category,
+            ageRating, 
+            priceFrom: minPrice,
+            status: 'pending',
+            organizerId: req.user.id,
+            isFeaturedRequested: requestedHighlight,
+            highlightStatus: requestedHighlight ? 'pending' : 'none',
+            highlightFee: requestedHighlight ? 9.90 : 0,
+            refundPolicy: req.body.refundPolicy || "7 dias após a compra",
+            eventDate: mainEventDate,
+            sessions: parsedSessions,
+            organizerInfo: organizerInfoObj,
+            formSchema: parsedFormSchema
+        };
+
+        // Só adiciona a relação de criação de tickets se o array não estiver vazio
+        if (parsedTicketsFlat.length > 0) {
+            eventData.ticketTypes = {
+                create: parsedTicketsFlat.map(t => ({
+                    name: t.name,
+                    category: t.category,
+                    batchName: t.batch,
+                    price: parseFloat(t.price),
+                    quantity: parseInt(t.quantity),
+                    description: t.description,
+                    isHalfPrice: t.isHalfPrice || false,
+                    status: 'active'
+                }))
+            };
+        }
 
         const event = await prisma.event.create({
-            data: {
-                title,
-                description,
-                imageUrl,
-                city,
-                location: location || parsedAddress.street,
-                category,
-                ageRating, 
-                priceFrom: minPrice,
-                status: 'pending',
-                organizerId: req.user.id,
-                isFeaturedRequested: requestedHighlight,
-                highlightStatus: requestedHighlight ? 'pending' : 'none',
-                highlightFee: requestedHighlight ? 9.90 : 0,
-                refundPolicy: req.body.refundPolicy || "7 dias após a compra",
-                eventDate: mainEventDate,
-                sessions: parsedSessions,
-                organizerInfo: organizerInfoObj,
-                formSchema: parsedFormSchema,
-                ticketTypes: {
-                    create: parsedTicketsFlat.map(t => ({
-                        name: t.name,
-                        category: t.category,
-                        batchName: t.batch,
-                        price: parseFloat(t.price),
-                        quantity: parseInt(t.quantity),
-                        description: t.description,
-                        isHalfPrice: t.isHalfPrice || false,
-                        status: 'active'
-                    }))
-                }
-            },
+            data: eventData,
             include: { ticketTypes: true }
         });
 
-        res.status(201).json({ message: 'Evento criado com sucesso.', event: mapEventToFrontend(event) });
+        res.status(201).json({ 
+            message: parsedTicketsFlat.length > 0 ? 'Evento criado com ingressos.' : 'Evento informativo criado.', 
+            event: mapEventToFrontend(event) 
+        });
+
     } catch (error) {
         console.error("Erro no createEvent:", error);
         res.status(500).json({ message: 'Erro interno ao criar evento.', error: error.message });
@@ -192,26 +208,30 @@ const updateEvent = async (req, res) => {
             }
         });
 
+        // Atualização de tickets apenas se enviado e não vazio
         if (tickets) {
             const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
-            for (const t of ticketsData) {
-                const priceVal = parseFloat(t.price);
-                const qtdVal = parseInt(t.quantity);
-                if (t.id) {
-                    await prisma.ticketType.update({
-                        where: { id: t.id },
-                        data: {
-                            name: t.name, price: priceVal, quantity: qtdVal, 
-                            batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
-                        }
-                    });
-                } else {
-                    await prisma.ticketType.create({
-                        data: {
-                            eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
-                            batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
-                        }
-                    });
+            
+            if (ticketsData.length > 0) {
+                for (const t of ticketsData) {
+                    const priceVal = parseFloat(t.price);
+                    const qtdVal = parseInt(t.quantity);
+                    if (t.id) {
+                        await prisma.ticketType.update({
+                            where: { id: t.id },
+                            data: {
+                                name: t.name, price: priceVal, quantity: qtdVal, 
+                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
+                            }
+                        });
+                    } else {
+                        await prisma.ticketType.create({
+                            data: {
+                                eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
+                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
+                            }
+                        });
+                    }
                 }
             }
         }
@@ -325,7 +345,6 @@ const getEventParticipants = async (req, res) => {
 
         const event = await prisma.event.findUnique({
             where: { id },
-            // Alteração aqui: incluímos imageUrl
             select: { title: true, organizerId: true, formSchema: true, imageUrl: true }
         });
 
@@ -365,7 +384,7 @@ const getEventParticipants = async (req, res) => {
 
         res.json({ 
             eventTitle: event.title,
-            eventImageUrl: event.imageUrl, // Enviamos a imagem para o front
+            eventImageUrl: event.imageUrl, 
             formSchema: typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema,
             participants 
         });
