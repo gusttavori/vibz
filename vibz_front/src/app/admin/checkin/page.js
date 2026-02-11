@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode'; // Importe apenas Html5Qrcode
+import { Html5Qrcode } from 'html5-qrcode'; 
 import toast, { Toaster } from 'react-hot-toast';
 import { 
     FaQrcode, FaCheckCircle, FaTimesCircle, FaUser, 
@@ -19,8 +19,6 @@ export default function ValidadorUniversal() {
     const [errorMessage, setErrorMessage] = useState('');
     
     const API_BASE_URL = getApiBaseUrl();
-    
-    // Referência para a instância do scanner
     const html5QrCodeRef = useRef(null);
 
     const triggerHaptic = (type) => {
@@ -30,13 +28,22 @@ export default function ValidadorUniversal() {
         }
     };
 
-    const onScanSuccess = async (decodedText) => {
-        // Pausa a câmera imediatamente após ler
+    const stopScanner = async () => {
         if (html5QrCodeRef.current) {
             try {
-                await html5QrCodeRef.current.pause(); 
-            } catch (e) { console.warn(e); }
+                if (html5QrCodeRef.current.isScanning) {
+                    await html5QrCodeRef.current.stop();
+                }
+                html5QrCodeRef.current.clear();
+            } catch (err) {
+                console.warn("Erro ao parar scanner (pode já estar parado):", err);
+            }
         }
+    };
+
+    const onScanSuccess = async (decodedText) => {
+        // Para a câmera imediatamente ao ler um código válido
+        await stopScanner();
 
         setStatus('processing');
 
@@ -44,6 +51,9 @@ export default function ValidadorUniversal() {
             const token = localStorage.getItem('userToken');
             const cleanToken = token ? token.replace(/"/g, '') : '';
             
+            // Log para debug (útil se você inspecionar via USB no celular)
+            console.log("QR Code Lido:", decodedText);
+
             const res = await fetch(`${API_BASE_URL}/tickets/validate`, {
                 method: 'POST',
                 headers: {
@@ -60,27 +70,24 @@ export default function ValidadorUniversal() {
                 setScanResult(data.details); 
                 triggerHaptic('success');
                 toast.success("VALIDADO!", { duration: 2000 });
-                // Encerra a câmera no sucesso
-                stopScanner(); 
             } else {
                 setStatus('error');
                 let msg = data.message || "Ingresso Inválido";
                 if (data.usedAt) {
-                    const hora = new Date(data.usedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    msg = `USADO HOJE ÀS ${hora}`;
+                    const usedDate = new Date(data.usedAt);
+                    const hora = usedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    const dia = usedDate.toLocaleDateString('pt-BR');
+                    msg = `USADO: ${dia} às ${hora}`;
                 }
                 setErrorMessage(msg);
                 triggerHaptic('error');
                 toast.error("NEGADO", { duration: 3000 });
-                // Encerra a câmera no erro também (opcional, pode manter rodando se preferir)
-                stopScanner();
             }
         } catch (error) {
             setStatus('error');
-            console.error(error);
-            setErrorMessage("Erro de conexão.");
+            console.error("Erro na validação:", error);
+            setErrorMessage("Erro de conexão com o servidor.");
             toast.error("Sem conexão");
-            stopScanner();
         }
     };
 
@@ -89,44 +96,31 @@ export default function ValidadorUniversal() {
         setErrorMessage('');
         setStatus('scanning');
 
+        // Pequeno delay para garantir renderização do container
         setTimeout(() => {
-            // Cria a instância se não existir
             if (!html5QrCodeRef.current) {
                 html5QrCodeRef.current = new Html5Qrcode("reader");
             }
 
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                onScanSuccess(decodedText);
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
             };
 
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            // Inicia a câmera explicitamente
             html5QrCodeRef.current.start(
-                { facingMode: "environment" }, // Câmera traseira
+                { facingMode: "environment" }, 
                 config,
-                qrCodeSuccessCallback
+                onScanSuccess,
+                (errorMessage) => {
+                    // Erros de frame são ignorados (ex: baixa luz, sem foco)
+                }
             ).catch(err => {
                 console.error("Erro ao iniciar câmera:", err);
                 setStatus('idle');
-                toast.error("Permissão da câmera negada ou erro ao iniciar.");
+                toast.error("Erro ao acessar câmera. Verifique permissões.");
             });
-
         }, 100);
-    };
-
-    const stopScanner = async () => {
-        if (html5QrCodeRef.current) {
-            try {
-                // Tenta parar a câmera
-                if (html5QrCodeRef.current.isScanning) {
-                    await html5QrCodeRef.current.stop();
-                }
-                html5QrCodeRef.current.clear();
-            } catch (err) {
-                console.warn("Erro ao parar scanner:", err);
-            }
-        }
     };
 
     const reset = () => {
@@ -135,10 +129,9 @@ export default function ValidadorUniversal() {
         setScanResult(null);
     };
 
-    // Cleanup ao sair da página
     useEffect(() => {
         return () => {
-            stopScanner();
+            stopScanner(); // Garante limpeza ao sair da página
         };
     }, []);
 
@@ -169,7 +162,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* Container do Scanner precisa existir no DOM quando status for 'scanning' */}
                 {status === 'scanning' && (
                     <div className="state-fullscreen scanning fade-in">
                         <div className="scan-overlay">
@@ -178,7 +170,6 @@ export default function ValidadorUniversal() {
                             </div>
                             <p className="scan-instruction">Enquadre o código no centro</p>
                         </div>
-                        {/* A div 'reader' é onde a câmera será renderizada */}
                         <div id="reader"></div>
                         
                         <button className="btn-close-scan" onClick={reset}>

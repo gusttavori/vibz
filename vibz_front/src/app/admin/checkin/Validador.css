@@ -20,12 +20,12 @@
     flex-direction: column;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--text-main);
-    overflow: hidden; /* Evita scroll na validação */
+    overflow: hidden; /* Evita scroll durante o uso */
 }
 
 /* Cores de fundo dinâmicas baseadas no status */
-.validator-page.success { background-color: #ecfdf5; } /* Verde claro */
-.validator-page.error { background-color: #fef2f2; } /* Vermelho claro */
+.validator-page.success { background-color: #ecfdf5; }
+.validator-page.error { background-color: #fef2f2; }
 
 /* Header Minimalista */
 .validator-nav {
@@ -70,6 +70,7 @@
     justify-content: center;
     padding: 20px;
     position: relative;
+    width: 100%;
 }
 
 /* --- CARDS DE ESTADO --- */
@@ -134,12 +135,15 @@
     z-index: 100;
 }
 
+/* Garante que o vídeo da câmera ocupe tudo sem distorcer */
 #reader {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover;
-    background: black;
+    position: absolute;
+    top: 0; left: 0;
+    overflow: hidden;
 }
+
 #reader video { 
     width: 100% !important; 
     height: 100% !important; 
@@ -151,21 +155,21 @@
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
     z-index: 101;
-    pointer-events: none;
+    pointer-events: none; /* Deixa clicar através, se necessário */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.3); /* Escurece levemente o vídeo ao redor */
 }
 
 .scan-frame {
     width: 280px;
     height: 280px;
-    border: 2px solid rgba(255,255,255,0.5);
+    border: 2px solid rgba(255,255,255,0.6);
     border-radius: 20px;
     position: relative;
-    box-shadow: 0 0 0 1000px rgba(0,0,0,0.6); /* Efeito de máscara escura ao redor */
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); /* Máscara escura focando o centro */
 }
 
 .scan-frame::after { /* Cantos brilhantes */
@@ -192,6 +196,7 @@
     border-radius: 20px;
     font-size: 0.9rem;
     font-weight: 500;
+    backdrop-filter: blur(4px);
 }
 
 .btn-close-scan {
@@ -211,10 +216,8 @@
     gap: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     cursor: pointer;
+    pointer-events: auto; /* Garante que o botão seja clicável */
 }
-
-/* UI HACKS PARA BIBLIOTECA - Esconde elementos indesejados da lib */
-#reader__dashboard_section_csr, #reader__dashboard_section_swaplink { display: none !important; }
 
 /* --- RESULT STATES --- */
 .result-header { margin-bottom: 24px; }
@@ -223,8 +226,8 @@
 .error .icon-result { color: var(--error); }
 
 .result h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
-.success h2 { color: #065f46; } /* Verde escuro */
-.error h2 { color: #991b1b; } /* Vermelho escuro */
+.success h2 { color: #065f46; } 
+.error h2 { color: #991b1b; } 
 
 .ticket-details {
     background: #f1f5f9;
