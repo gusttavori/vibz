@@ -8,35 +8,22 @@ const axios = require('axios');
 const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
-// Inicializa o Resend (para futuro uso com domínio)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- CONFIGURAÇÃO BREVO (PORTA 2525) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 2525, 
     secure: false,
     auth: {
-        user: process.env.EMAIL_USER, // Usa o login técnico (a1f800001...) configurado no Render
-        pass: process.env.EMAIL_PASS  // Usa a chave SMTP
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     },
     tls: {
         rejectUnauthorized: false
     },
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
-    socketTimeout: 10000,
-    logger: true,
-    debug: true
-});
-
-// --- TIRA-TEIMA ---
-transporter.verify(function (error, success) {
-    if (error) {
-        console.error('❌ ERRO SMTP:', error);
-    } else {
-        console.log('✅ SMTP CONECTADO! Autenticação técnica funcionou.');
-    }
+    socketTimeout: 10000
 });
 
 async function fetchImage(src) {
@@ -150,7 +137,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
-        // Render e Vercel usam o diretório /tmp para arquivos temporários
         const tempDir = path.join('/tmp'); 
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -163,7 +149,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             where: { 
                 userId: user.id, 
                 eventId: event.id,
-                createdAt: { gte: new Date(Date.now() - 120000) } 
+                createdAt: { gte: new Date(Date.now() - 300000) } 
             },
             include: { ticketType: true }
         });
@@ -171,7 +157,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         if (tickets.length === 0) {
             console.error("Nenhum ticket encontrado para gerar PDF.");
             doc.addPage();
-            doc.text("Erro ao gerar ingressos. Contate o suporte.");
+            doc.text("Erro ao gerar ingressos.");
         } else {
             for (const ticket of tickets) {
                 doc.addPage();
@@ -185,7 +171,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             try {
                 const pdfBuffer = fs.readFileSync(pdfPath);
 
-                // Tenta Resend (prioridade), senão Brevo
                 if (process.env.RESEND_API_KEY && process.env.EMAIL_DOMAIN_VERIFIED === 'true') {
                     await resend.emails.send({
                         from: 'Vibz <ingressos@vibz.com.br>',
@@ -194,15 +179,8 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                         html: `<p>Olá ${recipientName}, seus ingressos estão em anexo.</p>`,
                         attachments: [{ filename: `Ingressos.pdf`, content: pdfBuffer }]
                     });
-                    console.log('📧 Email enviado via Resend');
                 } else {
-                    // Fallback para Brevo SMTP
-                    console.log('🔄 Enviando via Brevo SMTP (Porta 2525)...');
-                    
                     const mailOptions = {
-                        // --- CORREÇÃO CRÍTICA AQUI ---
-                        // O "from" TEM que ser o e-mail validado no Brevo (vibzeventos@gmail.com), 
-                        // e NÃO o login técnico (a1f800001...) que está na variável EMAIL_USER.
                         from: `"Vibz Ingressos" <vibzeventos@gmail.com>`, 
                         to: recipientEmail,
                         subject: `Seus ingressos para ${event.title}`,
@@ -219,7 +197,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
                     };
                     
                     await transporter.sendMail(mailOptions);
-                    console.log('📧 Email enviado via Brevo para:', recipientEmail);
                 }
             } catch (err) {
                 console.error('❌ Erro no envio de email:', err);
@@ -238,19 +215,30 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 const validateTicket = async (req, res) => {
     const { qrCode } = req.body;
     try {
-        const ticket = await prisma.ticket.findUnique({ where: { qrCodeData: qrCode } });
+        let ticket = await prisma.ticket.findUnique({ 
+            where: { qrCodeData: qrCode },
+            include: { event: true, user: true, ticketType: true }
+        });
+
+        if (!ticket) {
+            ticket = await prisma.ticket.findUnique({
+                where: { id: qrCode },
+                include: { event: true, user: true, ticketType: true }
+            });
+        }
+
         if (!ticket) return res.status(404).json({ valid: false, message: 'Ingresso não encontrado.' });
         
-        const event = await prisma.event.findUnique({ where: { id: ticket.eventId } });
-        const user = await prisma.user.findUnique({ where: { id: ticket.userId } });
-        const ticketType = await prisma.ticketType.findUnique({ where: { id: ticket.ticketTypeId } });
-
         if (ticket.status !== 'valid') {
             const usedDate = ticket.usedAt ? new Date(ticket.usedAt).toLocaleString('pt-BR') : 'Anteriormente';
             return res.status(400).json({ 
                 valid: false, 
                 message: `Ingresso já utilizado em ${usedDate}.`,
-                details: { user: user.name, type: ticketType?.name },
+                details: { 
+                    user: ticket.user.name, 
+                    type: ticket.ticketType?.name,
+                    event: ticket.event.title
+                },
                 usedAt: ticket.usedAt 
             });
         }
@@ -261,10 +249,10 @@ const validateTicket = async (req, res) => {
             valid: true, 
             message: 'Acesso Liberado! ✅', 
             details: { 
-                user: user.name, 
-                event: event.title, 
-                type: ticketType?.name, 
-                batch: ticketType?.batchName
+                user: ticket.user.name, 
+                event: ticket.event.title, 
+                type: ticket.ticketType?.name, 
+                batch: ticket.ticketType?.batchName
             } 
         });
     } catch (e) { 

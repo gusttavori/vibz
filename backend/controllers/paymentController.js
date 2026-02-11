@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateAndSendTickets } = require('./ticketController');
+const crypto = require('crypto');
 
 const STRIPE_PERCENTAGE = 0.0399; 
 const STRIPE_FIXED = 0.39;        
@@ -57,7 +58,7 @@ const createCheckoutSession = async (req, res) => {
         }
 
         const { eventId, tickets, couponCode, participantData } = req.body;
-        const userId = req.user.id; // Garante que temos o ID
+        const userId = req.user.id;
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
@@ -146,20 +147,17 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- LÓGICA DE EVENTO GRATUITO ---
         if (totalPaid === 0) {
-            console.log(`🎟️ Evento Gratuito detectado. Criando pedido para UserID: ${userId}`);
-
             const order = await prisma.order.create({
                 data: {
-                    userId: userId, // CRÍTICO: Garante que o pedido tem dono
+                    userId: userId,
                     eventId: eventId,
                     couponId: validCoupon?.id,
                     subtotal: 0,
                     totalAmount: 0,
                     platformFee: 0,
                     status: 'paid',
-                    paymentIntentId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    paymentIntentId: `free_${crypto.randomUUID()}`,
                     items: { create: orderItemsData }
                 },
                 include: { items: true } 
@@ -172,7 +170,7 @@ const createCheckoutSession = async (req, res) => {
                 });
 
                 for (let i = 0; i < item.quantity; i++) {
-                    const uniqueCode = `${order.id}-${item.id}-${i}-${Date.now()}`;
+                    const cleanQrCode = crypto.randomUUID();
                     
                     let customData = {};
                     if (participantData && Array.isArray(participantData)) {
@@ -180,7 +178,6 @@ const createCheckoutSession = async (req, res) => {
                         if (pData) customData = pData.data;
                     }
 
-                    // --- CRIAÇÃO DO TICKET CORRIGIDA ---
                     await prisma.ticket.create({
                         data: {
                             ticketType: { connect: { id: item.ticketTypeId } },
@@ -188,7 +185,7 @@ const createCheckoutSession = async (req, res) => {
                             user: { connect: { id: userId } },
                             order: { connect: { id: order.id } },
                             
-                            qrCodeData: uniqueCode,
+                            qrCodeData: cleanQrCode,
                             status: 'valid',
                             price: 0,
                             participantData: customData
@@ -197,11 +194,10 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
 
-            // Envia email
             try {
                 const user = await prisma.user.findUnique({ where: { id: userId } });
                 if (user) {
-                    await generateAndSendTickets(order, user.email, user.name);
+                    generateAndSendTickets(order, user.email, user.name).catch(console.error);
                 }
             } catch (emailError) {
                 console.error("Erro ao enviar email grátis:", emailError);
@@ -212,7 +208,6 @@ const createCheckoutSession = async (req, res) => {
             });
         }
 
-        // --- FLUXO PAGO (STRIPE) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -320,14 +315,12 @@ const handleStripeWebhook = async (req, res) => {
 
         if (type === 'TICKET_SALE') {
             try {
-                // Atualiza status do pedido
                 const updatedOrder = await prisma.order.update({
                     where: { id: orderId },
                     data: { status: 'paid', paymentIntentId: session.payment_intent },
                     include: { items: true }
                 });
 
-                // Cria os ingressos
                 for (const item of updatedOrder.items) {
                     await prisma.ticketType.update({
                         where: { id: item.ticketTypeId },
@@ -335,6 +328,7 @@ const handleStripeWebhook = async (req, res) => {
                     });
 
                     for (let i = 0; i < item.quantity; i++) {
+                        const cleanQrCode = crypto.randomUUID();
                         const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
                         
                         await prisma.ticket.create({
@@ -344,7 +338,7 @@ const handleStripeWebhook = async (req, res) => {
                                 user: { connect: { id: updatedOrder.userId } },
                                 order: { connect: { id: updatedOrder.id } },
                                 
-                                qrCodeData: `${orderId}-${item.id}-${i}-${Date.now()}`,
+                                qrCodeData: cleanQrCode,
                                 price: item.unitPrice,
                                 status: 'valid',
                                 participantData: pData ? pData.data : {} 
@@ -353,7 +347,10 @@ const handleStripeWebhook = async (req, res) => {
                     }
                 }
                 
-                await generateAndSendTickets(updatedOrder, stripeEmail, stripeName);
+                const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
+                if (user) {
+                    generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
+                }
             } catch (err) {
                 console.error("Erro webhook ticket:", err);
             }
