@@ -36,14 +36,22 @@ export default function ValidadorUniversal() {
                 }
                 html5QrCodeRef.current.clear();
             } catch (err) {
-                console.warn("Erro ao parar scanner (pode já estar parado):", err);
+                console.warn("Scanner já estava parado.");
             }
         }
     };
 
     const onScanSuccess = async (decodedText) => {
-        // Para a câmera imediatamente ao ler um código válido
+        // Pausa a câmera e processa
         await stopScanner();
+
+        // 1. Limpeza e Debug do Código lido
+        const cleanCode = decodedText.trim();
+        console.log("QR Lido (Raw):", decodedText);
+        console.log("QR Lido (Clean):", cleanCode);
+        
+        // Mostra na tela o que foi lido para debug (opcional, remova depois)
+        // toast(`Lendo: ${cleanCode.substring(0, 8)}...`, { icon: '🔍' });
 
         setStatus('processing');
 
@@ -51,16 +59,13 @@ export default function ValidadorUniversal() {
             const token = localStorage.getItem('userToken');
             const cleanToken = token ? token.replace(/"/g, '') : '';
             
-            // Log para debug (útil se você inspecionar via USB no celular)
-            console.log("QR Code Lido:", decodedText);
-
             const res = await fetch(`${API_BASE_URL}/tickets/validate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${cleanToken}`
                 },
-                body: JSON.stringify({ qrCode: decodedText })
+                body: JSON.stringify({ qrCode: cleanCode })
             });
 
             const data = await res.json();
@@ -73,19 +78,21 @@ export default function ValidadorUniversal() {
             } else {
                 setStatus('error');
                 let msg = data.message || "Ingresso Inválido";
+                
                 if (data.usedAt) {
                     const usedDate = new Date(data.usedAt);
                     const hora = usedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                     const dia = usedDate.toLocaleDateString('pt-BR');
                     msg = `USADO: ${dia} às ${hora}`;
                 }
+                
                 setErrorMessage(msg);
                 triggerHaptic('error');
                 toast.error("NEGADO", { duration: 3000 });
             }
         } catch (error) {
             setStatus('error');
-            console.error("Erro na validação:", error);
+            console.error("Erro validação:", error);
             setErrorMessage("Erro de conexão com o servidor.");
             toast.error("Sem conexão");
         }
@@ -96,7 +103,6 @@ export default function ValidadorUniversal() {
         setErrorMessage('');
         setStatus('scanning');
 
-        // Pequeno delay para garantir renderização do container
         setTimeout(() => {
             if (!html5QrCodeRef.current) {
                 html5QrCodeRef.current = new Html5Qrcode("reader");
@@ -113,14 +119,14 @@ export default function ValidadorUniversal() {
                 config,
                 onScanSuccess,
                 (errorMessage) => {
-                    // Erros de frame são ignorados (ex: baixa luz, sem foco)
+                    // Ignora erros de frame (ex: baixa luz)
                 }
             ).catch(err => {
-                console.error("Erro ao iniciar câmera:", err);
+                console.error("Erro câmera:", err);
                 setStatus('idle');
-                toast.error("Erro ao acessar câmera. Verifique permissões.");
+                toast.error("Erro ao acessar câmera. Permita o acesso.");
             });
-        }, 100);
+        }, 150);
     };
 
     const reset = () => {
@@ -131,7 +137,7 @@ export default function ValidadorUniversal() {
 
     useEffect(() => {
         return () => {
-            stopScanner(); // Garante limpeza ao sair da página
+            stopScanner();
         };
     }, []);
 
@@ -148,14 +154,14 @@ export default function ValidadorUniversal() {
 
             <main className="validator-main">
                 {status === 'idle' && (
-                    <div className="state-card idle fade-in">
+                    <div className="state-card idle">
                         <div className="pulse-ring">
                             <div className="qr-icon-wrapper">
                                 <FaQrcode />
                             </div>
                         </div>
                         <h1>Validação de Entrada</h1>
-                        <p>Aponte a câmera para o QR Code do ingresso.</p>
+                        <p>Aponte a câmera para o ingresso.</p>
                         <button className="btn-primary-large" onClick={startScanner}>
                             <FaCamera /> Iniciar Leitura
                         </button>
@@ -163,12 +169,12 @@ export default function ValidadorUniversal() {
                 )}
 
                 {status === 'scanning' && (
-                    <div className="state-fullscreen scanning fade-in">
+                    <div className="state-fullscreen scanning">
                         <div className="scan-overlay">
                             <div className="scan-frame">
                                 <div className="laser"></div>
                             </div>
-                            <p className="scan-instruction">Enquadre o código no centro</p>
+                            <p className="scan-instruction">Enquadre o QR Code no quadrado</p>
                         </div>
                         <div id="reader"></div>
                         
@@ -179,14 +185,14 @@ export default function ValidadorUniversal() {
                 )}
 
                 {status === 'processing' && (
-                    <div className="state-card processing fade-in">
+                    <div className="state-card processing">
                         <div className="spinner"></div>
                         <h3>Verificando...</h3>
                     </div>
                 )}
 
                 {status === 'success' && (
-                    <div className="state-card result success slide-up">
+                    <div className="state-card result success">
                         <div className="result-header">
                             <FaCheckCircle className="icon-result" />
                             <h2>ACESSO LIBERADO</h2>
@@ -211,7 +217,7 @@ export default function ValidadorUniversal() {
                 )}
 
                 {status === 'error' && (
-                    <div className="state-card result error slide-up">
+                    <div className="state-card result error">
                         <div className="result-header">
                             <FaTimesCircle className="icon-result" />
                             <h2>ACESSO NEGADO</h2>
