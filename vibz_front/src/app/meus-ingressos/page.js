@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
-import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes } from 'react-icons/fa';
+import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes, FaDownload } from 'react-icons/fa';
 import './MeusIngressos.css';
 
 const getApiBaseUrl = () => {
@@ -47,6 +47,33 @@ export default function MeusIngressos() {
         fetchTickets();
     }, [router, API_BASE_URL]);
 
+    const handleDownloadPDF = async (ticketId, eventTitle) => {
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+        const toastId = toast.loading("Baixando PDF...");
+        
+        try {
+            const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}/download`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Ingresso_${eventTitle}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                toast.success("Download concluído!", { id: toastId });
+            } else {
+                toast.error("Erro ao baixar.", { id: toastId });
+            }
+        } catch (e) {
+            toast.error("Erro de conexão.", { id: toastId });
+        }
+    };
+
     const formatText = (text) => {
         if (!text) return '';
         return text.toString()
@@ -59,7 +86,6 @@ export default function MeusIngressos() {
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return 'Data inválida';
-            // Formato: "03 de Março"
             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
         } catch (e) {
             return 'Erro na data';
@@ -113,7 +139,6 @@ export default function MeusIngressos() {
                     ) : (
                         currentList.map((ticket) => (
                             <div key={ticket.id || ticket._id} className="ticket-card" onClick={() => openTicket(ticket)}>
-                                {/* IMAGEM DO EVENTO NA ESQUERDA */}
                                 <div className="ticket-left">
                                     <img 
                                         src={ticket.event?.imageUrl || '/img/default-event.jpg'} 
@@ -124,12 +149,9 @@ export default function MeusIngressos() {
                                 
                                 <div className="ticket-center">
                                     <h3>{formatText(ticket.event?.title || "Evento Desconhecido")}</h3>
-                                    
-                                    {/* TIPO DE INGRESSO (TAG) */}
                                     <span className="ticket-type">{formatText(ticket.ticketType?.name || "Ingresso")}</span>
                                     
                                     <div className="ticket-meta">
-                                        {/* DATA E LOCAL JUNTOS */}
                                         <span className="meta-item">
                                             <FaCalendarDay /> {formatDate(ticket.event?.date)}
                                         </span>
@@ -151,7 +173,6 @@ export default function MeusIngressos() {
                 </div>
             </main>
 
-            {/* MODAL MANTIDO IGUAL */}
             {selectedTicket && (
                 <div className="modal-overlay" onClick={closeTicket}>
                     <div className="ticket-modal" onClick={e => e.stopPropagation()}>
@@ -162,13 +183,19 @@ export default function MeusIngressos() {
                         </div>
                         <div className="modal-body">
                             <div className="qr-container">
-                                <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedTicket.qrCodeData || selectedTicket.code}`} 
-                                    alt="QR Code" 
-                                    className="qr-image"
-                                />
-                                <p className="qr-code-text">{selectedTicket.qrCodeData || selectedTicket.code}</p>
+                                {/* AQUI ESTÁ A CORREÇÃO CRÍTICA: USA A IMAGEM DO BACKEND */}
+                                {selectedTicket.qrCodeImage ? (
+                                    <img 
+                                        src={selectedTicket.qrCodeImage} 
+                                        alt="QR Code Oficial" 
+                                        className="qr-image"
+                                    />
+                                ) : (
+                                    <div className="qr-loading">Gerando QR...</div>
+                                )}
+                                <p className="qr-code-text">Apresente este código na entrada</p>
                             </div>
+                            
                             <div className="ticket-info-block">
                                 <div className="info-row">
                                     <span>Titular</span>
@@ -187,6 +214,13 @@ export default function MeusIngressos() {
                                         {selectedTicket.status === 'valid' ? 'VÁLIDO PARA USO' : 'JÁ UTILIZADO'}
                                     </span>
                                 </div>
+                                
+                                <button 
+                                    className="btn-download-pdf" 
+                                    onClick={() => handleDownloadPDF(selectedTicket.id, selectedTicket.event?.title)}
+                                >
+                                    <FaDownload /> Baixar PDF
+                                </button>
                             </div>
                         </div>
                     </div>
