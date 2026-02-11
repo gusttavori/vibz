@@ -36,13 +36,12 @@ export default function ValidadorUniversal() {
                 }
                 html5QrCodeRef.current.clear();
             } catch (err) {
-                console.warn("Scanner já estava parado.");
+                console.warn("Scanner já parado:", err);
             }
         }
     };
 
     const onScanSuccess = async (decodedText) => {
-        // Pausa a câmera e processa
         await stopScanner();
 
         // 1. Limpeza e Debug do Código lido
@@ -50,8 +49,8 @@ export default function ValidadorUniversal() {
         console.log("QR Lido (Raw):", decodedText);
         console.log("QR Lido (Clean):", cleanCode);
         
-        // Mostra na tela o que foi lido para debug (opcional, remova depois)
-        // toast(`Lendo: ${cleanCode.substring(0, 8)}...`, { icon: '🔍' });
+        // DEBUG VISUAL: Mostra o código lido
+        toast(`Lendo: ${cleanCode.substring(0, 8)}...`, { icon: '🔍', duration: 2000 });
 
         setStatus('processing');
 
@@ -74,7 +73,7 @@ export default function ValidadorUniversal() {
                 setStatus('success');
                 setScanResult(data.details); 
                 triggerHaptic('success');
-                toast.success("VALIDADO!", { duration: 2000 });
+                toast.success("VALIDADO!", { duration: 3000 });
             } else {
                 setStatus('error');
                 let msg = data.message || "Ingresso Inválido";
@@ -119,7 +118,7 @@ export default function ValidadorUniversal() {
                 config,
                 onScanSuccess,
                 (errorMessage) => {
-                    // Ignora erros de frame (ex: baixa luz)
+                    // Ignora erros de frame
                 }
             ).catch(err => {
                 console.error("Erro câmera:", err);
@@ -148,7 +147,7 @@ export default function ValidadorUniversal() {
             <header className="validator-nav">
                 <div className="nav-content">
                     <img src="/img/vibe_site.png" alt="Vibz" className="nav-logo" />
-                    <span className="nav-badge">Staff Access</span>
+                    <span className="nav-badge">Staff</span>
                 </div>
             </header>
 
@@ -174,7 +173,7 @@ export default function ValidadorUniversal() {
                             <div className="scan-frame">
                                 <div className="laser"></div>
                             </div>
-                            <p className="scan-instruction">Enquadre o QR Code no quadrado</p>
+                            <p className="scan-instruction">Enquadre o código no centro</p>
                         </div>
                         <div id="reader"></div>
                         

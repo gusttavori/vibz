@@ -147,6 +147,7 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
+        // --- LÓGICA DE EVENTO GRATUITO ---
         if (totalPaid === 0) {
             const order = await prisma.order.create({
                 data: {
@@ -170,6 +171,7 @@ const createCheckoutSession = async (req, res) => {
                 });
 
                 for (let i = 0; i < item.quantity; i++) {
+                    // GERAÇÃO DO CÓDIGO ÚNICO (UUID)
                     const cleanQrCode = crypto.randomUUID();
                     
                     let customData = {};
@@ -208,6 +210,7 @@ const createCheckoutSession = async (req, res) => {
             });
         }
 
+        // --- FLUXO PAGO (STRIPE) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
@@ -328,6 +331,7 @@ const handleStripeWebhook = async (req, res) => {
                     });
 
                     for (let i = 0; i < item.quantity; i++) {
+                        // GERAÇÃO DO CÓDIGO ÚNICO NO WEBHOOK
                         const cleanQrCode = crypto.randomUUID();
                         const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
                         
