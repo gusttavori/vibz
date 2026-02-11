@@ -17,6 +17,7 @@ export default function ValidadorUniversal() {
     const [scanResult, setScanResult] = useState(null);
     const [status, setStatus] = useState('idle'); 
     const [errorMessage, setErrorMessage] = useState('');
+    const [debugCode, setDebugCode] = useState(''); // Para mostrar o código lido em caso de erro
     
     const API_BASE_URL = getApiBaseUrl();
     const html5QrCodeRef = useRef(null);
@@ -36,7 +37,7 @@ export default function ValidadorUniversal() {
                 }
                 html5QrCodeRef.current.clear();
             } catch (err) {
-                console.warn("Scanner já parado:", err);
+                console.warn("Scanner parado.", err);
             }
         }
     };
@@ -44,14 +45,11 @@ export default function ValidadorUniversal() {
     const onScanSuccess = async (decodedText) => {
         await stopScanner();
 
-        // 1. Limpeza e Debug do Código lido
-        const cleanCode = decodedText.trim();
-        console.log("QR Lido (Raw):", decodedText);
-        console.log("QR Lido (Clean):", cleanCode);
+        // --- LIMPEZA DE DADOS CRÍTICA ---
+        // Remove aspas extras, espaços e quebras de linha que alguns geradores adicionam
+        const cleanCode = decodedText.replace(/['"]+/g, '').trim();
         
-        // DEBUG VISUAL: Mostra o código lido
-        toast(`Lendo: ${cleanCode.substring(0, 8)}...`, { icon: '🔍', duration: 2000 });
-
+        setDebugCode(cleanCode); // Guarda para mostrar no erro se precisar
         setStatus('processing');
 
         try {
@@ -81,8 +79,7 @@ export default function ValidadorUniversal() {
                 if (data.usedAt) {
                     const usedDate = new Date(data.usedAt);
                     const hora = usedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    const dia = usedDate.toLocaleDateString('pt-BR');
-                    msg = `USADO: ${dia} às ${hora}`;
+                    msg = `JÁ USADO: Hoje às ${hora}`;
                 }
                 
                 setErrorMessage(msg);
@@ -91,7 +88,6 @@ export default function ValidadorUniversal() {
             }
         } catch (error) {
             setStatus('error');
-            console.error("Erro validação:", error);
             setErrorMessage("Erro de conexão com o servidor.");
             toast.error("Sem conexão");
         }
@@ -100,6 +96,7 @@ export default function ValidadorUniversal() {
     const startScanner = () => {
         setScanResult(null);
         setErrorMessage('');
+        setDebugCode('');
         setStatus('scanning');
 
         setTimeout(() => {
@@ -117,13 +114,11 @@ export default function ValidadorUniversal() {
                 { facingMode: "environment" }, 
                 config,
                 onScanSuccess,
-                (errorMessage) => {
-                    // Ignora erros de frame
-                }
+                () => {} // Ignora erros de frame
             ).catch(err => {
                 console.error("Erro câmera:", err);
                 setStatus('idle');
-                toast.error("Erro ao acessar câmera. Permita o acesso.");
+                toast.error("Erro ao abrir câmera. Verifique permissões.");
             });
         }, 150);
     };
@@ -135,9 +130,7 @@ export default function ValidadorUniversal() {
     };
 
     useEffect(() => {
-        return () => {
-            stopScanner();
-        };
+        return () => { stopScanner(); };
     }, []);
 
     return (
@@ -169,13 +162,13 @@ export default function ValidadorUniversal() {
 
                 {status === 'scanning' && (
                     <div className="state-fullscreen scanning">
+                        <div id="reader"></div>
                         <div className="scan-overlay">
                             <div className="scan-frame">
                                 <div className="laser"></div>
                             </div>
-                            <p className="scan-instruction">Enquadre o código no centro</p>
+                            <p className="scan-instruction">Enquadre o QR Code</p>
                         </div>
-                        <div id="reader"></div>
                         
                         <button className="btn-close-scan" onClick={reset}>
                             <FaChevronLeft /> Cancelar
@@ -222,7 +215,11 @@ export default function ValidadorUniversal() {
                             <h2>ACESSO NEGADO</h2>
                         </div>
                         <div className="error-box">
-                            <p>{errorMessage}</p>
+                            <p className="error-msg">{errorMessage}</p>
+                            {/* Mostra o código lido para debug */}
+                            {debugCode && (
+                                <p className="debug-code">Código Lido: {debugCode.substring(0, 15)}...</p>
+                            )}
                         </div>
                         <button className="btn-secondary-large" onClick={startScanner}><FaRedo /> Tentar Novamente</button>
                         <button className="btn-text" onClick={reset}>Voltar ao Início</button>

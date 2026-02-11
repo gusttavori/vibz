@@ -107,8 +107,10 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     const qrSize = 150;
     doc.image(qrCodeImage, cardX + pad, y, { width: qrSize, height: qrSize });
     
+    // Mostra apenas os primeiros 8 dígitos para não poluir
+    const displayCode = uniqueCode.length > 20 ? uniqueCode.substring(0, 8) + '...' : uniqueCode;
     doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_DARK)
-        .text(uniqueCode, cardX + pad, y + qrSize + 5, { width: qrSize, align: 'center' });
+        .text(displayCode, cardX + pad, y + qrSize + 5, { width: qrSize, align: 'center' });
 
     const detailsX = cardX + pad + qrSize + 25;
     let detailsY = y + 10;
@@ -149,15 +151,16 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             where: { 
                 userId: user.id, 
                 eventId: event.id,
+                // Busca tickets criados nos últimos 5 minutos para evitar pegar antigos
                 createdAt: { gte: new Date(Date.now() - 300000) } 
             },
             include: { ticketType: true }
         });
 
         if (tickets.length === 0) {
-            console.error("Nenhum ticket encontrado para gerar PDF.");
+            console.error("Nenhum ticket recente encontrado para gerar PDF.");
             doc.addPage();
-            doc.text("Erro ao gerar ingressos.");
+            doc.text("Erro ao gerar ingressos. Contate o suporte.");
         } else {
             for (const ticket of tickets) {
                 doc.addPage();
@@ -215,16 +218,26 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 const validateTicket = async (req, res) => {
     const { qrCode } = req.body;
     try {
+        console.log("🔍 Validando:", qrCode);
+
+        // 1. Tenta buscar pelo campo oficial qrCodeData (UUID)
         let ticket = await prisma.ticket.findUnique({ 
             where: { qrCodeData: qrCode },
             include: { event: true, user: true, ticketType: true }
         });
 
+        // 2. Fallback: Se falhar e o código parecer um ID (curto ou formato específico), tenta pelo ID
         if (!ticket) {
-            ticket = await prisma.ticket.findUnique({
-                where: { id: qrCode },
-                include: { event: true, user: true, ticketType: true }
-            });
+            // Só tenta pelo ID se não for um UUID longo, para evitar erro de formato do Prisma
+            // ou se você tiver certeza que IDs antigos podem estar sendo usados
+            try {
+                ticket = await prisma.ticket.findUnique({
+                    where: { id: qrCode },
+                    include: { event: true, user: true, ticketType: true }
+                });
+            } catch (e) {
+                // Se der erro de formato de ID, apenas ignora
+            }
         }
 
         if (!ticket) return res.status(404).json({ valid: false, message: 'Ingresso não encontrado.' });
@@ -233,7 +246,7 @@ const validateTicket = async (req, res) => {
             const usedDate = ticket.usedAt ? new Date(ticket.usedAt).toLocaleString('pt-BR') : 'Anteriormente';
             return res.status(400).json({ 
                 valid: false, 
-                message: `Ingresso já utilizado em ${usedDate}.`,
+                message: `Ingresso já utilizado.`,
                 details: { 
                     user: ticket.user.name, 
                     type: ticket.ticketType?.name,
@@ -256,7 +269,7 @@ const validateTicket = async (req, res) => {
             } 
         });
     } catch (e) { 
-        console.error(e);
+        console.error("Erro validação:", e);
         res.status(500).json({ message: 'Erro interno ao validar.' }); 
     }
 };
