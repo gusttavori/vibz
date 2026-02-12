@@ -44,8 +44,7 @@ export default function Home() {
         academico: 'Todos', festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos'
     });
 
-    const [searchResults, setSearchResults] = useState([]);
-    const [showSearchResults, setShowSearchResults] = useState(false);
+    // Removi states de searchResults e showSearchResults pois não serão mais usados
     const [favoritedEventIds, setFavoritedEventIds] = useState([]);
     
     const searchWrapperRef = useRef(null); 
@@ -58,7 +57,7 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE ---
+    // --- AUTOCOMPLETE (Principal meio de busca agora) ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
@@ -111,8 +110,8 @@ export default function Home() {
 
     const handleClearSearch = () => {
         setSearchTerm('');
-        setShowSearchResults(false);
         setSuggestions([]);
+        setShowSuggestions(false);
     };
 
     const handleMktCreateEvent = () => {
@@ -167,7 +166,6 @@ export default function Home() {
 
     const fetchCategory = async (categoryName, key) => {
         try {
-            // Encode garante que espaços e caracteres especiais (como /) sejam transmitidos corretamente
             const url = `${API_BASE_URL}/events/category/${encodeURIComponent(categoryName)}`;
             const response = await fetch(url);
             if (response.ok) {
@@ -184,14 +182,13 @@ export default function Home() {
         }
     };
 
-    // --- CORREÇÃO AQUI: Nomes exatos do Banco de Dados ---
     useEffect(() => {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
-        fetchCategory('Teatro e Cultura', 'teatro'); // Corrigido
+        fetchCategory('Teatro e Cultura', 'teatro');
         fetchCategory('Esportes', 'esportes'); 
         fetchCategory('Gastronomia', 'gastronomia');
-        fetchCategory('Cursos e Workshops', 'cursos'); // Corrigido
+        fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
 
     // --- LOGIN & FAVORITOS ---
@@ -257,17 +254,7 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
-    const handleSearch = async () => {
-        setShowSuggestions(false);
-        setShowSearchResults(true);
-        const params = new URLSearchParams();
-        if (searchTerm) params.append('query', searchTerm);
-        if (selectedCity) params.append('city', selectedCity);
-        try {
-            const response = await fetch(`${API_BASE_URL}/events/search?${params.toString()}`);
-            if (response.ok) setSearchResults(await response.json());
-        } catch (error) { console.error("Erro busca:", error); }
-    };
+    // Removido handleSearch pois agora usamos apenas as sugestões
 
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
@@ -288,10 +275,8 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
-    // Configuração visual das categorias
     const categoriesConfig = [
-        // MUDANÇA DE ÍCONE AQUI (Certifique-se de ter a imagem 'academic.svg' ou similar na pasta public/img)
-        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' }, 
+        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' }, // Ícone atualizado
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
         { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
@@ -365,7 +350,6 @@ export default function Home() {
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
                             onFocus={() => { if(suggestions.length > 0) setShowSuggestions(true); }}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()} 
                             className="search-input-field" 
                         />
                         {searchTerm && (
@@ -375,7 +359,8 @@ export default function Home() {
                         )}
                     </div>
                     
-                    <button className="search-button-styled" onClick={handleSearch}>
+                    {/* Botão de lupa decorativo ou que abre a primeira sugestão se quiser */}
+                    <button className="search-button-styled" style={{ cursor: 'default' }}> 
                         <FaSearch className="search-icon-right" />
                     </button>
 
@@ -406,16 +391,7 @@ export default function Home() {
                 </div>
             </div>
 
-            {showSearchResults && (
-                <section className="events-section">
-                    <h3 className="section-title">Resultados da Pesquisa</h3>
-                    <div className="event-list">
-                        {searchResults.length > 0 ? searchResults.map(event => (
-                            <EventCard key={event._id} event={event} isUserLoggedIn={isUserLoggedIn} currentUserId={currentUserId} onToggleFavorite={handleToggleFavorite} isFavorited={favoritedEventIds.includes(event._id)} />
-                        )) : <p>Nenhum evento encontrado.</p>}
-                    </div>
-                </section>
-            )}
+            {/* SEÇÃO DE RESULTADOS DE PESQUISA FOI REMOVIDA AQUI */}
 
             {featuredEvents.length > 0 && (
                 <div className="featured-carousel-container">
