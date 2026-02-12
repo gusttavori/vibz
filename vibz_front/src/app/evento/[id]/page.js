@@ -7,7 +7,7 @@ import {
     FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
     FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
     FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
-    FaInfoCircle // Adicionado ícone de info
+    FaInfoCircle
 } from 'react-icons/fa'; 
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
@@ -107,6 +107,40 @@ export default function EventoDetalhes() {
             const currentQty = prev[ticketId] || 0;
             return { ...prev, [ticketId]: Math.max(0, currentQty + delta) };
         });
+    };
+
+    const hasTimeConflict = (candidateTicket, currentSelection) => {
+        if (!candidateTicket.startTime || !candidateTicket.endTime || !candidateTicket.activityDate) return false;
+
+        const toMinutes = (t) => {
+            if(!t) return 0;
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        };
+        
+        const candDate = new Date(candidateTicket.activityDate).toISOString().split('T')[0];
+        const candStart = toMinutes(candidateTicket.startTime);
+        const candEnd = toMinutes(candidateTicket.endTime);
+
+        for (const [tId, qty] of Object.entries(currentSelection)) {
+            if (qty > 0 && tId !== candidateTicket.id && tId !== candidateTicket._id) {
+                const selectedTicket = evento.tickets.find(t => (t.id === tId || t._id === tId));
+                
+                if (selectedTicket && selectedTicket.activityDate && selectedTicket.startTime && selectedTicket.endTime) {
+                     const selDate = new Date(selectedTicket.activityDate).toISOString().split('T')[0];
+                     
+                     if (candDate === selDate) {
+                         const selStart = toMinutes(selectedTicket.startTime);
+                         const selEnd = toMinutes(selectedTicket.endTime);
+
+                         if (Math.max(candStart, selStart) < Math.min(candEnd, selEnd)) {
+                             return true;
+                         }
+                     }
+                }
+            }
+        }
+        return false;
     };
 
     const handleApplyCoupon = async () => {
@@ -302,7 +336,6 @@ export default function EventoDetalhes() {
                     </div>
 
                     <div className="event-details-right-column">
-                        {/* CONDICIONAL: Se for informativo, mostra card especial. Senão, mostra ingressos */}
                         {evento.isInformational ? (
                             <div className="info-card">
                                 <div className="info-header">
@@ -334,22 +367,35 @@ export default function EventoDetalhes() {
                                                 const fee = ticket.price * rate; 
                                                 const available = ticket.quantity - (ticket.sold || 0);
                                                 const isSoldOut = available <= 0;
+                                                
+                                                const isConflict = hasTimeConflict(ticket, ticketQuantities);
+                                                const disablePlus = isSoldOut || qty >= available || (qty === 0 && isConflict);
 
                                                 return (
-                                                    <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''}`}>
+                                                    <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''} ${isConflict && qty === 0 ? 'ticket-conflict' : ''}`}>
                                                         <div className="ticket-info">
                                                             <span className="ticket-name">{ticket.name}</span>
                                                             <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
+                                                            
+                                                            {ticket.startTime && ticket.endTime && (
+                                                                <span className="ticket-time-badge">
+                                                                    🕒 {ticket.startTime} - {ticket.endTime}
+                                                                </span>
+                                                            )}
+
                                                             <div className="ticket-price-row">
                                                                 <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
                                                                 {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
                                                             </div>
                                                             {isSoldOut && <span className="sold-out-badge">ESGOTADO</span>}
+                                                            {isConflict && qty === 0 && (
+                                                                <span className="conflict-warning">Choque de horário com outro item</span>
+                                                            )}
                                                         </div>
                                                         <div className="ticket-controls">
                                                             <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isSoldOut}><FaMinus size={10}/></button>
                                                             <span className="qty-display">{qty}</span>
-                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={isSoldOut || qty >= available}><FaPlus size={10}/></button>
+                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={10}/></button>
                                                         </div>
                                                     </div>
                                                 );

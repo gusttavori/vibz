@@ -109,12 +109,12 @@ model Event {
 
   // Link externo (para eventos informativos)
   externalUrl String? 
-  
+   
   // Flag Informativo
   isInformational Boolean @default(false)
 
   // Configurações Financeiras e Destaque
-  priceFrom           Float
+  priceFrom           Float?   // Pode ser nulo se for informativo
   refundPolicy        String
   termsAndConditions  String?
   isFeatured          Boolean @default(false)
@@ -233,7 +233,7 @@ model Order {
   coupon   Coupon? @relation(fields: [couponId], references: [id])
 
   items OrderItem[]
-  
+   
   // 👇 RELAÇÃO ADICIONADA: Um pedido gera vários ingressos
   tickets Ticket[] 
 

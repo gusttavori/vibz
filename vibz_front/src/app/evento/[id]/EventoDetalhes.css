@@ -246,6 +246,34 @@
 .ticket-fee { font-size: 0.75rem; color: #64748b; font-weight: 500; }
 .discounted-fee { color: var(--success-green); font-weight: 700; }
 
+/* ESTILOS DE CONFLITO */
+.ticket-conflict {
+    opacity: 0.6;
+    background-color: #fef2f2;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.conflict-warning {
+    display: block;
+    color: #ef4444;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+.ticket-time-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 2px;
+    font-weight: 600;
+}
+
 .ticket-controls { 
     display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 5px; border-radius: 30px; border: 1px solid #e2e8f0;
 }
