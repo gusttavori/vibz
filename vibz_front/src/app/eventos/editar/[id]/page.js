@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import styles from '../../../admin/new/CadastroEvento.module.css';
+import styles from '../../../admin/new/CadastroEvento.module.css'; // Usa o mesmo CSS do cadastro
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
-    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaSave, FaStar
+    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaSave, FaStar,
+    FaClipboardList, FaInfoCircle
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -24,6 +25,7 @@ const EditarEvento = () => {
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
     
+    // --- ESTADOS GERAIS ---
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
@@ -34,6 +36,7 @@ const EditarEvento = () => {
 
     const [sessions, setSessions] = useState([]);
     
+    // Localização
     const [locationName, setLocationName] = useState('');
     const [addressStreet, setAddressStreet] = useState('');
     const [addressNumber, setAddressNumber] = useState('');
@@ -42,12 +45,17 @@ const EditarEvento = () => {
     const [addressState, setAddressState] = useState('');
     const [addressZipCode, setAddressZipCode] = useState('');
     
+    // Organizador
     const [organizerName, setOrganizerName] = useState('');
     const [organizerInstagram, setOrganizerInstagram] = useState('');
     
+    // Novas Funcionalidades
     const [ticketTypes, setTicketTypes] = useState([]);
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
+    const [isInformational, setIsInformational] = useState(false); // Novo
+    const [customQuestions, setCustomQuestions] = useState([]);    // Novo
 
+    // --- CARREGAR DADOS ---
     useEffect(() => {
         const fetchEvent = async () => {
             if (!eventId) return;
@@ -63,7 +71,14 @@ const EditarEvento = () => {
                 setImagePreview(data.imageUrl); 
                 setRefundPolicy(data.refundPolicy);
                 setIsFeaturedRequested(data.isFeaturedRequested || false);
+                setIsInformational(data.isInformational || false); // Carrega estado informativo
+
+                // Carrega Formulário Personalizado
+                if (data.formSchema) {
+                    setCustomQuestions(typeof data.formSchema === 'string' ? JSON.parse(data.formSchema) : data.formSchema);
+                }
                 
+                // Carrega Sessões
                 let sessionData = [];
                 if (data.sessions) {
                     sessionData = typeof data.sessions === 'string' ? JSON.parse(data.sessions) : data.sessions;
@@ -89,6 +104,7 @@ const EditarEvento = () => {
                 }
                 setSessions(formattedSessions);
 
+                // Carrega Endereço
                 setLocationName(data.location || '');
                 setAddressCity(data.city || '');
                 if (data.address) {
@@ -100,6 +116,7 @@ const EditarEvento = () => {
                     setAddressZipCode(addr.zipCode || '');
                 }
                 
+                // Carrega Organizador
                 let orgInfo = {};
                 if (data.organizerInfo) {
                     orgInfo = typeof data.organizerInfo === 'string' ? JSON.parse(data.organizerInfo) : data.organizerInfo;
@@ -109,6 +126,7 @@ const EditarEvento = () => {
                 setOrganizerName(orgInfo.name || '');
                 setOrganizerInstagram(orgInfo.instagram || '');
 
+                // Carrega Ingressos (Agrupando por tipo)
                 const rawTickets = data.tickets || data.ticketTypes || [];
                 const groupedTickets = {};
                 
@@ -124,13 +142,14 @@ const EditarEvento = () => {
                     }
                     groupedTickets[key].batches.push({
                         id: t.id || t._id, 
-                        name: t.batch,
+                        name: t.batch || t.batchName, // Suporta ambos formatos
                         price: t.price,
                         quantity: t.quantity
                     });
                 });
                 
                 if (Object.keys(groupedTickets).length === 0) {
+                    // Se não tiver ingressos, inicia um padrão vazio (caso o usuário queira adicionar depois)
                     setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
                 } else {
                     setTicketTypes(Object.values(groupedTickets));
@@ -146,6 +165,7 @@ const EditarEvento = () => {
         fetchEvent();
     }, [eventId, API_BASE_URL]);
 
+    // --- HANDLERS ---
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -166,44 +186,50 @@ const EditarEvento = () => {
         setSessions(updated);
     };
 
+    // Handlers de Ingressos
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
             batches: [{ name: '1º Lote', price: '', quantity: '' }]
         }]);
     };
-
     const handleRemoveTicketType = (index) => {
         if (ticketTypes.length === 1) return toast.error("Mínimo de 1 tipo de ingresso.");
         setTicketTypes(ticketTypes.filter((_, i) => i !== index));
     };
-
     const handleChangeTicketType = (index, field, value) => {
         const updated = [...ticketTypes];
         updated[index][field] = value;
         setTicketTypes(updated);
     };
-
     const handleAddBatch = (typeIndex) => {
         const updated = [...ticketTypes];
         const nextBatchNum = updated[typeIndex].batches.length + 1;
         updated[typeIndex].batches.push({ name: `${nextBatchNum}º Lote`, price: '', quantity: '' });
         setTicketTypes(updated);
     };
-
     const handleRemoveBatch = (typeIndex, batchIndex) => {
         const updated = [...ticketTypes];
         if (updated[typeIndex].batches.length === 1) return toast.error("Mínimo de 1 lote por ingresso.");
         updated[typeIndex].batches = updated[typeIndex].batches.filter((_, i) => i !== batchIndex);
         setTicketTypes(updated);
     };
-
     const handleChangeBatch = (typeIndex, batchIndex, field, value) => {
         const updated = [...ticketTypes];
         updated[typeIndex].batches[batchIndex][field] = value;
         setTicketTypes(updated);
     };
 
+    // Handlers de Perguntas (Novo)
+    const handleAddQuestion = () => setCustomQuestions([...customQuestions, { label: '', type: 'text', required: true, options: '' }]);
+    const handleRemoveQuestion = (index) => setCustomQuestions(customQuestions.filter((_, i) => i !== index));
+    const handleChangeQuestion = (index, field, value) => {
+        const updated = [...customQuestions];
+        updated[index][field] = value;
+        setCustomQuestions(updated);
+    };
+
+    // --- SUBMIT UPDATE ---
     const handleUpdate = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -214,6 +240,17 @@ const EditarEvento = () => {
             setSaving(false); return toast.error('Preencha data e hora das sessões.');
         }
 
+        // Validação de Tickets (Apenas se não for informativo)
+        if (!isInformational) {
+            for (const type of ticketTypes) {
+                if (!type.name) { setSaving(false); return toast.error("Nome do ingresso é obrigatório."); }
+                for (const batch of type.batches) {
+                    if (!batch.price && batch.price !== 0 && batch.price !== '0') { setSaving(false); return toast.error(`Preço obrigatório em ${type.name}`); }
+                    if (!batch.quantity) { setSaving(false); return toast.error(`Quantidade obrigatória em ${type.name}`); }
+                }
+            }
+        }
+
         const formData = new FormData();
         formData.append('title', title);
         formData.append('description', description);
@@ -221,6 +258,7 @@ const EditarEvento = () => {
         formData.append('ageRating', ageRating);
         formData.append('refundPolicy', refundPolicy);
         formData.append('isFeaturedRequested', isFeaturedRequested);
+        formData.append('isInformational', isInformational); // Envia o novo campo
         
         if (imageFile) formData.append('image', imageFile);
 
@@ -244,23 +282,25 @@ const EditarEvento = () => {
         }));
 
         const flatTickets = [];
-        ticketTypes.forEach(type => {
-            type.batches.forEach(batch => {
-                flatTickets.push({
-                    id: batch.id, 
-                    name: type.name,
-                    category: type.category,
-                    isHalfPrice: type.isHalfPrice,
-                    batch: batch.name,
-                    price: parseFloat(batch.price),
-                    quantity: parseInt(batch.quantity),
-                    description: type.name + ' - ' + batch.name 
+        if (!isInformational) {
+            ticketTypes.forEach(type => {
+                type.batches.forEach(batch => {
+                    flatTickets.push({
+                        id: batch.id, 
+                        name: type.name,
+                        category: type.category,
+                        isHalfPrice: type.isHalfPrice,
+                        batch: batch.name,
+                        price: parseFloat(batch.price),
+                        quantity: parseInt(batch.quantity),
+                        description: type.name + ' - ' + batch.name 
+                    });
                 });
             });
-        });
+        }
         formData.append('tickets', JSON.stringify(flatTickets));
-        
         formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
+        formData.append('formSchema', JSON.stringify(customQuestions)); // Salva perguntas
 
         try {
             const res = await fetch(`${API_BASE_URL}/events/${eventId}`, {
@@ -301,6 +341,7 @@ const EditarEvento = () => {
 
                 <form onSubmit={handleUpdate} className={styles.formContainer}>
                     
+                    {/* 1. INFO PRINCIPAL */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaImage /></div>
@@ -323,7 +364,19 @@ const EditarEvento = () => {
                             </div>
                             <div className={styles.inputGroup}>
                                 <label className={styles.label}>Categoria</label>
-                                <div className={styles.inputWrapper}><FaLayerGroup className={styles.inputIcon} /><select className={styles.select} value={category} onChange={e => setCategory(e.target.value)}><option value="" disabled>Selecione...</option><option>Música e entretenimento</option><option>Esportes e Lazer</option><option>Teatro</option><option>Infantil</option><option>Educação e Negócios</option><option>Religiosos</option></select></div>
+                                <div className={styles.inputWrapper}>
+                                    <FaLayerGroup className={styles.inputIcon} />
+                                    <select className={styles.select} value={category} onChange={e => setCategory(e.target.value)} required>
+                                        <option value="" disabled>Selecione...</option>
+                                        {/* CATEGORIAS ATUALIZADAS PARA IGUALAR AO CADASTRO */}
+                                        <option>Festas e Shows</option>
+                                        <option>Acadêmico / Congresso</option>
+                                        <option>Cursos e Workshops</option>
+                                        <option>Teatro e Cultura</option>
+                                        <option>Esportes</option>
+                                        <option>Gastronomia</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className={styles.inputGroup}>
                                 <label className={styles.label}>Classificação</label>
@@ -332,6 +385,7 @@ const EditarEvento = () => {
                         </div>
                     </section>
 
+                    {/* 2. DATA E LOCAL */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaCalendarAlt /></div>
@@ -378,51 +432,108 @@ const EditarEvento = () => {
                         </div>
                     </section>
 
+                    {/* 3. INGRESSOS */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaTicketAlt /></div>
                             <h3>Ingressos</h3>
                         </div>
-                        <div className={styles.ticketsContainer}>
-                            {ticketTypes.map((type, typeIdx) => (
-                                <div key={typeIdx} className={styles.ticketTypeCard}>
-                                    <div className={styles.ticketTypeHeader}>
-                                        <div className={styles.inputGroup} style={{flex: 2}}>
-                                            <label className={styles.label}>Nome do Ingresso</label>
-                                            <input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Pista" required />
-                                        </div>
-                                        <div className={styles.inputGroup} style={{flex: 1}}>
-                                            <label className={styles.label}>Categoria</label>
-                                            <select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia</option><option>VIP</option><option>Cortesia</option></select>
-                                        </div>
-                                        {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
-                                    </div>
-                                    <div className={styles.batchesContainer}>
-                                        <h4 className={styles.batchTitle}>Lotes deste ingresso:</h4>
-                                        {type.batches.map((batch, batchIdx) => (
-                                            <div key={batchIdx} className={styles.batchRow}>
-                                                <div className={styles.inputGroup}>
-                                                    <input className={styles.inputSmall} type="text" value={batch.name} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" />
-                                                </div>
-                                                <div className={styles.inputGroup}>
-                                                    <div className={styles.inputWrapper}><span className={styles.currencyPrefix}>R$</span><input className={styles.inputSmall} type="number" value={batch.price} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} placeholder="0,00" min="0" step="0.01" required /></div>
-                                                </div>
-                                                <div className={styles.inputGroup}>
-                                                    <input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Qtd" min="1" required />
-                                                </div>
-                                                {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={() => handleAddBatch(typeIdx)} className={styles.addBatchBtn}><FaPlus size={12} /> Adicionar Próximo Lote</button>
-                                    </div>
-                                    <div className={styles.ticketFooter}>
-                                        <label className={styles.checkboxLabel}><input className={styles.checkbox} type="checkbox" checked={type.isHalfPrice} onChange={e => handleChangeTicketType(typeIdx, 'isHalfPrice', e.target.checked)} /> Meia-entrada disponível</label>
-                                    </div>
-                                </div>
-                            ))}
+
+                        {/* SWITCH INFORMATIVO */}
+                        <div className={styles.infoSwitchContainer} style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+                            <label className={styles.switch}>
+                                <input 
+                                    className={styles.hiddenCheckbox} 
+                                    type="checkbox" 
+                                    checked={isInformational} 
+                                    onChange={e => setIsInformational(e.target.checked)} 
+                                />
+                                <span className={styles.slider}></span>
+                            </label>
+                            <div>
+                                <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição/Venda)</strong>
+                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se o evento não tiver lista de presença ou ingressos.</span>
+                            </div>
                         </div>
-                        <button type="button" onClick={handleAddTicketType} className={styles.addBtnFull}><FaPlus /> Novo Tipo de Ingresso</button>
+
+                        {!isInformational && (
+                            <div className={styles.ticketsContainer}>
+                                {ticketTypes.map((type, typeIdx) => (
+                                    <div key={typeIdx} className={styles.ticketTypeCard}>
+                                        <div className={styles.ticketTypeHeader}>
+                                            <div className={styles.inputGroup} style={{flex: 2}}>
+                                                <label className={styles.label}>Nome do Ingresso</label>
+                                                <input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Pista" required />
+                                            </div>
+                                            <div className={styles.inputGroup} style={{flex: 1}}>
+                                                <label className={styles.label}>Categoria</label>
+                                                <select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia</option><option>VIP</option><option>Cortesia</option></select>
+                                            </div>
+                                            {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
+                                        </div>
+                                        <div className={styles.batchesContainer}>
+                                            <h4 className={styles.batchTitle}>Lotes deste ingresso:</h4>
+                                            {type.batches.map((batch, batchIdx) => (
+                                                <div key={batchIdx} className={styles.batchRow}>
+                                                    <div className={styles.inputGroup}><input className={styles.inputSmall} type="text" value={batch.name} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" /></div>
+                                                    <div className={styles.inputGroup}>
+                                                        <div className={styles.inputWrapper}>
+                                                            <span className={styles.currencyPrefix}>R$</span>
+                                                            <input className={styles.inputSmall} type="number" value={batch.price} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} placeholder="0,00" min="0" step="0.01" required />
+                                                        </div>
+                                                    </div>
+                                                    <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Qtd" min="1" required /></div>
+                                                    {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={() => handleAddBatch(typeIdx)} className={styles.addBatchBtn}><FaPlus size={12} /> Adicionar Próximo Lote</button>
+                                        </div>
+                                        <div className={styles.ticketFooter}>
+                                            <label className={styles.checkboxLabel}><input className={styles.checkbox} type="checkbox" checked={type.isHalfPrice} onChange={e => handleChangeTicketType(typeIdx, 'isHalfPrice', e.target.checked)} /> Meia-entrada disponível</label>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={handleAddTicketType} className={styles.addBtnFull}><FaPlus /> Novo Tipo de Ingresso</button>
+                            </div>
+                        )}
                     </section>
+
+                    {/* 4. DADOS DO PARTICIPANTE (NOVO) */}
+                    {!isInformational && (
+                        <section className={styles.card}>
+                            <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
+                            <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '24px'}}>Configure aqui os dados extras (RG, Empresa, etc).</p>
+                            
+                            <div className={styles.questionList}>
+                                {customQuestions.map((q, idx) => (
+                                    <div key={idx} className={styles.questionCard}>
+                                        <div className={styles.questionRow}>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Pergunta</label>
+                                                <input className={styles.input} value={q.label} onChange={e => handleChangeQuestion(idx, 'label', e.target.value)} placeholder="Pergunta" required />
+                                            </div>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Tipo</label>
+                                                <select className={styles.select} value={q.type} onChange={e => handleChangeQuestion(idx, 'type', e.target.value)}>
+                                                    <option value="text">Texto</option><option value="select">Seleção</option><option value="checkbox">Sim/Não</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {q.type === 'select' && (
+                                            <div className={styles.optionsRow}>
+                                                <div className={styles.inputGroup}><label className={styles.label}>Opções (separadas por vírgula)</label><input className={styles.input} value={q.options} onChange={e => handleChangeQuestion(idx, 'options', e.target.value)} /></div>
+                                            </div>
+                                        )}
+                                        <div className={styles.questionFooter}>
+                                            <label className={styles.switchLabel}><input className={styles.checkbox} type="checkbox" checked={q.required} onChange={e => handleChangeQuestion(idx, 'required', e.target.checked)} /> Obrigatório</label>
+                                            <button type="button" onClick={() => handleRemoveQuestion(idx)} className={styles.deleteQuestionBtn}><FaTrashAlt size={14} /> Excluir</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={handleAddQuestion} className={styles.addQuestionBtn}><FaPlus /> Adicionar Pergunta</button>
+                        </section>
+                    )}
 
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
@@ -440,6 +551,21 @@ const EditarEvento = () => {
                             </div>
                         </div>
                     </section>
+
+                    {/* DESTAQUE */}
+                    <div className={`${styles.featuredBox} ${isFeaturedRequested ? styles.featuredActive : ''}`} onClick={() => setIsFeaturedRequested(!isFeaturedRequested)}>
+                        <div className={styles.featuredInfo}>
+                            <div className={styles.featuredIcon}><FaStar /></div>
+                            <div className={styles.featuredText}><h4>Destaque seu evento</h4><p>Apareça no topo e venda mais.</p></div>
+                        </div>
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div>
+                            <label className={styles.switch} onClick={e => e.stopPropagation()}>
+                                <input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} />
+                                <span className={styles.slider}></span>
+                            </label>
+                        </div>
+                    </div>
 
                     <button type="submit" className={styles.submitButton} disabled={saving}>
                         {saving ? 'Salvando...' : <><FaSave style={{marginRight:'10px'}}/> SALVAR ALTERAÇÕES</>}
