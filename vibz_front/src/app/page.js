@@ -44,7 +44,6 @@ export default function Home() {
         academico: 'Todos', festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos'
     });
 
-    // Removi states de searchResults e showSearchResults pois não serão mais usados
     const [favoritedEventIds, setFavoritedEventIds] = useState([]);
     
     const searchWrapperRef = useRef(null); 
@@ -57,7 +56,7 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE (Principal meio de busca agora) ---
+    // --- AUTOCOMPLETE ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
@@ -221,16 +220,23 @@ export default function Home() {
             const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
             if (!currentUserId || !token) { setFavoritedEventIds([]); return; }
             try {
+                // Chama endpoint que retorna os IDs ou a lista completa
                 const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/favorites`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    if (Array.isArray(data)) setFavoritedEventIds(data.map(event => event._id));
+                    if (Array.isArray(data)) {
+                        // Garante que pegamos o ID correto, seja _id ou id
+                        setFavoritedEventIds(data.map(event => event.id || event._id));
+                    }
                 }
             } catch (error) { console.error("Erro favoritos:", error); }
         };
-        fetchFavoritedEvents();
+        
+        if (currentUserId) {
+            fetchFavoritedEvents();
+        }
     }, [currentUserId]);
     
     useEffect(() => {
@@ -254,21 +260,61 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
-    // Removido handleSearch pois agora usamos apenas as sugestões
-
+    // --- FUNÇÃO FAVORITAR CORRIGIDA ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
-        if (!currentUserId) { router.push('/login'); return; }
+        if (!currentUserId) { 
+            toast.error("Faça login para favoritar.");
+            router.push('/login'); 
+            return; 
+        }
+
+        // Atualização Otimista (Muda na tela antes de confirmar no servidor)
+        setFavoritedEventIds(prev => {
+            if (isFavoriting) {
+                return [...prev, eventId];
+            } else {
+                return prev.filter(id => id !== eventId);
+            }
+        });
+
         try {
-            const response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+            // Tenta a rota de toggle (mais moderna)
+            let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ userId: currentUserId, isFavoriting })
+                body: JSON.stringify({ eventId })
             });
-            if (response.ok) {
-                 setFavoritedEventIds(prev => isFavoriting ? [...prev, eventId] : prev.filter(id => id !== eventId));
+
+            // Se a rota toggle não existir (404), tenta a rota antiga
+            if (response.status === 404) {
+                 response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ userId: currentUserId, isFavoriting })
+                });
             }
-        } catch (error) { console.error('Erro favorito:', error); }
+
+            if (!response.ok) {
+                // Se der erro, reverte a mudança visual
+                setFavoritedEventIds(prev => {
+                    if (isFavoriting) return prev.filter(id => id !== eventId);
+                    return [...prev, eventId];
+                });
+                toast.error("Erro ao atualizar favoritos.");
+            } else {
+                const data = await response.json();
+                toast.success(data.message || (isFavoriting ? "Adicionado aos favoritos!" : "Removido dos favoritos."));
+            }
+        } catch (error) { 
+            console.error('Erro favorito:', error);
+            // Reverte em caso de erro de rede
+            setFavoritedEventIds(prev => {
+                if (isFavoriting) return prev.filter(id => id !== eventId);
+                return [...prev, eventId];
+            });
+            toast.error("Erro de conexão.");
+        }
     };
 
     const handleFilterChange = (categoryKey, filterType) => {
@@ -276,7 +322,7 @@ export default function Home() {
     };
 
     const categoriesConfig = [
-        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' }, // Ícone atualizado
+        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
         { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
@@ -308,7 +354,14 @@ export default function Home() {
                 <div className="event-list">
                     {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
-                            <EventCard key={event._id} event={event} isUserLoggedIn={isUserLoggedIn} currentUserId={currentUserId} onToggleFavorite={handleToggleFavorite} isFavorited={favoritedEventIds.includes(event._id)} />
+                            <EventCard 
+                                key={event._id || event.id} // Garante chave única
+                                event={event} 
+                                isUserLoggedIn={isUserLoggedIn} 
+                                currentUserId={currentUserId} 
+                                onToggleFavorite={handleToggleFavorite} 
+                                isFavorited={favoritedEventIds.includes(event._id || event.id)} // Verifica ID corretamente
+                            />
                         ))
                     ) : (
                         <div className="no-events-container" style={{ width: '100%', padding: '30px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '12px' }}>
@@ -359,7 +412,6 @@ export default function Home() {
                         )}
                     </div>
                     
-                    {/* Botão de lupa decorativo ou que abre a primeira sugestão se quiser */}
                     <button className="search-button-styled" style={{ cursor: 'default' }}> 
                         <FaSearch className="search-icon-right" />
                     </button>
@@ -378,7 +430,7 @@ export default function Home() {
                     {showSuggestions && suggestions.length > 0 && (
                         <div className="suggestions-dropdown">
                             {suggestions.map((event) => (
-                                <div key={event._id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id)}>
+                                <div key={event._id || event.id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id || event.id)}>
                                     <img src={event.imageUrl || 'https://placehold.co/40x40'} alt="" className="suggestion-image" />
                                     <div className="suggestion-info">
                                         <span className="suggestion-title">{event.title}</span>
@@ -390,8 +442,6 @@ export default function Home() {
                     )}
                 </div>
             </div>
-
-            {/* SEÇÃO DE RESULTADOS DE PESQUISA FOI REMOVIDA AQUI */}
 
             {featuredEvents.length > 0 && (
                 <div className="featured-carousel-container">
@@ -415,7 +465,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Renderiza as seções com nomes atualizados */}
             {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
             {renderSection("Festas e Shows", 'festas', festasRef)}
             {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
@@ -423,7 +472,6 @@ export default function Home() {
             {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
             {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
 
-            {/* Banner Marketing */}
             <div className="mkt-container-modern">
                 <div className="mkt-content-modern">
                     <div className="mkt-text-modern">
