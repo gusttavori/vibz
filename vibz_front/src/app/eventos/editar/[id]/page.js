@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import styles from '../../../admin/new/CadastroEvento.module.css'; // Usa o mesmo CSS do cadastro
+import styles from '../../../admin/new/CadastroEvento.module.css'; // Certifique-se que este caminho está correto para sua estrutura
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
@@ -21,6 +21,9 @@ const EditarEvento = () => {
     const params = useParams();
     const eventId = params?.id;
     const API_BASE_URL = getApiBaseUrl();
+
+    // --- CONSTANTES ---
+    const FEATURED_FEE = 9.90; // <--- ADICIONADO PARA CORRIGIR O ERRO
 
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -52,8 +55,8 @@ const EditarEvento = () => {
     // Novas Funcionalidades
     const [ticketTypes, setTicketTypes] = useState([]);
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
-    const [isInformational, setIsInformational] = useState(false); // Novo
-    const [customQuestions, setCustomQuestions] = useState([]);    // Novo
+    const [isInformational, setIsInformational] = useState(false); 
+    const [customQuestions, setCustomQuestions] = useState([]);    
 
     // --- CARREGAR DADOS ---
     useEffect(() => {
@@ -71,7 +74,7 @@ const EditarEvento = () => {
                 setImagePreview(data.imageUrl); 
                 setRefundPolicy(data.refundPolicy);
                 setIsFeaturedRequested(data.isFeaturedRequested || false);
-                setIsInformational(data.isInformational || false); // Carrega estado informativo
+                setIsInformational(data.isInformational || false); 
 
                 // Carrega Formulário Personalizado
                 if (data.formSchema) {
@@ -142,14 +145,13 @@ const EditarEvento = () => {
                     }
                     groupedTickets[key].batches.push({
                         id: t.id || t._id, 
-                        name: t.batch || t.batchName, // Suporta ambos formatos
+                        name: t.batch || t.batchName, 
                         price: t.price,
                         quantity: t.quantity
                     });
                 });
                 
                 if (Object.keys(groupedTickets).length === 0) {
-                    // Se não tiver ingressos, inicia um padrão vazio (caso o usuário queira adicionar depois)
                     setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
                 } else {
                     setTicketTypes(Object.values(groupedTickets));
@@ -220,7 +222,7 @@ const EditarEvento = () => {
         setTicketTypes(updated);
     };
 
-    // Handlers de Perguntas (Novo)
+    // Handlers de Perguntas
     const handleAddQuestion = () => setCustomQuestions([...customQuestions, { label: '', type: 'text', required: true, options: '' }]);
     const handleRemoveQuestion = (index) => setCustomQuestions(customQuestions.filter((_, i) => i !== index));
     const handleChangeQuestion = (index, field, value) => {
@@ -258,7 +260,7 @@ const EditarEvento = () => {
         formData.append('ageRating', ageRating);
         formData.append('refundPolicy', refundPolicy);
         formData.append('isFeaturedRequested', isFeaturedRequested);
-        formData.append('isInformational', isInformational); // Envia o novo campo
+        formData.append('isInformational', isInformational); 
         
         if (imageFile) formData.append('image', imageFile);
 
@@ -300,7 +302,7 @@ const EditarEvento = () => {
         }
         formData.append('tickets', JSON.stringify(flatTickets));
         formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
-        formData.append('formSchema', JSON.stringify(customQuestions)); // Salva perguntas
+        formData.append('formSchema', JSON.stringify(customQuestions)); 
 
         try {
             const res = await fetch(`${API_BASE_URL}/events/${eventId}`, {
@@ -498,7 +500,7 @@ const EditarEvento = () => {
                         )}
                     </section>
 
-                    {/* 4. DADOS DO PARTICIPANTE (NOVO) */}
+                    {/* 4. DADOS DO PARTICIPANTE */}
                     {!isInformational && (
                         <section className={styles.card}>
                             <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
