@@ -100,7 +100,17 @@ export default function MeusIngressos() {
     const openTicket = (ticket) => setSelectedTicket(ticket);
     const closeTicket = () => setSelectedTicket(null);
 
-    if (loading) return <div className="loading-screen">Carregando carteira...</div>;
+    // --- NOVA TELA DE LOADING ANIMADA ---
+    if (loading) return (
+        <div className="wallet-page">
+            <Header />
+            <div className="loading-container">
+                <div className="spinner"></div>
+                <p className="loading-text">Carregando carteira...</p>
+            </div>
+            <Footer />
+        </div>
+    );
 
     return (
         <div className="wallet-page">
