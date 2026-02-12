@@ -118,7 +118,7 @@
     text-align: center;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     z-index: 10;
-    min-width: 50px;
+    min-width: 20px;
 }
 
 .event-card-date-badge .day {
@@ -155,7 +155,7 @@
 /* HOVER: Fundo Branco + Coração Vermelho */
 .event-card-favorite:hover {
     background-color: white;
-    color: var(--heart-red); 
+    color: black; 
     transform: scale(1.1);
     box-shadow: 0 8px 20px rgba(0,0,0,0.2);
     border-color: white;
