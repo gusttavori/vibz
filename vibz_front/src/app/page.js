@@ -290,7 +290,8 @@ export default function Home() {
 
     // Configuração visual das categorias
     const categoriesConfig = [
-        { name: 'Acadêmico', icon: '/img/theater.svg', ref: academicoRef, key: 'academico' },
+        // MUDANÇA DE ÍCONE AQUI (Certifique-se de ter a imagem 'academic.svg' ou similar na pasta public/img)
+        { name: 'Acadêmico', icon: '/img/academic.svg', ref: academicoRef, key: 'academico' }, 
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
         { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
