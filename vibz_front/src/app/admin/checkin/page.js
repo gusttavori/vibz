@@ -17,7 +17,7 @@ export default function ValidadorUniversal() {
     const [scanResult, setScanResult] = useState(null);
     const [status, setStatus] = useState('idle'); 
     const [errorMessage, setErrorMessage] = useState('');
-    const [debugCode, setDebugCode] = useState(''); // Para mostrar o código lido em caso de erro
+    const [debugCode, setDebugCode] = useState('');
     
     const API_BASE_URL = getApiBaseUrl();
     const html5QrCodeRef = useRef(null);
@@ -37,7 +37,7 @@ export default function ValidadorUniversal() {
                 }
                 html5QrCodeRef.current.clear();
             } catch (err) {
-                console.warn("Scanner parado.", err);
+                console.warn("Scanner já estava parado.");
             }
         }
     };
@@ -45,11 +45,9 @@ export default function ValidadorUniversal() {
     const onScanSuccess = async (decodedText) => {
         await stopScanner();
 
-        // --- LIMPEZA DE DADOS CRÍTICA ---
-        // Remove aspas extras, espaços e quebras de linha que alguns geradores adicionam
         const cleanCode = decodedText.replace(/['"]+/g, '').trim();
+        setDebugCode(cleanCode);
         
-        setDebugCode(cleanCode); // Guarda para mostrar no erro se precisar
         setStatus('processing');
 
         try {
@@ -71,24 +69,21 @@ export default function ValidadorUniversal() {
                 setStatus('success');
                 setScanResult(data.details); 
                 triggerHaptic('success');
-                toast.success("VALIDADO!", { duration: 3000 });
+                toast.success("VALIDADO!", { duration: 2000 });
             } else {
                 setStatus('error');
                 let msg = data.message || "Ingresso Inválido";
-                
                 if (data.usedAt) {
-                    const usedDate = new Date(data.usedAt);
-                    const hora = usedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    msg = `JÁ USADO: Hoje às ${hora}`;
+                    const date = new Date(data.usedAt);
+                    msg = `USADO: ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
                 }
-                
                 setErrorMessage(msg);
                 triggerHaptic('error');
                 toast.error("NEGADO", { duration: 3000 });
             }
         } catch (error) {
             setStatus('error');
-            setErrorMessage("Erro de conexão com o servidor.");
+            setErrorMessage("Erro de conexão.");
             toast.error("Sem conexão");
         }
     };
@@ -103,22 +98,18 @@ export default function ValidadorUniversal() {
             if (!html5QrCodeRef.current) {
                 html5QrCodeRef.current = new Html5Qrcode("reader");
             }
-
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0 
-            };
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
 
             html5QrCodeRef.current.start(
                 { facingMode: "environment" }, 
                 config,
                 onScanSuccess,
-                () => {} // Ignora erros de frame
+                () => {} 
             ).catch(err => {
-                console.error("Erro câmera:", err);
+                console.error(err);
                 setStatus('idle');
-                toast.error("Erro ao abrir câmera. Verifique permissões.");
+                toast.error("Erro na câmera.");
             });
         }, 150);
     };
@@ -147,10 +138,8 @@ export default function ValidadorUniversal() {
             <main className="validator-main">
                 {status === 'idle' && (
                     <div className="state-card idle">
-                        <div className="pulse-ring">
-                            <div className="qr-icon-wrapper">
-                                <FaQrcode />
-                            </div>
+                        <div className="qr-icon-wrapper">
+                            <FaQrcode />
                         </div>
                         <h1>Validação de Entrada</h1>
                         <p>Aponte a câmera para o ingresso.</p>
@@ -169,7 +158,6 @@ export default function ValidadorUniversal() {
                             </div>
                             <p className="scan-instruction">Enquadre o QR Code</p>
                         </div>
-                        
                         <button className="btn-close-scan" onClick={reset}>
                             <FaChevronLeft /> Cancelar
                         </button>
@@ -178,7 +166,7 @@ export default function ValidadorUniversal() {
 
                 {status === 'processing' && (
                     <div className="state-card processing">
-                        <div className="spinner"></div>
+                        <div className="spinner" style={{margin: '0 auto 20px'}}></div>
                         <h3>Verificando...</h3>
                     </div>
                 )}
@@ -215,11 +203,9 @@ export default function ValidadorUniversal() {
                             <h2>ACESSO NEGADO</h2>
                         </div>
                         <div className="error-box">
-                            <p className="error-msg">{errorMessage}</p>
-                            {/* Mostra o código lido para debug */}
-                            {debugCode && (
-                                <p className="debug-code">Código Lido: {debugCode.substring(0, 15)}...</p>
-                            )}
+                            <p>{errorMessage}</p>
+                            {/* O código abaixo prova se o que foi lido é o que você espera */}
+                            {debugCode && <span className="debug-code">Cód: {debugCode.substring(0, 25)}...</span>}
                         </div>
                         <button className="btn-secondary-large" onClick={startScanner}><FaRedo /> Tentar Novamente</button>
                         <button className="btn-text" onClick={reset}>Voltar ao Início</button>
