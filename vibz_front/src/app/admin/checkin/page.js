@@ -37,7 +37,7 @@ export default function ValidadorUniversal() {
                 }
                 html5QrCodeRef.current.clear();
             } catch (err) {
-                console.warn("Scanner já estava parado.");
+                console.warn("Scanner parado.", err);
             }
         }
     };
@@ -69,13 +69,14 @@ export default function ValidadorUniversal() {
                 setStatus('success');
                 setScanResult(data.details); 
                 triggerHaptic('success');
-                toast.success("VALIDADO!", { duration: 2000 });
+                toast.success("VALIDADO!", { duration: 3000 });
             } else {
                 setStatus('error');
                 let msg = data.message || "Ingresso Inválido";
                 if (data.usedAt) {
-                    const date = new Date(data.usedAt);
-                    msg = `USADO: ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+                    const usedDate = new Date(data.usedAt);
+                    const hora = usedDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    msg = `JÁ USADO: Hoje às ${hora}`;
                 }
                 setErrorMessage(msg);
                 triggerHaptic('error');
@@ -83,7 +84,7 @@ export default function ValidadorUniversal() {
             }
         } catch (error) {
             setStatus('error');
-            setErrorMessage("Erro de conexão.");
+            setErrorMessage("Erro de conexão com o servidor.");
             toast.error("Sem conexão");
         }
     };
@@ -98,8 +99,12 @@ export default function ValidadorUniversal() {
             if (!html5QrCodeRef.current) {
                 html5QrCodeRef.current = new Html5Qrcode("reader");
             }
-            
-            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
+            };
 
             html5QrCodeRef.current.start(
                 { facingMode: "environment" }, 
@@ -107,9 +112,9 @@ export default function ValidadorUniversal() {
                 onScanSuccess,
                 () => {} 
             ).catch(err => {
-                console.error(err);
+                console.error("Erro câmera:", err);
                 setStatus('idle');
-                toast.error("Erro na câmera.");
+                toast.error("Erro ao abrir câmera. Verifique permissões.");
             });
         }, 150);
     };
@@ -138,8 +143,10 @@ export default function ValidadorUniversal() {
             <main className="validator-main">
                 {status === 'idle' && (
                     <div className="state-card idle">
-                        <div className="qr-icon-wrapper">
-                            <FaQrcode />
+                        <div className="pulse-ring">
+                            <div className="qr-icon-wrapper">
+                                <FaQrcode />
+                            </div>
                         </div>
                         <h1>Validação de Entrada</h1>
                         <p>Aponte a câmera para o ingresso.</p>
@@ -153,11 +160,15 @@ export default function ValidadorUniversal() {
                     <div className="state-fullscreen scanning">
                         <div id="reader"></div>
                         <div className="scan-overlay">
+                            {/* O Frame fica sozinho no centro */}
                             <div className="scan-frame">
                                 <div className="laser"></div>
                             </div>
+                            
+                            {/* Instrução posicionada via absolute no CSS */}
                             <p className="scan-instruction">Enquadre o QR Code</p>
                         </div>
+                        
                         <button className="btn-close-scan" onClick={reset}>
                             <FaChevronLeft /> Cancelar
                         </button>
@@ -166,7 +177,7 @@ export default function ValidadorUniversal() {
 
                 {status === 'processing' && (
                     <div className="state-card processing">
-                        <div className="spinner" style={{margin: '0 auto 20px'}}></div>
+                        <div className="spinner"></div>
                         <h3>Verificando...</h3>
                     </div>
                 )}
@@ -203,9 +214,10 @@ export default function ValidadorUniversal() {
                             <h2>ACESSO NEGADO</h2>
                         </div>
                         <div className="error-box">
-                            <p>{errorMessage}</p>
-                            {/* O código abaixo prova se o que foi lido é o que você espera */}
-                            {debugCode && <span className="debug-code">Cód: {debugCode.substring(0, 25)}...</span>}
+                            <p className="error-msg">{errorMessage}</p>
+                            {debugCode && (
+                                <p className="debug-code">Código Lido: {debugCode.substring(0, 15)}...</p>
+                            )}
                         </div>
                         <button className="btn-secondary-large" onClick={startScanner}><FaRedo /> Tentar Novamente</button>
                         <button className="btn-text" onClick={reset}>Voltar ao Início</button>

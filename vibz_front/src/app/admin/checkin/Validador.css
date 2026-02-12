@@ -1,4 +1,4 @@
-/* --- VIBZ PRO THEME 2.0 (Scanner Fix) --- */
+/* --- VIBZ PRO THEME 2.0 (Perfect Center Fix) --- */
 :root {
     --primary: #6366f1;
     --bg-app: #000000;
@@ -13,7 +13,7 @@
     background-color: var(--bg-app);
     width: 100%;
     height: 100vh;
-    height: 100dvh; /* Altura real mobile */
+    height: 100dvh; /* Garante altura total no mobile ignorando barras do navegador */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -21,10 +21,10 @@
     font-family: 'Inter', sans-serif;
 }
 
-/* Header Flutuante (Fixo no topo) */
+/* Header Flutuante */
 .validator-nav {
     position: absolute;
-    top: 40px; /* Mais espaço para não bater na "ilha" do iPhone */
+    top: 20px;
     left: 0;
     width: 100%;
     z-index: 50;
@@ -34,11 +34,11 @@
 }
 
 .nav-content {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     padding: 8px 20px;
     border-radius: 50px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -56,7 +56,6 @@
     text-transform: uppercase;
 }
 
-/* Área Principal */
 .validator-main {
     flex: 1;
     display: flex;
@@ -67,16 +66,16 @@
     position: relative;
 }
 
-/* --- ESTADO INICIAL --- */
+/* Cards de Estado (Idle, Erro, Sucesso) */
 .state-card {
     background: var(--surface);
-    width: 85%;
-    max-width: 320px;
+    width: 90%;
+    max-width: 340px;
     border-radius: 24px;
-    padding: 40px 20px;
+    padding: 30px 20px;
     text-align: center;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    z-index: 20;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 60; /* Acima de tudo */
     animation: slideUp 0.3s ease-out;
 }
 
@@ -84,19 +83,19 @@
     font-size: 2.5rem;
     color: var(--primary);
     background: #e0e7ff;
-    width: 80px;
-    height: 80px;
-    border-radius: 24px;
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 20px;
 }
 
-.idle h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 10px; }
-.idle p { color: var(--text-sub); margin-bottom: 30px; font-size: 0.9rem; }
+.idle h1 { font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; }
+.idle p { color: var(--text-sub); margin-bottom: 25px; font-size: 0.9rem; }
 
-/* --- SCANNER (VÍDEO) --- */
+/* SCANNER FULLSCREEN */
 .state-fullscreen {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -104,7 +103,6 @@
     z-index: 10;
 }
 
-/* Força o vídeo a cobrir tudo */
 #reader {
     width: 100% !important;
     height: 100% !important;
@@ -112,13 +110,14 @@
     top: 0; left: 0;
     object-fit: cover;
 }
+
 #reader video {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
 }
 
-/* Camada de Overlay (Centralização) */
+/* Overlay de Centralização */
 .scan-overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -126,18 +125,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: center; /* Centraliza o quadrado perfeitamente */
     pointer-events: none;
 }
 
-/* O Quadrado de Leitura */
+/* Quadrado de Leitura */
 .scan-frame {
-    width: 70vw; height: 70vw;
-    max-width: 280px; max-height: 280px;
+    /* Tamanho responsivo: 70% da largura da tela, mas trava em 280px */
+    width: 70vw;
+    height: 70vw;
+    max-width: 280px;
+    max-height: 280px;
+    
     border-radius: 24px;
     position: relative;
-    /* Essa sombra gigante cria o efeito de "fundo escuro com buraco no meio" */
-    box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.7); 
+    
+    /* Sombra gigante para escurecer o resto da tela */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.7); 
     border: 2px solid rgba(255, 255, 255, 0.5);
     z-index: 20; 
 }
@@ -161,61 +165,67 @@
     animation: scan 2s infinite linear;
 }
 
+/* Instrução (Posicionada abaixo do quadrado, sem empurrá-lo) */
 .scan-instruction {
-    margin-top: 40px;
+    position: absolute;
+    bottom: 20%; /* Posição fixa na parte inferior */
     color: white;
     background: rgba(0,0,0,0.6);
-    padding: 10px 20px;
-    border-radius: 30px;
-    font-size: 0.9rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
     font-weight: 600;
+    z-index: 30;
     backdrop-filter: blur(4px);
-    z-index: 21; 
 }
 
 /* Botão Cancelar */
 .btn-close-scan {
     position: absolute;
-    bottom: 50px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 30;
+    z-index: 40;
     background: white;
     color: #000;
     border: none;
-    padding: 14px 30px;
+    padding: 12px 24px;
     border-radius: 50px;
     font-weight: 700;
-    font-size: 1rem;
-    display: flex; align-items: center; gap: 8px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     box-shadow: 0 5px 20px rgba(0,0,0,0.3);
     cursor: pointer;
     pointer-events: auto;
 }
 
-/* --- RESULTADOS --- */
+/* RESULTADOS */
 .result-header { margin-bottom: 20px; }
-.icon-result { font-size: 4rem; margin-bottom: 15px; display: block; margin: 0 auto; }
+.icon-result { font-size: 4rem; margin-bottom: 10px; display: block; margin: 0 auto; }
 .success .icon-result { color: var(--success); }
 .error .icon-result { color: var(--error); }
 
 .ticket-details {
     background: #f1f5f9;
-    padding: 20px;
+    padding: 15px;
     border-radius: 16px;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     width: 100%;
     box-sizing: border-box;
 }
 
 .detail-row {
-    display: flex; justify-content: space-between;
-    font-size: 0.9rem; padding: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    padding: 8px 0;
     border-bottom: 1px solid #e2e8f0;
 }
 .detail-row:last-child { border-bottom: none; }
-.label { color: var(--text-sub); font-weight: 600; }
-.value { font-weight: 700; color: var(--text-main); text-align: right; }
+.label { color: var(--text-sub); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.value { font-weight: 700; color: var(--text-main); }
 .value.highlight { color: var(--primary); }
 
 .error-box {
@@ -224,56 +234,42 @@
     color: #b91c1c;
     padding: 15px;
     border-radius: 12px;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     font-weight: 600;
-    font-size: 0.95rem;
 }
 
 .debug-code {
-    display: block;
-    margin-top: 10px;
     font-size: 0.75rem;
-    color: #7f1d1d;
+    color: #666;
+    margin-top: 10px;
     background: rgba(255,255,255,0.5);
-    padding: 6px;
-    border-radius: 6px;
+    padding: 4px;
+    border-radius: 4px;
     word-break: break-all;
-    font-family: monospace;
 }
 
 /* Botões */
-.btn-primary-large {
+.btn-primary-large, .btn-secondary-large {
     width: 100%;
-    background: var(--text-main);
-    color: white;
-    border: none;
-    padding: 16px;
-    border-radius: 16px;
-    font-size: 1rem;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-}
-.btn-secondary-large {
-    width: 100%;
-    background: white;
-    color: var(--text-main);
-    border: 2px solid #e2e8f0;
     padding: 14px;
-    border-radius: 16px;
+    border-radius: 14px;
     font-size: 1rem;
     font-weight: 700;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     cursor: pointer;
+    transition: transform 0.1s;
 }
-.btn-text {
-    background: none; border: none; color: white;
-    font-weight: 600; text-decoration: underline; margin-top: 10px; cursor: pointer;
-}
-.state-card .btn-text { color: var(--text-sub); }
 
-@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.btn-primary-large { background: var(--text-main); color: white; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.btn-primary-large:active { transform: scale(0.98); }
+
+.btn-secondary-large { background: white; color: var(--text-main); border: 2px solid #e2e8f0; margin-bottom: 10px; }
+
+.btn-text { background: none; border: none; color: var(--text-sub); font-weight: 600; font-size: 0.9rem; margin-top: 5px; text-decoration: underline; cursor: pointer; }
+
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
-@keyframes breathe { 0%, 100% { border-color: rgba(255,255,255,0.4); } 50% { border-color: var(--primary); } }
+@keyframes breathe { 0%, 100% { border-color: rgba(255,255,255,0.3); } 50% { border-color: rgba(99, 102, 241, 1); } }

@@ -139,7 +139,8 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
-        const tempDir = path.join('/tmp'); 
+        // Verifica se estamos em ambiente serverless (Vercel/Render) para usar /tmp
+        const tempDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(__dirname, '../../tmp');
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
         const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false });
@@ -228,8 +229,6 @@ const validateTicket = async (req, res) => {
 
         // 2. Fallback: Se falhar e o código parecer um ID (curto ou formato específico), tenta pelo ID
         if (!ticket) {
-            // Só tenta pelo ID se não for um UUID longo, para evitar erro de formato do Prisma
-            // ou se você tiver certeza que IDs antigos podem estar sendo usados
             try {
                 ticket = await prisma.ticket.findUnique({
                     where: { id: qrCode },
@@ -322,4 +321,28 @@ const downloadTicketPDF = async (req, res) => {
     }
 };
 
-module.exports = { generateAndSendTickets, validateTicket, getMyTickets, downloadTicketPDF };
+// --- FUNÇÃO DE ESPIONAGEM (DEBUG) ---
+const listLastTickets = async (req, res) => {
+    try {
+        const tickets = await prisma.ticket.findMany({
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            select: { 
+                qrCodeData: true, 
+                status: true, 
+                id: true,
+                user: { select: { name: true } },
+                event: { select: { title: true } }
+            }
+        });
+        res.json(tickets);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+module.exports = { 
+    generateAndSendTickets, 
+    validateTicket, 
+    getMyTickets, 
+    downloadTicketPDF,
+    listLastTickets // Exportando a função de debug
+};
