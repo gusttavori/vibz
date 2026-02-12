@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../Auth.css';
 
-// CORREÇÃO AQUI: Usar a variável de ambiente
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Padronizado para incluir /api
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -74,9 +74,12 @@ export default function Login() {
     setMessage(data.msg || 'Login realizado!');
     if (typeof window !== 'undefined') {
         localStorage.setItem('userToken', data.token);
-        localStorage.setItem('userId', data.user.id);
-        localStorage.setItem('userName', data.user.name);
+        if (data.user) {
+            localStorage.setItem('userId', data.user.id);
+            localStorage.setItem('userName', data.user.name);
+        }
     }
+    // Redireciona para home ou dashboard
     router.push('/');
   };
 
@@ -93,20 +96,27 @@ export default function Login() {
       <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo"/>
 
       <form className="auth-form" onSubmit={handleSubmit}>
-        <input 
-            type="email" 
-            placeholder="Email" 
-            required 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-        />
-        <input 
-            type="password" 
-            placeholder="Senha" 
-            required 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-        />
+        <h2 className="auth-title">Bem-vindo de volta!</h2>
+        <p className="auth-description">Acesse sua conta para continuar.</p>
+
+        <div className="input-spacer">
+            <input 
+                type="email" 
+                placeholder="Email" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+            />
+        </div>
+        <div className="input-spacer">
+            <input 
+                type="password" 
+                placeholder="Senha" 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+            />
+        </div>
         
         <div>
           <button 
@@ -137,7 +147,11 @@ export default function Login() {
             Cadastre-se
         </button>
         
-        {message && <p className="auth-message">{message}</p>}
+        {message && (
+            <div className="message-container">
+                <p className="auth-message">{message}</p>
+            </div>
+        )}
       </form>
     </div>
   );

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import '../Auth.css'; 
 
-// CORREÇÃO: Usa variável de ambiente (que já inclui /api)
+// Padronizado para incluir /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function Cadastro() {
@@ -29,7 +29,6 @@ export default function Cadastro() {
     }
 
     try {
-      // CORREÇÃO: Removido '/api' manual, pois API_BASE_URL já tem
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +48,7 @@ export default function Cadastro() {
         }
         
         setTimeout(() => {
-            router.push('/login');
+            router.push('/login'); // Ou dashboard
         }, 1500);
       } else {
         setMessage(data.msg || 'Erro ao cadastrar.');
@@ -71,38 +70,47 @@ export default function Cadastro() {
       <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo" />
 
       <form className="auth-form" onSubmit={handleSubmit}>
-        <h2 style={{ color: '#1a1a1a', marginBottom: '20px' }}>Crie sua conta</h2>
+        <h2 className="auth-title">Crie sua conta</h2>
+        <p className="auth-description">Comece a gerenciar e explorar eventos.</p>
 
-        <input 
-            type="text" 
-            placeholder="Nome Completo" 
-            required 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
-        />
-        <input 
-            type="email" 
-            placeholder="Email" 
-            required 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-        />
-        <input 
-            type="password" 
-            placeholder="Senha" 
-            required 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-        />
-        <input 
-            type="password" 
-            placeholder="Confirmar Senha" 
-            required 
-            value={confirmPassword} 
-            onChange={(e) => setConfirmPassword(e.target.value)} 
-        />
+        <div className="input-spacer">
+            <input 
+                type="text" 
+                placeholder="Nome Completo" 
+                required 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+            />
+        </div>
+        <div className="input-spacer">
+            <input 
+                type="email" 
+                placeholder="Email" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+            />
+        </div>
+        <div className="input-spacer">
+            <input 
+                type="password" 
+                placeholder="Senha" 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+            />
+        </div>
+        <div className="input-spacer">
+            <input 
+                type="password" 
+                placeholder="Confirmar Senha" 
+                required 
+                value={confirmPassword} 
+                onChange={(e) => setConfirmPassword(e.target.value)} 
+            />
+        </div>
 
-        <button type="submit" className="auth-button" disabled={isLoading}>
+        <button type="submit" className="auth-button" disabled={isLoading} style={{ marginTop: '15px' }}>
             {isLoading ? 'Cadastrando...' : 'Cadastrar'}
         </button>
 
@@ -115,7 +123,11 @@ export default function Cadastro() {
             Fazer Login
         </button>
 
-        {message && <p className="auth-message">{message}</p>}
+        {message && (
+            <div className="message-container">
+                <p className="auth-message">{message}</p>
+            </div>
+        )}
       </form>
     </div>
   );

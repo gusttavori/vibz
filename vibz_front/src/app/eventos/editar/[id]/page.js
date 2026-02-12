@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import styles from '../../../admin/new/CadastroEvento.module.css'; // Certifique-se que este caminho está correto para sua estrutura
+import styles from '../../../new/CadastroEvento.module.css'; // Ajuste o caminho se necessário
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
     FaAlignLeft, FaLayerGroup, FaArrowLeft, FaSave, FaStar,
-    FaClipboardList, FaInfoCircle
+    FaClipboardList
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -23,7 +23,7 @@ const EditarEvento = () => {
     const API_BASE_URL = getApiBaseUrl();
 
     // --- CONSTANTES ---
-    const FEATURED_FEE = 9.90; // <--- ADICIONADO PARA CORRIGIR O ERRO
+    const FEATURED_FEE = 9.90; 
 
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -370,7 +370,6 @@ const EditarEvento = () => {
                                     <FaLayerGroup className={styles.inputIcon} />
                                     <select className={styles.select} value={category} onChange={e => setCategory(e.target.value)} required>
                                         <option value="" disabled>Selecione...</option>
-                                        {/* CATEGORIAS ATUALIZADAS PARA IGUALAR AO CADASTRO */}
                                         <option>Festas e Shows</option>
                                         <option>Acadêmico / Congresso</option>
                                         <option>Cursos e Workshops</option>
