@@ -207,6 +207,7 @@
 .events-section {
     max-width: 1200px;
     padding: 0 20px;
+    margin-bottom: 40px;
 }
 
 .section-title {
@@ -450,9 +451,9 @@
     .categories-list { justify-content: flex-start; overflow-x: scroll; padding-bottom: 15px; }
     .event-list { display: flex; overflow-x: scroll; padding-bottom: 15px; }
     .search-bar-container {
-    padding: 40px 30px; /* Espaçamento reduzido */
-    display: flex;
-    justify-content: center;
-    background: transparent; /* Fundo transparente */
-}
+        padding: 40px 30px; /* Espaçamento reduzido */
+        display: flex;
+        justify-content: center;
+        background: transparent; /* Fundo transparente */
+    }
 }

@@ -14,6 +14,33 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
+// --- SKELETON LOADER (NOVO) ---
+const ProfileSkeleton = () => (
+    <div className="user-profile-container">
+        <Header />
+        <div className="profile-header-wrapper">
+            <div className="profile-cover skeleton-box"></div>
+            <div className="profile-details-container">
+                <div className="profile-avatar skeleton-box" style={{border: '5px solid white'}}></div>
+                <div className="profile-texts" style={{paddingTop: '20px'}}>
+                    <div className="skeleton-line" style={{width: '200px', height: '30px', marginBottom: '10px'}}></div>
+                    <div className="skeleton-line" style={{width: '150px', height: '20px'}}></div>
+                </div>
+            </div>
+        </div>
+        <div className="profile-body">
+            <div className="skeleton-line" style={{width: '100%', height: '100px', marginBottom: '30px', borderRadius: '12px'}}></div>
+            <div className="skeleton-line" style={{width: '150px', height: '30px', marginBottom: '20px'}}></div>
+            <div className="favorites-grid">
+                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
+            </div>
+        </div>
+        <Footer />
+    </div>
+);
+
 const UserProfile = () => {
     const router = useRouter();
     const [userData, setUserData] = useState(null);
@@ -73,6 +100,7 @@ const UserProfile = () => {
         if (!token) return router.push('/login');
 
         // OPTIMISTIC UI: Remove imediatamente da tela se for desfavoritar
+        // Se for favoritar (o que não deve acontecer nessa tela, pois só mostra os já favoritados), adicionaria
         if (!isFavoriting) {
             setFavoritedEvents(prev => prev.filter(e => (e.id || e._id) !== eventId));
             toast.success("Removido dos favoritos.");
@@ -86,7 +114,7 @@ const UserProfile = () => {
                 body: JSON.stringify({ eventId }) 
             });
 
-            // Fallback
+            // Fallback para rota antiga se a nova não existir
             if (!res.ok && res.status === 404) {
                  const userId = localStorage.getItem('userId');
                  res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
@@ -97,6 +125,7 @@ const UserProfile = () => {
             }
 
             if (!res.ok) {
+                // Se der erro no servidor, reverte a mudança visual (adiciona de volta)
                 if (!isFavoriting) {
                     toast.error("Erro ao sincronizar. Recarregando...");
                     setTimeout(() => window.location.reload(), 1500);
@@ -114,7 +143,7 @@ const UserProfile = () => {
         }
     };
 
-    if (loading) return <div className="loading-screen">Carregando...</div>;
+    if (loading) return <ProfileSkeleton />;
 
     return (
         <div className="user-profile-container">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { FaCamera, FaLock, FaChevronDown, FaChevronUp } from 'react-icons/fa'; 
@@ -11,10 +11,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 const EditProfile = () => {
     const router = useRouter();
 
-    const [userData, setUserData] = useState(null);
+    const [userData, setUserData] = useState({ name: '', bio: '', profilePicture: '', coverPicture: '' });
     
     // Estados de Senha
-    const [showPasswordSection, setShowPasswordSection] = useState(false); // <--- Controle de visibilidade
+    const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
@@ -43,7 +43,7 @@ const EditProfile = () => {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    localStorage.clear();
+                    localStorage.removeItem('userToken');
                     router.push('/login');
                     throw new Error('Sessão expirada.');
                 }
@@ -51,7 +51,13 @@ const EditProfile = () => {
             }
 
             const data = await response.json();
-            setUserData(data.user);
+            // Garante que userData tenha valores padrão para evitar erros de uncontrolled input
+            setUserData({
+                name: data.user.name || '',
+                bio: data.user.bio || '',
+                profilePicture: data.user.profilePicture || '',
+                coverPicture: data.user.coverPicture || ''
+            });
         } catch (err) {
             setError(err.message);
         } finally {
@@ -102,12 +108,18 @@ const EditProfile = () => {
         const formData = new FormData();
 
         formData.append('name', userData.name);
-        formData.append('bio', userData.bio || '');
+        formData.append('bio', userData.bio); // Envia mesmo que vazio
+        
         if (profilePictureFile) formData.append('profilePicture', profilePictureFile);
         if (coverPictureFile) formData.append('coverPicture', coverPictureFile);
 
-        // Só envia senha se a seção estiver aberta e o campo preenchido
+        // Só valida e envia senha se a seção estiver aberta e o campo preenchido
         if (showPasswordSection && newPassword) {
+            if (newPassword.length < 6) {
+                setError('A senha deve ter no mínimo 6 caracteres.');
+                setIsSubmitting(false);
+                return;
+            }
             if (newPassword !== confirmPassword) {
                 setError('As novas senhas não coincidem.');
                 setIsSubmitting(false);
@@ -128,14 +140,23 @@ const EditProfile = () => {
                 throw new Error(errorData.message || 'Falha ao atualizar.');
             }
 
-            const updatedUser = await response.json();
-            setUserData(updatedUser);
+            const updatedData = await response.json();
+            // Atualiza o estado com a resposta do servidor para garantir sincronia
+            if (updatedData.user) {
+                setUserData({
+                    name: updatedData.user.name,
+                    bio: updatedData.user.bio,
+                    profilePicture: updatedData.user.profilePicture,
+                    coverPicture: updatedData.user.coverPicture
+                });
+            }
+            
             setSuccessMessage('Perfil atualizado com sucesso!');
             
-            // Limpa campos de senha
+            // Limpa campos de senha e fecha seção
             setNewPassword('');
             setConfirmPassword('');
-            setShowPasswordSection(false); // Fecha a seção após salvar
+            setShowPasswordSection(false);
 
         } catch (err) {
             setError(err.message);
@@ -159,7 +180,7 @@ const EditProfile = () => {
                         {/* SEÇÃO DE FOTOS */}
                         <div className="photo-section">
                             <div className="cover-photo-container">
-                                {userData?.coverPicture ? (
+                                {userData.coverPicture ? (
                                     <img src={userData.coverPicture} alt="Capa" className="cover-photo-preview" />
                                 ) : (
                                     <div className="default-cover-preview"></div>
@@ -171,7 +192,11 @@ const EditProfile = () => {
                             </div>
                             
                             <div className="profile-photo-container">
-                                <img src={userData?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.name)}`} alt="Perfil" className="profile-photo-preview" />
+                                <img 
+                                    src={userData.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=random&color=fff`} 
+                                    alt="Perfil" 
+                                    className="profile-photo-preview" 
+                                />
                                 <label htmlFor="profile-upload" className="photo-upload-label profile">
                                     <FaCamera />
                                     <input type="file" id="profile-upload" name="profilePictureFile" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
@@ -187,7 +212,7 @@ const EditProfile = () => {
                                     type="text" 
                                     id="name" 
                                     name="name" 
-                                    value={userData?.name || ''} 
+                                    value={userData.name} 
                                     onChange={handleChange} 
                                     required 
                                     placeholder="Seu nome exibido no perfil"
@@ -199,7 +224,7 @@ const EditProfile = () => {
                                 <textarea 
                                     id="bio" 
                                     name="bio" 
-                                    value={userData?.bio || ''} 
+                                    value={userData.bio} 
                                     onChange={handleChange} 
                                     rows="4"
                                     placeholder="Conte um pouco sobre você..."
@@ -229,7 +254,7 @@ const EditProfile = () => {
                                                     name="newPassword" 
                                                     value={newPassword} 
                                                     onChange={handlePasswordChange} 
-                                                    placeholder="Nova senha"
+                                                    placeholder="Mínimo 6 caracteres"
                                                 />
                                             </div>
                                             <div className="form-group">
@@ -240,7 +265,7 @@ const EditProfile = () => {
                                                     name="confirmPassword" 
                                                     value={confirmPassword} 
                                                     onChange={handlePasswordChange} 
-                                                    placeholder="Confirme a senha"
+                                                    placeholder="Repita a nova senha"
                                                 />
                                             </div>
                                         </div>
@@ -255,7 +280,7 @@ const EditProfile = () => {
                             {successMessage && <div className="message success">{successMessage}</div>}
 
                             <div className="button-group">
-                                <button type="button" className="cancel-btn" onClick={() => router.push('/perfil')}>
+                                <button type="button" className="cancel-btn" onClick={() => router.back()}>
                                     Cancelar
                                 </button>
                                 <button type="submit" className="save-btn" disabled={isSubmitting}>
