@@ -83,6 +83,7 @@
     transition: transform 0.2s, box-shadow 0.2s;
     border: 1px solid #f1f5f9;
     position: relative;
+    margin-bottom: 20px;
 }
 
 .ticket-card:hover {
@@ -107,7 +108,7 @@
     flex-direction: column;
     justify-content: center;
     gap: 8px;
-    min-width: 0; /* Impede que texto longo estoure o flex */
+    min-width: 0;
 }
 
 .ticket-center h3 {
@@ -119,7 +120,7 @@
     text-transform: uppercase;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Reticências em títulos longos */
+    text-overflow: ellipsis;
 }
 
 .ticket-type {
@@ -142,7 +143,7 @@
     color: #94a3b8;
     font-size: 0.9rem;
     font-weight: 600;
-    flex-wrap: wrap; /* Permite quebrar linha se o local for longo */
+    flex-wrap: wrap;
 }
 
 .meta-item { display: flex; align-items: center; gap: 6px; }
@@ -194,10 +195,10 @@
     cursor: pointer;
 }
 
-/* --- MODAL DO INGRESSO (AJUSTES) --- */
+/* --- MODAL DO INGRESSO --- */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); /* Fundo um pouco mais escuro */
+    background: rgba(0,0,0,0.85);
     backdrop-filter: blur(8px);
     display: flex; justify-content: center; align-items: center;
     z-index: 2000; padding: 20px;
@@ -205,27 +206,28 @@
 }
 
 .ticket-modal {
-    background: white; width: 100%; max-width: 360px; /* Largura ideal mobile */
+    background: white; width: 100%; max-width: 360px;
     border-radius: 30px; overflow: hidden; position: relative;
     box-shadow: 0 30px 60px rgba(0,0,0,0.5); 
-    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Animação mais suave */
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex; flex-direction: column;
-    max-height: 90vh; /* Não ultrapassa a altura da tela */
+    max-height: 90vh;
 }
 
 @keyframes slideUp { from { transform: translateY(50px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 
 .close-modal {
-    position: absolute; top: 20px; right: 20px;
-    background: rgba(0,0,0,0.3); /* Mais visível sobre imagens claras */
-    color: white; border: none; width: 36px; height: 36px; border-radius: 50%;
-    cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 15px; right: 15px;
+    background: rgba(0,0,0,0.4);
+    color: white; border: none; width: 32px; height: 32px; border-radius: 50%;
+    cursor: pointer; z-index: 20; display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(4px); transition: 0.2s;
+    font-size: 1rem;
 }
-.close-modal:hover { background: rgba(0,0,0,0.6); transform: scale(1.1); }
+.close-modal:hover { background: rgba(0,0,0,0.7); transform: scale(1.1); }
 
 .modal-event-image {
-    height: 160px; /* Altura fixa */
+    height: 140px; 
     background-size: cover; background-position: center;
     position: relative; display: flex; align-items: flex-end; padding: 20px;
     flex-shrink: 0;
@@ -233,42 +235,56 @@
 
 .modal-overlay-gradient {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
 }
 
 .modal-event-image h2 {
     color: white; position: relative; z-index: 2; margin: 0;
     font-size: 1.3rem; line-height: 1.2; font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    max-width: 90%; /* Evita colidir com botão fechar */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    max-width: 85%;
 }
 
 .modal-body {
     padding: 25px; 
     text-align: center;
-    overflow-y: auto; /* Permite scroll se o conteúdo for longo */
+    overflow-y: auto; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .qr-container {
-    margin-bottom: 20px; background: white; padding: 15px;
-    display: inline-block; border-radius: 20px; border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-bottom: 20px; background: white; padding: 10px;
+    border-radius: 16px; border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    width: fit-content;
 }
 
 .qr-image { 
-    width: 200px; height: 200px; display: block; border-radius: 10px; 
-    max-width: 100%; /* Responsivo dentro do container */
-    margin: 0 auto; /* ADICIONADO: Centraliza a imagem do QR Code */
+    width: 220px; height: 220px; 
+    display: block; 
+    image-rendering: pixelated; 
 }
 
 .qr-code-text {
-    margin-top: 15px; font-family: 'Courier New', monospace; font-weight: 700;
-    color: #334155; letter-spacing: 1px; background: #f8fafc;
-    padding: 10px; border-radius: 8px; font-size: 0.9rem;
-    word-break: break-all;
+    margin-top: 10px; 
+    font-family: 'Courier New', monospace; 
+    font-weight: 700;
+    color: #475569; 
+    background: #f1f5f9;
+    padding: 12px 16px; 
+    border-radius: 8px; 
+    font-size: 0.85rem;
+    width: 100%; box-sizing: border-box;
+    display: block;
+    margin-bottom: 20px;
 }
 
-.ticket-info-block { text-align: left; margin-top: 10px; }
+.ticket-info-block { width: 100%; text-align: left; margin-top: 5px; }
 
 .info-row {
     display: flex; justify-content: space-between; align-items: center;
@@ -277,21 +293,50 @@
 .info-row:last-of-type { border-bottom: none; }
 
 .info-row span { color: #64748b; font-size: 0.9rem; font-weight: 500; }
-.info-row strong { color: #1e293b; font-size: 0.95rem; font-weight: 700; text-align: right; }
+.info-row strong { color: #1e293b; font-size: 0.95rem; font-weight: 700; text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.status-row { margin-top: 25px; text-align: center; }
+.status-row { 
+    margin-top: 20px; width: 100%; 
+    display: flex; flex-direction: column; gap: 10px; 
+}
 
 .status-pill {
-    display: inline-block; padding: 12px 30px; border-radius: 50px;
-    font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px;
-    text-transform: uppercase; width: 100%; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px; border-radius: 12px;
+    font-weight: 800; font-size: 0.95rem; letter-spacing: 0.5px;
+    text-transform: uppercase; width: 100%;
 }
-.status-pill.valid { background: #dcfce7; color: #166534; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2); }
+.status-pill.valid { background: #dcfce7; color: #166534; }
 .status-pill.used { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
 
-.loading-screen {
-    height: 100vh; display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem; color: #64748b; font-weight: 600; background: #f8fafc;
+/* --- BOTÃO DE DOWNLOAD ESTILIZADO --- */
+.btn-download-pdf {
+    background: white; 
+    border: 1px solid #cbd5e1; 
+    color: #334155;
+    padding: 12px 20px; /* Aumentei o padding */
+    border-radius: 50px; /* Arredondado como pílula */
+    font-weight: 700; 
+    cursor: pointer;
+    font-size: 0.9rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 8px;
+    transition: 0.2s;
+    width: 100%; /* Largura total no mobile */
+    margin-top: 15px; /* Espaço acima */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.btn-download-pdf:hover { 
+    background: #f8fafc; 
+    border-color: #94a3b8; 
+    transform: translateY(-2px);
+}
+
+.btn-download-pdf:active {
+    transform: translateY(0);
 }
 
 /* RESPONSIVIDADE (MOBILE) */
@@ -299,26 +344,26 @@
     .wallet-content { padding: 20px 15px; }
     
     .ticket-card {
-        flex-direction: column; /* Empilha: Imagem -> Texto -> Botão */
+        flex-direction: column;
         align-items: flex-start;
         gap: 15px;
-        padding-bottom: 60px; /* Espaço para o botão flutuante */
+        padding-bottom: 60px;
     }
 
     .ticket-thumb { 
         width: 100%; 
-        height: 180px; /* Imagem maior no mobile */
+        height: 160px;
         border-radius: 12px;
     }
 
     .ticket-center { width: 100%; gap: 6px; }
     
     .ticket-center h3 {
-        white-space: normal; /* Permite quebrar linha no título */
+        white-space: normal;
         font-size: 1.1rem;
+        line-height: 1.3;
     }
 
-    /* Botão QR Flutuante sobre a imagem ou canto inferior */
     .ticket-right { 
         position: absolute; 
         bottom: 15px; 
@@ -332,7 +377,8 @@
         font-size: 1.5rem;
     }
 
-    /* Ajuste Modal em telas pequenas */
     .qr-image { width: 180px; height: 180px; }
     .modal-body { padding: 20px; }
+    .modal-event-image { height: 120px; }
+    .modal-event-image h2 { font-size: 1.1rem; }
 }

@@ -183,7 +183,6 @@ export default function MeusIngressos() {
                         </div>
                         <div className="modal-body">
                             <div className="qr-container">
-                                {/* AQUI ESTÁ A CORREÇÃO CRÍTICA: USA A IMAGEM DO BACKEND */}
                                 {selectedTicket.qrCodeImage ? (
                                     <img 
                                         src={selectedTicket.qrCodeImage} 
