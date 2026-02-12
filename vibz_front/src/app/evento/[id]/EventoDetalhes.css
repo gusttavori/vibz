@@ -115,9 +115,9 @@
 .hero-rating { background: var(--primary-purple); border-color: var(--primary-purple); color: #fff; }
 
 .hero-title {
-    font-size: 2.8rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin: 0 0 24px 0;
+    margin: 0 0 5px 0;
     line-height: 1.1;
     text-shadow: 0 4px 15px rgba(0,0,0,0.5);
     max-width: 100%;
@@ -402,7 +402,7 @@
     .hero-image-wrapper { width: 100%; max-width: 100%; aspect-ratio: 16/9; }
     .hero-info { align-items: center; width: 100%; }
     .hero-badges { justify-content: center; }
-    .hero-title { font-size: 1.8rem; white-space: normal; margin-bottom: 20px; text-align: center; }
+    .hero-title { font-size: 1.8rem; white-space: normal; margin-bottom: 10px; text-align: center; }
     
     .hero-compact-row { flex-direction: column; gap: 12px; align-items: stretch; }
     .compact-item { justify-content: center; text-align: center; width: 100%; padding: 12px; }

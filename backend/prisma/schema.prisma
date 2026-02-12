@@ -109,6 +109,9 @@ model Event {
 
   // Link externo (para eventos informativos)
   externalUrl String? 
+  
+  // Flag Informativo
+  isInformational Boolean @default(false)
 
   // Configurações Financeiras e Destaque
   priceFrom           Float

@@ -49,7 +49,8 @@ const mapEventToFrontend = (event) => {
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
         organizer: organizerData,
         organizerName: organizerData.name,
-        organizerInstagram: organizerData.instagram
+        organizerInstagram: organizerData.instagram,
+        isInformational: event.isInformational // Mapeando o novo campo
     };
 };
 
@@ -59,34 +60,49 @@ const createEvent = async (req, res) => {
             return res.status(401).json({ message: 'Acesso negado. Usuário não autenticado.' });
         }
 
-        const {
-            title, description, location, city, category,
-            ageRating, isFeaturedRequested,
-            date, organizerName, organizerInstagram
+        const { 
+            title, description, category, ageRating, 
+            date, sessions, 
+            location, city, address, 
+            tickets, // Vem como string JSON do FormData
+            organizerName, organizerInstagram,
+            isFeaturedRequested,
+            formSchema,
+            refundPolicy,
+            isInformational // NOVO CAMPO
         } = req.body;
+
+        const userId = req.user.id;
+
+        // Converte strings "true"/"false" do FormData para Boolean
+        const isInfoBool = isInformational === 'true' || isInformational === true;
+        const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
         let parsedAddress, parsedTicketsFlat, parsedSessions, parsedFormSchema;
         try {
-            parsedAddress = req.body.address ? JSON.parse(req.body.address) : {};
+            parsedAddress = address ? JSON.parse(address) : {};
             // Se não vier tickets ou vier vazio, assume array vazio
-            parsedTicketsFlat = req.body.tickets ? JSON.parse(req.body.tickets) : [];
-            parsedSessions = req.body.sessions ? JSON.parse(req.body.sessions) : [];
-            parsedFormSchema = req.body.formSchema ? JSON.parse(req.body.formSchema) : [];
+            parsedTicketsFlat = tickets ? JSON.parse(tickets) : [];
+            parsedSessions = sessions ? JSON.parse(sessions) : [];
+            parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
         } catch (parseError) {
             return res.status(400).json({ message: "Dados JSON inválidos." });
+        }
+
+        // Validação: Se NÃO for informativo, exige ingressos
+        if (!isInfoBool && parsedTicketsFlat.length === 0) {
+            return res.status(400).json({ message: "Eventos com inscrição precisam de pelo menos um tipo de ingresso." });
         }
 
         let imageUrl = '';
         if (req.file) {
             const b64 = Buffer.from(req.file.buffer).toString("base64");
-            let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+            const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
             const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: 'vibz_events' });
             imageUrl = cloudinaryResponse.secure_url;
         } else {
             return res.status(400).json({ message: "A imagem do evento é obrigatória." });
         }
-
-        const requestedHighlight = isFeaturedRequested === 'true' || isFeaturedRequested === true;
         
         let mainEventDate = new Date();
         if (date) {
@@ -120,15 +136,16 @@ const createEvent = async (req, res) => {
             ageRating, 
             priceFrom: minPrice,
             status: 'pending',
-            organizerId: req.user.id,
-            isFeaturedRequested: requestedHighlight,
-            highlightStatus: requestedHighlight ? 'pending' : 'none',
-            highlightFee: requestedHighlight ? 9.90 : 0,
-            refundPolicy: req.body.refundPolicy || "7 dias após a compra",
+            organizerId: userId,
+            isFeaturedRequested: isFeaturedBool,
+            highlightStatus: isFeaturedBool ? 'pending' : 'none',
+            highlightFee: isFeaturedBool ? 9.90 : 0,
+            refundPolicy: refundPolicy || "7 dias após a compra",
             eventDate: mainEventDate,
             sessions: parsedSessions,
             organizerInfo: organizerInfoObj,
-            formSchema: parsedFormSchema
+            formSchema: parsedFormSchema,
+            isInformational: isInfoBool // SALVANDO O NOVO CAMPO
         };
 
         // Só adiciona a relação de criação de tickets se o array não estiver vazio
@@ -182,7 +199,7 @@ const updateEvent = async (req, res) => {
         let imageUrl = existingEvent.imageUrl;
         if (req.file) {
             const b64 = Buffer.from(req.file.buffer).toString("base64");
-            let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+            const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
             const cloudinaryResponse = await cloudinary.uploader.upload(dataURI, { folder: 'vibz_events' });
             imageUrl = cloudinaryResponse.secure_url;
         }
