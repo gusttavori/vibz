@@ -27,6 +27,7 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                 console.error("ID inválido", event);
             }
         } else {
+            // Sugestão: Usar um toast aqui ficaria mais elegante que o confirm nativo
             if (confirm("Faça login para favoritar.")) router.push('/login');
         }
     };
@@ -43,6 +44,8 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
     const displayDate = getDisplayDate();
     const day = displayDate && !isNaN(displayDate) ? displayDate.getDate().toString().padStart(2, '0') : null;
     const month = displayDate && !isNaN(displayDate) ? displayDate.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '') : null;
+    
+    // Gradiente ajustado para bater com o CSS
     const gradientOverlay = 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%)';
 
     return (
@@ -80,7 +83,15 @@ export default function EventCard({ event, isUserLoggedIn, onToggleFavorite, isF
                 type="button" 
                 title={isFavorited ? "Remover" : "Favoritar"}
             >
-                {isFavorited ? <FaHeart color="#ff4757" /> : <FaRegHeart color="#fff" />}
+                {/* IMPORTANTE: Removemos a prop 'color' daqui.
+                   Agora a cor é controlada 100% pelo CSS (EventCard.css)
+                   baseado na classe .active e no :hover
+                */}
+                {isFavorited ? (
+                    <FaHeart className="heart-icon" />
+                ) : (
+                    <FaRegHeart className="heart-icon" />
+                )}
             </button>
         </div>
     );
