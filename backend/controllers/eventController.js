@@ -50,7 +50,7 @@ const mapEventToFrontend = (event) => {
         organizer: organizerData,
         organizerName: organizerData.name,
         organizerInstagram: organizerData.instagram,
-        isInformational: event.isInformational // Mapeando o novo campo
+        isInformational: event.isInformational 
     };
 };
 
@@ -64,12 +64,12 @@ const createEvent = async (req, res) => {
             title, description, category, ageRating, 
             date, sessions, 
             location, city, address, 
-            tickets, // Vem como string JSON do FormData
+            tickets, 
             organizerName, organizerInstagram,
             isFeaturedRequested,
             formSchema,
             refundPolicy,
-            isInformational // NOVO CAMPO
+            isInformational 
         } = req.body;
 
         const userId = req.user.id;
@@ -81,7 +81,6 @@ const createEvent = async (req, res) => {
         let parsedAddress, parsedTicketsFlat, parsedSessions, parsedFormSchema;
         try {
             parsedAddress = address ? JSON.parse(address) : {};
-            // Se não vier tickets ou vier vazio, assume array vazio
             parsedTicketsFlat = tickets ? JSON.parse(tickets) : [];
             parsedSessions = sessions ? JSON.parse(sessions) : [];
             parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
@@ -125,14 +124,13 @@ const createEvent = async (req, res) => {
             }, parseFloat(parsedTicketsFlat[0]?.price || 0));
         }
 
-        // Monta o objeto data do Prisma
         const eventData = {
             title,
             description,
             imageUrl,
             city,
             location: location || parsedAddress.street,
-            category,
+            category: category ? category.trim() : "Geral",
             ageRating, 
             priceFrom: minPrice,
             status: 'pending',
@@ -145,7 +143,7 @@ const createEvent = async (req, res) => {
             sessions: parsedSessions,
             organizerInfo: organizerInfoObj,
             formSchema: parsedFormSchema,
-            isInformational: isInfoBool // SALVANDO O NOVO CAMPO
+            isInformational: isInfoBool
         };
 
         // Só adiciona a relação de criação de tickets se o array não estiver vazio
@@ -193,8 +191,15 @@ const updateEvent = async (req, res) => {
         const { 
             title, description, category, ageRating, 
             refundPolicy, location, city, 
-            sessions, tickets, organizerInfo, formSchema 
+            sessions, tickets, organizerInfo, formSchema,
+            isInformational // Extrair novo campo
         } = req.body;
+
+        // Converte para boolean se vier como string
+        let isInfoBool = existingEvent.isInformational;
+        if (isInformational !== undefined) {
+            isInfoBool = isInformational === 'true' || isInformational === true;
+        }
 
         let imageUrl = existingEvent.imageUrl;
         if (req.file) {
@@ -216,12 +221,15 @@ const updateEvent = async (req, res) => {
         const updatedEvent = await prisma.event.update({
             where: { id },
             data: {
-                title, description, category, ageRating, refundPolicy,
+                title, description, 
+                category: category ? category.trim() : existingEvent.category,
+                ageRating, refundPolicy,
                 imageUrl, location, city,
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
                 organizerInfo: parsedOrganizerInfo,
-                formSchema: parsedFormSchema
+                formSchema: parsedFormSchema,
+                isInformational: isInfoBool // Atualiza o campo
             }
         });
 
@@ -321,11 +329,29 @@ const getFeaturedEvents = async (req, res) => {
 };
 
 const getEventsByCategory = async (req, res) => {
-    const events = await prisma.event.findMany({
-        where: { category: req.params.categoryName, status: 'approved' },
-        include: { ticketTypes: true }
-    });
-    res.json(events.map(mapEventToFrontend));
+    try {
+        let { categoryName } = req.params;
+
+        if (categoryName) {
+            categoryName = decodeURIComponent(categoryName);
+        }
+
+        const events = await prisma.event.findMany({
+            where: { 
+                category: {
+                    equals: categoryName,
+                    mode: 'insensitive' 
+                },
+                status: 'approved' 
+            },
+            include: { ticketTypes: true },
+            orderBy: { eventDate: 'asc' }
+        });
+        res.json(events.map(mapEventToFrontend));
+    } catch (error) {
+        console.error("Erro busca categoria:", error);
+        res.status(500).json({ message: 'Erro ao buscar por categoria' });
+    }
 };
 
 const searchEvents = async (req, res) => {

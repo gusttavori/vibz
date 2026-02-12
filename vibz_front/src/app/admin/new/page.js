@@ -7,8 +7,7 @@ import styles from './CadastroEvento.module.css';
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaStar, FaCalendarAlt, FaMapMarkerAlt,
-    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList,
-    FaInfoCircle, FaUniversity
+    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -181,6 +180,9 @@ const CadastroEvento = () => {
         formData.append('refundPolicy', refundPolicy);
         formData.append('image', imageFile);
         
+        // ENVIA A FLAG INFORMATIVA
+        formData.append('isInformational', isInformational); 
+
         const formattedSessions = sessions.map(s => {
             let isoStart = null;
             try { isoStart = new Date(`${s.date}T${s.time}:00`).toISOString(); } catch(e) {}
@@ -266,7 +268,6 @@ const CadastroEvento = () => {
                         <div className={styles.gridTwo}>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
                                 <label className={styles.label}>Nome do Evento</label>
-                                {/* Placeholder genérico */}
                                 <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Festival de Música ou Workshop Profissional"/></div>
                             </div>
                             <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
@@ -330,7 +331,7 @@ const CadastroEvento = () => {
                             <h3>Inscrições / Ingressos</h3>
                         </div>
                         
-                        {/* SWITCH DE INFORMATIVO - Corrigido para label */}
+                        {/* SWITCH DE INFORMATIVO - Corrigido para Label */}
                         <div className={styles.infoSwitchContainer} style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
                             <label className={styles.switch}>
                                 <input 
@@ -376,7 +377,6 @@ const CadastroEvento = () => {
                                                                     required 
                                                                 />
                                                             </div>
-                                                            {/* Dica Visual para Gratuidade */}
                                                             {parseFloat(batch.price) === 0 && <span style={{fontSize:'0.7rem', color:'green', fontWeight:'bold', marginTop: '2px', display:'block'}}>GRÁTIS</span>}
                                                         </div>
                                                         <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Vagas" min="1" required /></div>
@@ -486,7 +486,6 @@ const CadastroEvento = () => {
                         </div>
                         <div style={{display: 'flex', alignItems: 'center'}}>
                             <div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div>
-                            {/* Corrigido também aqui para label */}
                             <label className={styles.switch} onClick={e => e.stopPropagation()}>
                                 <input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} />
                                 <span className={styles.slider}></span>
