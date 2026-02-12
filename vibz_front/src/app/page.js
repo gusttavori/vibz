@@ -31,7 +31,7 @@ export default function Home() {
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     
-    // ATUALIZADO: Adicionada a chave 'academico'
+    // State para armazenar eventos por categoria
     const [categoryEvents, setCategoryEvents] = useState({
         academico: [], festas: [], teatro: [], esportes: [], gastronomia: [], cursos: []
     });
@@ -50,7 +50,7 @@ export default function Home() {
     
     const searchWrapperRef = useRef(null); 
 
-    // Referência nova para a seção acadêmica
+    // Refs para scroll
     const academicoRef = useRef(null);
     const festasRef = useRef(null);
     const teatroRef = useRef(null);
@@ -58,7 +58,7 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // ... (UseEffect do Autocomplete mantido igual) ...
+    // --- AUTOCOMPLETE ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
@@ -158,7 +158,6 @@ export default function Home() {
                 return eventStartOfDay >= today && eventDate <= endOfWeek;
             }
             if (filter === 'Grátis') {
-                // Ajuste para pegar preço 0 ou isFree
                 const hasFreeTicket = event.tickets && event.tickets.some(t => parseFloat(t.price) === 0);
                 return event.price === 0 || event.isFree === true || hasFreeTicket;
             }
@@ -168,6 +167,7 @@ export default function Home() {
 
     const fetchCategory = async (categoryName, key) => {
         try {
+            // Encode garante que espaços e caracteres especiais (como /) sejam transmitidos corretamente
             const url = `${API_BASE_URL}/events/category/${encodeURIComponent(categoryName)}`;
             const response = await fetch(url);
             if (response.ok) {
@@ -184,17 +184,17 @@ export default function Home() {
         }
     };
 
-    // ATUALIZADO: Buscando a nova categoria Acadêmica
+    // --- CORREÇÃO AQUI: Nomes exatos do Banco de Dados ---
     useEffect(() => {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
-        fetchCategory('Teatro', 'teatro');
-        fetchCategory('Esportes', 'esportes');
+        fetchCategory('Teatro e Cultura', 'teatro'); // Corrigido
+        fetchCategory('Esportes', 'esportes'); 
         fetchCategory('Gastronomia', 'gastronomia');
-        fetchCategory('Cursos', 'cursos'); // Fallback para Cursos e Workshops se necessário
+        fetchCategory('Cursos e Workshops', 'cursos'); // Corrigido
     }, []);
 
-    // ... (Lógica de Login e Favoritos mantida igual) ...
+    // --- LOGIN & FAVORITOS ---
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
@@ -288,9 +288,9 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
-    // ATUALIZADO: Configuração das categorias para o menu
+    // Configuração visual das categorias
     const categoriesConfig = [
-        { name: 'Acadêmico', icon: '/img/theater.svg', ref: academicoRef, key: 'academico' }, // Ícone provisório
+        { name: 'Acadêmico', icon: '/img/theater.svg', ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
         { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
@@ -342,7 +342,7 @@ export default function Home() {
             <Toaster position="top-center" reverseOrder={false} />
             <Header />
 
-            {/* Barra de Busca (Mantida Igual) */}
+            {/* Barra de Busca */}
             <div className="search-bar-container">
                 <div className="search-outer-border-wrapper" ref={searchWrapperRef}>
                     <button className="location-button-styled" onClick={() => setShowCityMenu(!showCityMenu)}>
@@ -438,13 +438,13 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Renderiza as seções, incluindo a nova Acadêmica */}
+            {/* Renderiza as seções com nomes atualizados */}
             {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
             {renderSection("Festas e Shows", 'festas', festasRef)}
-            {renderSection("Teatro", 'teatro', teatroRef)}
+            {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
             {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
             {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
-            {renderSection("Cursos", 'cursos', cursosRef)}
+            {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
 
             {/* Banner Marketing */}
             <div className="mkt-container-modern">
