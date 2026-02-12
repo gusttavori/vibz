@@ -151,7 +151,7 @@ const CadastroEvento = () => {
             if (!sessions[i].date || !sessions[i].time) return toast.error(`Preencha data e hora da sessão ${i + 1}`);
         }
 
-        // Validação de Tickets
+        // Validação de Tickets (Só valida se NÃO for informativo)
         if (!isInformational) {
             if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso.");
             for (const type of ticketTypes) {
@@ -330,9 +330,9 @@ const CadastroEvento = () => {
                             <h3>Inscrições / Ingressos</h3>
                         </div>
                         
-                        {/* SWITCH DE INFORMATIVO */}
+                        {/* SWITCH DE INFORMATIVO - Corrigido para label */}
                         <div className={styles.infoSwitchContainer} style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                            <div className={styles.switch}>
+                            <label className={styles.switch}>
                                 <input 
                                     className={styles.hiddenCheckbox} 
                                     type="checkbox" 
@@ -340,7 +340,7 @@ const CadastroEvento = () => {
                                     onChange={e => setIsInformational(e.target.checked)} 
                                 />
                                 <span className={styles.slider}></span>
-                            </div>
+                            </label>
                             <div>
                                 <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição/Venda)</strong>
                                 <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se o evento não tiver lista de presença ou ingressos.</span>
@@ -486,10 +486,11 @@ const CadastroEvento = () => {
                         </div>
                         <div style={{display: 'flex', alignItems: 'center'}}>
                             <div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div>
-                            <div className={styles.switch}>
+                            {/* Corrigido também aqui para label */}
+                            <label className={styles.switch} onClick={e => e.stopPropagation()}>
                                 <input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} />
                                 <span className={styles.slider}></span>
-                            </div>
+                            </label>
                         </div>
                     </div>
 
