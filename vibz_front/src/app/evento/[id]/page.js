@@ -6,7 +6,8 @@ import {
     FaTicketAlt, FaMinus, FaPlus, FaShoppingCart, 
     FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
     FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
-    FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList
+    FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
+    FaInfoCircle // Adicionado ícone de info
 } from 'react-icons/fa'; 
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
@@ -69,14 +70,11 @@ export default function EventoDetalhes() {
                 if (fetchEvent.ok && eventData) {
                     setEvento(eventData);
                     let eventDate = null;
-                    // Lógica para pegar a melhor data disponível
                     if (eventData.eventDate) eventDate = new Date(eventData.eventDate);
                     else if (eventData.sessions?.length) {
-                        // Tenta parsear se for string, senão usa direto
                         const sessions = typeof eventData.sessions === 'string' ? JSON.parse(eventData.sessions) : eventData.sessions;
                         if (sessions[0]?.date) eventDate = new Date(sessions[0].date);
                     }
-                    // Fallback final
                     if (!eventDate && eventData.createdAt) eventDate = new Date(eventData.createdAt);
                     
                     setDisplayDate(eventDate);
@@ -84,7 +82,6 @@ export default function EventoDetalhes() {
                     let orgName = eventData.organizerName || (eventData.organizer && eventData.organizer.name) || "Produtor";
                     let orgInsta = eventData.organizerInstagram || "";
                     
-                    // Se organizerInfo for objeto no banco
                     if (eventData.organizerInfo) {
                          const info = typeof eventData.organizerInfo === 'string' ? JSON.parse(eventData.organizerInfo) : eventData.organizerInfo;
                          if (info.name) orgName = info.name;
@@ -127,7 +124,7 @@ export default function EventoDetalhes() {
             const data = await response.json();
 
             if (response.ok && data.valid) {
-                setAppliedCoupon({ code: data.code, feeRate: 0.03 }); // Exemplo: taxa cai para 3%
+                setAppliedCoupon({ code: data.code, feeRate: 0.03 }); 
                 toast.success(data.message, { id: toastId });
             } else {
                 setAppliedCoupon(null);
@@ -153,7 +150,6 @@ export default function EventoDetalhes() {
     const validateParticipants = () => {
         if (!evento.formSchema || evento.formSchema.length === 0) return true;
         
-        // Parse formSchema se for string
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
 
         for (const [ticketId, qty] of Object.entries(ticketQuantities)) {
@@ -178,7 +174,6 @@ export default function EventoDetalhes() {
         const token = localStorage.getItem('userToken');
         if (!token) {
             toast.error("Faça login para continuar.");
-            // Salva a intenção de compra para redirecionar depois? (Opcional)
             router.push('/login');
             return;
         }
@@ -187,7 +182,6 @@ export default function EventoDetalhes() {
         Object.values(ticketQuantities).forEach(qty => totalQty += qty);
         if (totalQty === 0) return toast.error("Selecione pelo menos um ingresso.");
 
-        // Verifica se há formulário para preencher
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
         
         if (schema && schema.length > 0 && !showParticipantModal) {
@@ -268,17 +262,15 @@ export default function EventoDetalhes() {
     if (loading) return <SkeletonLoader />;
     if (!evento) return <div className="error-screen">Evento não encontrado.</div>;
 
-    const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08; // Taxa padrão 8% ou cupom
+    const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08; 
     let total = 0;
     
-    // Tratamento para garantir que tickets existe e normalizar ID
     const ticketsList = evento.tickets || evento.ticketTypes || [];
 
     if (ticketsList.length > 0) {
         ticketsList.forEach(ticket => {
             const tId = ticket.id || ticket._id;
             const qty = ticketQuantities[tId] || 0;
-            // Preço + Taxa
             total += ((ticket.price + (ticket.price * rate)) * qty);
         });
     }
@@ -310,57 +302,88 @@ export default function EventoDetalhes() {
                     </div>
 
                     <div className="event-details-right-column">
-                        <div className="tickets-section">
-                            <div className="tickets-header" onClick={() => setIsTicketsOpen(!isTicketsOpen)}><h3><FaTicketAlt /> Ingressos</h3>{isTicketsOpen ? <FaChevronUp /> : <FaChevronDown />}</div>
-                            {isTicketsOpen && (
-                                <div className="tickets-content">
-                                    {ticketsList.map(ticket => {
-                                        const tId = ticket.id || ticket._id;
-                                        const qty = ticketQuantities[tId] || 0;
-                                        const fee = ticket.price * rate; 
-                                        const available = ticket.quantity - (ticket.sold || 0);
-                                        const isSoldOut = available <= 0;
+                        {/* CONDICIONAL: Se for informativo, mostra card especial. Senão, mostra ingressos */}
+                        {evento.isInformational ? (
+                            <div className="info-card">
+                                <div className="info-header">
+                                    <FaInfoCircle size={28} />
+                                    <h3>Evento Informativo</h3>
+                                </div>
+                                <div className="info-body">
+                                    <p>A venda de ingressos para este evento não é realizada pela Vibz.</p>
+                                    <p className="info-highlight">Para mais informações, listas ou reservas, entre em contato diretamente com a produção.</p>
+                                    
+                                    {organizerInfo.instagram ? (
+                                        <a href={`https://instagram.com/${organizerInfo.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="info-action-btn">
+                                            <FaInstagram /> Acessar Instagram da Produção
+                                        </a>
+                                    ) : (
+                                        <button className="info-action-btn disabled" disabled>Contato não informado</button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="tickets-section">
+                                <div className="tickets-header" onClick={() => setIsTicketsOpen(!isTicketsOpen)}><h3><FaTicketAlt /> Ingressos</h3>{isTicketsOpen ? <FaChevronUp /> : <FaChevronDown />}</div>
+                                {isTicketsOpen && (
+                                    <div className="tickets-content">
+                                        {ticketsList.length > 0 ? (
+                                            ticketsList.map(ticket => {
+                                                const tId = ticket.id || ticket._id;
+                                                const qty = ticketQuantities[tId] || 0;
+                                                const fee = ticket.price * rate; 
+                                                const available = ticket.quantity - (ticket.sold || 0);
+                                                const isSoldOut = available <= 0;
 
-                                        return (
-                                            <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''}`}>
-                                                <div className="ticket-info">
-                                                    <span className="ticket-name">{ticket.name}</span>
-                                                    <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                    <div className="ticket-price-row">
-                                                        <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
-                                                        {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
+                                                return (
+                                                    <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''}`}>
+                                                        <div className="ticket-info">
+                                                            <span className="ticket-name">{ticket.name}</span>
+                                                            <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
+                                                            <div className="ticket-price-row">
+                                                                <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
+                                                                {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
+                                                            </div>
+                                                            {isSoldOut && <span className="sold-out-badge">ESGOTADO</span>}
+                                                        </div>
+                                                        <div className="ticket-controls">
+                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isSoldOut}><FaMinus size={10}/></button>
+                                                            <span className="qty-display">{qty}</span>
+                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={isSoldOut || qty >= available}><FaPlus size={10}/></button>
+                                                        </div>
                                                     </div>
-                                                    {isSoldOut && <span className="sold-out-badge">ESGOTADO</span>}
-                                                </div>
-                                                <div className="ticket-controls">
-                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isSoldOut}><FaMinus size={10}/></button>
-                                                    <span className="qty-display">{qty}</span>
-                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={isSoldOut || qty >= available}><FaPlus size={10}/></button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    <div className="coupon-section">
-                                        {!appliedCoupon ? (
-                                            <div className="coupon-input-group">
-                                                <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input"/>
-                                                <button onClick={handleApplyCoupon} className="coupon-btn"><FaTag /></button>
-                                            </div>
+                                                );
+                                            })
                                         ) : (
-                                            <div className="coupon-applied-box">
-                                                <div className="coupon-active-header"><span className="coupon-code"><FaCheckCircle /> {appliedCoupon.code}</span><button onClick={handleRemoveCoupon} className="remove-coupon-btn">Remover</button></div>
-                                                <div className="coupon-msg"><FaPercentage /> Taxa reduzida para 3%!</div>
-                                            </div>
+                                            <p className="no-tickets-msg">Nenhum ingresso disponível no momento.</p>
+                                        )}
+                                        
+                                        {ticketsList.length > 0 && (
+                                            <>
+                                                <div className="coupon-section">
+                                                    {!appliedCoupon ? (
+                                                        <div className="coupon-input-group">
+                                                            <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input"/>
+                                                            <button onClick={handleApplyCoupon} className="coupon-btn"><FaTag /></button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="coupon-applied-box">
+                                                            <div className="coupon-active-header"><span className="coupon-code"><FaCheckCircle /> {appliedCoupon.code}</span><button onClick={handleRemoveCoupon} className="remove-coupon-btn">Remover</button></div>
+                                                            <div className="coupon-msg"><FaPercentage /> Taxa reduzida para 3%!</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="tickets-footer">
+                                                    <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? {color:'#2f855a'} : {}}>{formatCurrency(total)}</span></div></div>
+                                                    <button className="buy-now-button" onClick={handleBuyClick}><FaShoppingCart /> Comprar Ingressos</button>
+                                                    <div className="secure-checkout-text"><FaCheckCircle size={10}/> 100% Seguro</div>
+                                                </div>
+                                            </>
                                         )}
                                     </div>
-                                    <div className="tickets-footer">
-                                        <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? {color:'#2f855a'} : {}}>{formatCurrency(total)}</span></div></div>
-                                        <button className="buy-now-button" onClick={handleBuyClick}><FaShoppingCart /> Comprar Ingressos</button>
-                                        <div className="secure-checkout-text"><FaCheckCircle size={10}/> 100% Seguro</div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

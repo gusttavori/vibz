@@ -290,6 +290,30 @@
 .buy-now-button:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5); }
 .secure-checkout-text { text-align: center; margin-top: 15px; font-size: 0.8rem; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; }
 
+/* --- CARD INFORMATIVO (NOVO ESTILO) --- */
+.info-card {
+    background: white; border: 2px solid #e2e8f0; border-radius: 20px;
+    padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+}
+
+.info-header {
+    color: var(--primary-purple); display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.info-header h3 { font-size: 1.4rem; margin: 0; }
+
+.info-body p { color: #64748b; margin-bottom: 10px; font-size: 0.95rem; line-height: 1.5; }
+.info-highlight { color: var(--text-dark) !important; font-weight: 700; margin-bottom: 25px !important; }
+
+.info-action-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px; border-radius: 12px;
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    color: white; font-weight: 700; text-decoration: none;
+    transition: transform 0.2s;
+}
+.info-action-btn:hover { transform: translateY(-3px); opacity: 0.95; }
+.info-action-btn.disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
 /* --- MODAL DE PARTICIPANTES --- */
 .modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -373,8 +397,6 @@
 }
 .confirm-btn:hover { background: #3b008d; }
 
-/* Adicione isso ao arquivo existente */
-
 .ticket-sold-out {
     opacity: 0.6;
     pointer-events: none; /* Desativa cliques */
@@ -393,6 +415,10 @@
     border-radius: 4px;
     margin-top: 4px;
     text-transform: uppercase;
+}
+
+.no-tickets-msg {
+    text-align: center; color: #64748b; font-style: italic; padding: 20px;
 }
 
 /* --- RESPONSIVIDADE (MOBILE) --- */
