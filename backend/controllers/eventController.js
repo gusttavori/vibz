@@ -45,6 +45,7 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
+            // Retorna datas formatadas para edição
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || ''
@@ -76,7 +77,6 @@ const createEvent = async (req, res) => {
         } = req.body;
 
         const userId = req.user.id;
-
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -148,19 +148,30 @@ const createEvent = async (req, res) => {
 
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
-                create: parsedTicketsFlat.map(t => ({
-                    name: t.name,
-                    category: t.category,
-                    batchName: t.batch,
-                    price: parseFloat(t.price),
-                    quantity: parseInt(t.quantity),
-                    description: t.description,
-                    isHalfPrice: t.isHalfPrice || false,
-                    status: 'active',
-                    activityDate: (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null,
-                    startTime: (t.startTime && t.startTime !== "") ? t.startTime : null,
-                    endTime: (t.endTime && t.endTime !== "") ? t.endTime : null
-                }))
+                create: parsedTicketsFlat.map(t => {
+                    // LÓGICA DE PROTEÇÃO DE DATA
+                    let safeActivityDate = null;
+                    if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
+                        const d = new Date(t.activityDate);
+                        if (!isNaN(d.getTime())) {
+                            safeActivityDate = d;
+                        }
+                    }
+
+                    return {
+                        name: t.name,
+                        category: t.category,
+                        batchName: t.batch,
+                        price: parseFloat(t.price),
+                        quantity: parseInt(t.quantity),
+                        description: t.description,
+                        isHalfPrice: t.isHalfPrice || false,
+                        status: 'active',
+                        activityDate: safeActivityDate,
+                        startTime: (t.startTime && t.startTime.trim() !== "") ? t.startTime : null,
+                        endTime: (t.endTime && t.endTime.trim() !== "") ? t.endTime : null
+                    };
+                })
             };
         }
 
@@ -242,9 +253,16 @@ const updateEvent = async (req, res) => {
                     const priceVal = parseFloat(t.price);
                     const qtdVal = parseInt(t.quantity);
                     
-                    const actDate = (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null;
-                    const startT = (t.startTime && t.startTime !== "") ? t.startTime : null;
-                    const endT = (t.endTime && t.endTime !== "") ? t.endTime : null;
+                    // LÓGICA DE PROTEÇÃO DE DATA
+                    let safeActivityDate = null;
+                    if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
+                        const d = new Date(t.activityDate);
+                        if (!isNaN(d.getTime())) {
+                            safeActivityDate = d;
+                        }
+                    }
+                    const startT = (t.startTime && t.startTime.trim() !== "") ? t.startTime : null;
+                    const endT = (t.endTime && t.endTime.trim() !== "") ? t.endTime : null;
 
                     if (t.id) {
                         await prisma.ticketType.update({
@@ -252,7 +270,7 @@ const updateEvent = async (req, res) => {
                             data: {
                                 name: t.name, price: priceVal, quantity: qtdVal, 
                                 batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: actDate,
+                                activityDate: safeActivityDate,
                                 startTime: startT,
                                 endTime: endT
                             }
@@ -262,7 +280,7 @@ const updateEvent = async (req, res) => {
                             data: {
                                 eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
                                 batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: actDate,
+                                activityDate: safeActivityDate,
                                 startTime: startT,
                                 endTime: endT
                             }
@@ -272,12 +290,7 @@ const updateEvent = async (req, res) => {
             }
         }
 
-        const updated = await prisma.event.findUnique({
-            where: { id },
-            include: { ticketTypes: true }
-        });
-
-        res.json(mapEventToFrontend(updated));
+        res.json(mapEventToFrontend(updatedEvent));
 
     } catch (error) {
         console.error("Erro updateEvent:", error);

@@ -168,6 +168,12 @@ model TicketType {
   salesStart DateTime?
   salesEnd   DateTime?
 
+  // --- NOVOS CAMPOS PARA HORÁRIO ---
+  activityDate DateTime?
+  startTime    String?
+  endTime      String?
+  // ---------------------------------
+
   isHalfPrice Boolean @default(false) // Meia-entrada
   category    String? // Agrupamento
 
