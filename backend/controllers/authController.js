@@ -14,18 +14,14 @@ const generateToken = (id) => {
     });
 };
 
-// Log de segurança para verificar se as variáveis estão carregando (mascarado)
-console.log("🔧 Config SMTP Auth:");
-console.log("User:", process.env.EMAIL_USER);
-console.log("Pass:", process.env.EMAIL_PASS ? (process.env.EMAIL_PASS.substring(0, 2) + "...") : "NÃO CARREGOU");
-
-// --- CONFIGURAÇÃO IGUAL AO TICKET CONTROLLER (Funcional) ---
+// --- CONFIGURAÇÃO DO TRANSPORTE (Porta 2525 - Igual ao TicketController) ---
+// Usa as variáveis da Render APENAS para autenticação (Login/Senha)
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 2525, 
-    secure: false, // TLS deve ser false para porta 2525/587
+    secure: false,
     auth: {
-        user: process.env.EMAIL_USER, 
+        user: process.env.EMAIL_USER, // Aqui usa o 'a1f8...' para logar no servidor
         pass: process.env.EMAIL_PASS
     },
     tls: {
@@ -128,12 +124,12 @@ const googleLogin = async (req, res) => {
             return res.status(201).json({ msg: "Cadastro Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         }
     } catch (err) {
-        console.error("Erro Geral Google Login:", err); 
+        console.error("Erro Google Login:", err);
         res.status(500).json({ msg: "Falha na autenticação Google." });
     }
 };
 
-// --- FLUXO DE RECUPERAÇÃO DE SENHA (SMTP PURO) ---
+// --- FLUXO DE RECUPERAÇÃO DE SENHA ---
 
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
@@ -153,14 +149,12 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            throw new Error("Credenciais SMTP ausentes.");
-        }
-
+        // Configuração do e-mail
         const mailOptions = {
             to: user.email,
-            // CORREÇÃO: Formato "Nome" <email> para evitar rejeição do Brevo
-            from: `Vibz <${process.env.EMAIL_USER}>`, 
+            // CORREÇÃO CRÍTICA: Substituímos 'process.env.EMAIL_USER' pelo email real
+            // Isso garante que o remetente seja "Vibz <vibzeventos@gmail.com>" e não o login do Brevo
+            from: `"Vibz" <vibzeventos@gmail.com>`, 
             subject: 'Redefinir Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -172,7 +166,7 @@ const forgotPassword = async (req, res) => {
             `
         };
         
-        console.log("🚀 Enviando via SMTP (Brevo 2525)..."); 
+        console.log("🚀 Enviando via SMTP (Porta 2525)..."); 
         await transporter.sendMail(mailOptions);
         console.log("✅ E-mail enviado!"); 
         
@@ -212,7 +206,6 @@ const resetPassword = async (req, res) => {
         });
         if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
-        // Só verifica a senha antiga se o usuário tiver senha
         if (user.password) {
             const isSame = await bcrypt.compare(newPassword, user.password);
             if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
