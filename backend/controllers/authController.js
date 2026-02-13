@@ -158,7 +158,7 @@ const forgotPassword = async (req, res) => {
 
         const mailOptions = {
             to: user.email,
-            // CORREÇÃO: Usar apenas o e-mail puro para evitar bloqueio de alias no Brevo
+            // CORREÇÃO: Usar apenas o e-mail puro (sem nome "Vibz Segurança") para evitar bloqueio do Brevo
             from: process.env.EMAIL_USER, 
             subject: 'Redefinir Senha - Vibz',
             html: `
