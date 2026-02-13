@@ -43,6 +43,7 @@ const CadastroEvento = () => {
     const [ticketTypes, setTicketTypes] = useState([
         { 
             name: '', category: 'Inteira', isHalfPrice: false,
+            hasSchedule: false, // NOVO CAMPO PARA CONTROLE VISUAL
             activityDate: '', startTime: '', endTime: '', 
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }
@@ -83,6 +84,7 @@ const CadastroEvento = () => {
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
+            hasSchedule: false, // Padrão escondido
             activityDate: '', startTime: '', endTime: '',
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }]);
@@ -91,11 +93,21 @@ const CadastroEvento = () => {
         if (ticketTypes.length === 1) return toast.error("Mínimo de 1 tipo de ingresso.");
         setTicketTypes(ticketTypes.filter((_, i) => i !== index));
     };
+    
     const handleChangeTicketType = (index, field, value) => {
         const updated = [...ticketTypes];
         updated[index][field] = value;
+
+        // Se desmarcar o horário, limpa os campos para não enviar lixo
+        if (field === 'hasSchedule' && value === false) {
+            updated[index].activityDate = '';
+            updated[index].startTime = '';
+            updated[index].endTime = '';
+        }
+
         setTicketTypes(updated);
     };
+
     const handleAddBatch = (typeIndex) => {
         const updated = [...ticketTypes];
         const nextBatchNum = updated[typeIndex].batches.length + 1;
@@ -142,9 +154,15 @@ const CadastroEvento = () => {
             if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso.");
             for (const type of ticketTypes) {
                 if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório.");
-                if ((type.startTime && !type.endTime) || (!type.startTime && type.endTime)) {
-                    return toast.error(`Preencha início e fim para o horário do ingresso "${type.name}"`);
+                
+                // Valida apenas se a flag estiver marcada
+                if (type.hasSchedule) {
+                    if (!type.activityDate) return toast.error(`Preencha a data da atividade para o ingresso "${type.name}"`);
+                    if ((type.startTime && !type.endTime) || (!type.startTime && type.endTime) || (!type.startTime && !type.endTime)) {
+                        return toast.error(`Preencha início e fim para o horário do ingresso "${type.name}"`);
+                    }
                 }
+
                 for (const batch of type.batches) {
                     if (batch.price === '' || batch.price === null || batch.price === undefined) {
                         return toast.error(`Preencha o preço para ${type.name} (coloque 0 se for grátis).`);
@@ -191,9 +209,9 @@ const CadastroEvento = () => {
                 type.batches.forEach(batch => {
                     flatTickets.push({
                         name: type.name, category: type.category, isHalfPrice: type.isHalfPrice,
-                        activityDate: type.activityDate || null,
-                        startTime: type.startTime || null,
-                        endTime: type.endTime || null,
+                        activityDate: type.hasSchedule ? type.activityDate : null,
+                        startTime: type.hasSchedule ? type.startTime : null,
+                        endTime: type.hasSchedule ? type.endTime : null,
                         batch: batch.name, 
                         price: parseFloat(batch.price.toString().replace(',', '.')),
                         quantity: parseInt(batch.quantity),
@@ -267,13 +285,13 @@ const CadastroEvento = () => {
                                 <div className={styles.inputWrapper}>
                                     <FaLayerGroup className={styles.inputIcon}/>
                                     <select className={styles.select} value={category} onChange={e=>setCategory(e.target.value)} required>
-                                        <option value="">Selecione...</option>
-                                        <option>Festas e Shows</option>
-                                        <option>Acadêmico / Congresso</option>
-                                        <option>Cursos e Workshops</option>
-                                        <option>Teatro e Cultura</option>
-                                        <option>Esportes</option>
-                                        <option>Gastronomia</option>
+                                            <option value="">Selecione...</option>
+                                            <option>Festas e Shows</option>
+                                            <option>Acadêmico / Congresso</option>
+                                            <option>Cursos e Workshops</option>
+                                            <option>Teatro e Cultura</option>
+                                            <option>Esportes</option>
+                                            <option>Gastronomia</option>
                                     </select>
                                 </div>
                             </div>
@@ -337,23 +355,38 @@ const CadastroEvento = () => {
                                             {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                         </div>
 
-                                        <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0'}}>
-                                            <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade (Opcional)</h4>
-                                            <div className={styles.gridTwo}>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Data da Atividade</label>
-                                                    <input type="date" className={styles.inputSmall} value={type.activityDate} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} />
-                                                </div>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Horário (Início - Fim)</label>
-                                                    <div style={{display:'flex', gap:'5px'}}>
-                                                        <input type="time" className={styles.inputSmall} value={type.startTime} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} placeholder="Início" />
-                                                        <input type="time" className={styles.inputSmall} value={type.endTime} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} placeholder="Fim" />
+                                        {/* CHECKBOX PARA MOSTRAR HORÁRIO */}
+                                        <div style={{marginBottom: '15px'}}>
+                                            <label className={styles.checkboxLabel} style={{fontSize: '0.9rem', color: '#475569', fontWeight: '600'}}>
+                                                <input 
+                                                    className={styles.checkbox} 
+                                                    type="checkbox" 
+                                                    checked={type.hasSchedule} 
+                                                    onChange={e => handleChangeTicketType(typeIdx, 'hasSchedule', e.target.checked)} 
+                                                />
+                                                Definir data/horário específico para este ingresso (Palestras/Workshops)
+                                            </label>
+                                        </div>
+
+                                        {/* SEÇÃO CONDICIONAL DE HORÁRIO */}
+                                        {type.hasSchedule && (
+                                            <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.3s ease'}}>
+                                                <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade</h4>
+                                                <div className={styles.gridTwo}>
+                                                    <div className={styles.inputGroup}>
+                                                        <label className={styles.label}>Data da Atividade</label>
+                                                        <input type="date" className={styles.inputSmall} value={type.activityDate} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} />
+                                                    </div>
+                                                    <div className={styles.inputGroup}>
+                                                        <label className={styles.label}>Horário (Início - Fim)</label>
+                                                        <div style={{display:'flex', gap:'5px'}}>
+                                                            <input type="time" className={styles.inputSmall} value={type.startTime} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} placeholder="Início" />
+                                                            <input type="time" className={styles.inputSmall} value={type.endTime} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} placeholder="Fim" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <p style={{fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px'}}>* Preencha se este ingresso for para uma palestra ou oficina específica.</p>
-                                        </div>
+                                        )}
 
                                         <div className={styles.batchesContainer}>
                                             <h4 className={styles.batchTitle}>Lotes:</h4>
