@@ -4,11 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
-const { Resend } = require('resend'); // Adicionado suporte ao Resend
 
-// Inicializa Resend se a chave existir
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
+// Gera token JWT
 const generateToken = (id) => {
     if (!process.env.JWT_SECRET) {
         return jwt.sign({ id }, 'secret_temporario_vibz', { expiresIn: '7d' });
@@ -18,18 +15,19 @@ const generateToken = (id) => {
     });
 };
 
-// Configuração do Transporter (SMTP Brevo)
+// --- CONFIGURAÇÃO IGUAL AO TICKET CONTROLLER (Funcional) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
-    port: 2525, 
+    port: 2525, // Porta mágica que evita bloqueios na Render
     secure: false,
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false // Permite conexão mesmo com SSL oscilando
     },
+    // Timeouts para evitar travamento da API
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     socketTimeout: 10000
@@ -85,12 +83,11 @@ const loginUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
     const { googleAccessToken } = req.body;
-    const { email: directEmail, name: directName, googleId: directGoogleId } = req.body;
+    const { email: directEmail, name: directName } = req.body;
 
     try {
         let emailToUse = directEmail;
         let nameToUse = directName;
-        let googleIdToUse = directGoogleId;
 
         if (googleAccessToken) {
             try {
@@ -99,16 +96,12 @@ const googleLogin = async (req, res) => {
                 });
                 emailToUse = response.data.email;
                 nameToUse = response.data.name;
-                googleIdToUse = response.data.sub;
             } catch (axiosError) {
-                console.error("Erro Axios Google:", axiosError.response?.data || axiosError.message);
                 return res.status(400).json({ msg: "Token Google inválido." });
             }
         }
 
-        if (!emailToUse) {
-            return res.status(400).json({ msg: "Não foi possível obter o email do Google." });
-        }
+        if (!emailToUse) return res.status(400).json({ msg: "Email não obtido." });
 
         let user = await prisma.user.findUnique({ where: { email: emailToUse } });
 
@@ -132,14 +125,16 @@ const googleLogin = async (req, res) => {
             return res.status(201).json({ msg: "Cadastro Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         }
     } catch (err) {
-        console.error("Erro Geral Google Login:", err); 
+        console.error("Erro Google Login:", err);
         res.status(500).json({ msg: "Falha na autenticação Google." });
     }
 };
 
+// --- FLUXO DE RECUPERAÇÃO DE SENHA (SMTP PURO) ---
+
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
-    console.log("📨 Solicitando reset para:", email);
+    console.log("📨 Solicitando senha para:", email);
 
     try {
         const user = await prisma.user.findUnique({ where: { email } });
@@ -155,56 +150,33 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        const htmlContent = `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
-                <p>Você solicitou a redefinição de sua senha na Vibz.</p>
-                <p>Seu código de verificação é:</p>
-                <h1 style="letter-spacing: 5px; background: #f3e8ff; display: inline-block; padding: 10px 20px; border-radius: 8px;">${code}</h1>
-                <p>Este código expira em 1 hora.</p>
-                <hr/>
-                <p style="font-size: 12px; color: #777;">Se você não solicitou isso, ignore este e-mail.</p>
-            </div>
-        `;
-
-        // Tenta usar Resend primeiro (Mais estável), senão usa Nodemailer (SMTP)
-        if (resend) {
-            try {
-                console.log("🚀 Enviando via Resend API...");
-                await resend.emails.send({
-                    from: 'Vibz <onboarding@resend.dev>', // Email padrão de teste do Resend ou seu domínio verificado
-                    to: user.email,
-                    subject: 'Redefinir Senha - Vibz',
-                    html: htmlContent
-                });
-                console.log("✅ Enviado via Resend!");
-                return res.status(200).json({ msg: 'Código enviado!' });
-            } catch (resendError) {
-                console.error("⚠️ Falha no Resend, tentando SMTP...", resendError);
-            }
-        }
-
-        // Fallback: SMTP (Brevo)
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            throw new Error("Credenciais de email não configuradas.");
+            throw new Error("Credenciais SMTP ausentes.");
         }
 
         const mailOptions = {
             to: user.email,
-            // IMPORTANTE: Nome simples + email exato para passar no filtro do Brevo
-            from: `Vibz <${process.env.EMAIL_USER}>`, 
+            // REMETENTE: Sem alias ("Vibz <email>") para evitar rejeição do Brevo em contas free.
+            // Usando apenas o e-mail puro, igual ao ticketController.
+            from: process.env.EMAIL_USER, 
             subject: 'Redefinir Senha - Vibz',
-            html: htmlContent
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
+                    <p>Use o código abaixo para redefinir sua senha:</p>
+                    <h1 style="letter-spacing: 5px; background: #f3e8ff; display: inline-block; padding: 10px 20px; border-radius: 8px;">${code}</h1>
+                    <p>Válido por 1 hora.</p>
+                </div>
+            `
         };
         
-        console.log("🚀 Enviando via SMTP..."); 
+        console.log("🚀 Enviando via SMTP (Brevo 2525)..."); 
         await transporter.sendMail(mailOptions);
-        console.log("✅ E-mail enviado com sucesso via SMTP!"); 
+        console.log("✅ E-mail enviado!"); 
         
         res.status(200).json({ msg: 'Código enviado!' });
-
     } catch (error) {
-        console.error("❌ ERRO FATAL NO ENVIO:", error); 
+        console.error("❌ ERRO NO ENVIO:", error); 
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
@@ -238,11 +210,6 @@ const resetPassword = async (req, res) => {
         });
         if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
-        if (user.password) {
-            const isSame = await bcrypt.compare(newPassword, user.password);
-            if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
-        }
-
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -255,7 +222,7 @@ const resetPassword = async (req, res) => {
             }
         });
 
-        res.status(200).json({ msg: 'Senha alterada com sucesso!' });
+        res.status(200).json({ msg: 'Senha alterada!' });
     } catch (error) {
         console.error("Erro resetPassword:", error);
         res.status(500).json({ msg: 'Erro ao redefinir senha.' });
@@ -264,31 +231,19 @@ const resetPassword = async (req, res) => {
 
 const getMe = async (req, res) => {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: req.user.id }
-        });
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
 
+        // Ajuste para não quebrar se não houver eventos
         const myEvents = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             orderBy: { createdAt: 'desc' }
         });
 
-        const metrics = {
-            activeEvents: myEvents.length,
-            favoritesCount: 0, 
-            totalRevenue: 0, 
-            ticketsSold: 0   
-        };
-
-        const userResponse = { ...user, _id: user.id };
-        const eventsResponse = myEvents.map(e => ({ ...e, _id: e.id }));
-
         res.json({ 
-            user: userResponse, 
-            myEvents: eventsResponse, 
-            favoritedEvents: [],
-            metrics 
+            user: { ...user, _id: user.id }, 
+            myEvents: myEvents.map(e => ({ ...e, _id: e.id })), 
+            metrics: { activeEvents: myEvents.length } 
         });
     } catch (error) {
         console.error("Erro getMe:", error);
