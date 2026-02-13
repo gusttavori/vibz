@@ -540,6 +540,61 @@
     box-shadow: 0 6px 20px rgba(76, 1, 181, 0.4);
 }
 
+/* --- AÇÕES DO HEADER (Check-in + Status) --- */
+.header-actions-dash {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Botão de Validar Ingressos */
+.btn-checkin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: #1e293b; /* Dark Slate - cor escura para destacar como ferramenta */
+    color: #ffffff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(30, 41, 59, 0.15);
+    text-decoration: none;
+}
+
+.btn-checkin:hover {
+    background-color: #0f172a; /* Mais escuro no hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(30, 41, 59, 0.25);
+}
+
+.btn-checkin svg {
+    font-size: 1.1rem;
+    color: #38bdf8; /* Um azul claro no ícone para dar destaque */
+}
+
+/* --- AJUSTES RESPONSIVOS (MOBILE) --- */
+@media (max-width: 768px) {
+    /* No mobile, o header actions vai para baixo e ocupa largura total */
+    .header-actions-dash {
+        width: 100%;
+        justify-content: space-between; /* Separa o botão do status online */
+        margin-top: 15px;
+        flex-direction: row-reverse; /* Coloca o botão à direita ou ajusta conforme preferência */
+    }
+
+    .btn-checkin {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        flex: 1; /* Ocupa espaço disponível */
+        max-width: 200px; /* Limita para não ficar gigante */
+    }
+}
+
 /* ========================================= */
 /* AJUSTES DE RESPONSIVIDADE (MOBILE)  */
 /* ========================================= */

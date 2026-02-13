@@ -201,7 +201,7 @@ const DashboardContent = () => {
                     
                     {/* BOTÃO DE CHECK-IN (NOVO) */}
                     <div className="header-actions-dash">
-                        <button className="btn-checkin" onClick={() => router.push('/checkin')}>
+                        <button className="btn-checkin" onClick={() => router.push('/admin/checkin')}>
                             <FaQrcode /> Validar Ingressos
                         </button>
                         <div className="live-indicator"><span className="dot"></span> Online</div>
