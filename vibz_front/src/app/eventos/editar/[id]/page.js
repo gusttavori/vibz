@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import styles from '../../../new/CadastroEvento.module.css'; 
+// CORREÇÃO: Importando do caminho absoluto @/styles para evitar erro de caminho relativo
+import styles from '@/app/admin/new/CadastroEvento.module.css';
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
@@ -234,6 +235,7 @@ const EditarEvento = () => {
         if (!isInformational) {
             for (const type of ticketTypes) {
                 if (!type.name) { setSaving(false); return toast.error("Nome do ingresso é obrigatório."); }
+                
                 if ((type.startTime && !type.endTime) || (!type.startTime && type.endTime)) {
                     setSaving(false);
                     return toast.error(`Preencha início e fim para o horário do ingresso "${type.name}"`);
@@ -424,9 +426,16 @@ const EditarEvento = () => {
 
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaTicketAlt /></div><h3>Ingressos</h3></div>
+                        
                         <div className={styles.infoSwitchContainer} style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                            <label className={styles.switch}><input className={styles.hiddenCheckbox} type="checkbox" checked={isInformational} onChange={e => setIsInformational(e.target.checked)} /><span className={styles.slider}></span></label>
-                            <div><strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo</strong><span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se o evento não tiver vendas.</span></div>
+                            <label className={styles.switch}>
+                                <input className={styles.hiddenCheckbox} type="checkbox" checked={isInformational} onChange={e => setIsInformational(e.target.checked)} />
+                                <span className={styles.slider}></span>
+                            </label>
+                            <div>
+                                <strong style={{display: 'block', color: '#1e293b'}}>Evento APENAS informativo (Sem Inscrição/Venda)</strong>
+                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>Marque se o evento não tiver lista de presença ou ingressos.</span>
+                            </div>
                         </div>
 
                         {!isInformational && (
@@ -440,11 +449,21 @@ const EditarEvento = () => {
                                         </div>
 
                                         <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0'}}>
-                                            <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade</h4>
+                                            <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade (Opcional)</h4>
                                             <div className={styles.gridTwo}>
-                                                <div className={styles.inputGroup}><label className={styles.label}>Data</label><input type="date" className={styles.inputSmall} value={type.activityDate} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} /></div>
-                                                <div className={styles.inputGroup}><label className={styles.label}>Horário</label><div style={{display:'flex', gap:'5px'}}><input type="time" className={styles.inputSmall} value={type.startTime} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} /><input type="time" className={styles.inputSmall} value={type.endTime} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} /></div></div>
+                                                <div className={styles.inputGroup}>
+                                                    <label className={styles.label}>Data da Atividade</label>
+                                                    <input type="date" className={styles.inputSmall} value={type.activityDate} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} />
+                                                </div>
+                                                <div className={styles.inputGroup}>
+                                                    <label className={styles.label}>Horário (Início - Fim)</label>
+                                                    <div style={{display:'flex', gap:'5px'}}>
+                                                        <input type="time" className={styles.inputSmall} value={type.startTime} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} placeholder="Início" />
+                                                        <input type="time" className={styles.inputSmall} value={type.endTime} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} placeholder="Fim" />
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <p style={{fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px'}}>* Preencha se este ingresso for para uma palestra ou oficina específica.</p>
                                         </div>
 
                                         <div className={styles.batchesContainer}>
@@ -453,13 +472,19 @@ const EditarEvento = () => {
                                                 <div key={batchIdx} className={styles.batchRow}>
                                                     <div className={styles.inputGroup}><input className={styles.inputSmall} type="text" value={batch.name} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" /></div>
                                                     <div className={styles.inputGroup}>
-                                                        <div className={styles.inputWrapper}><span className={styles.currencyPrefix}>R$</span><input className={styles.inputSmall} type="number" value={batch.price} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} placeholder="0,00" min="0" step="0.01" required /></div>
+                                                        <div className={styles.inputWrapper}>
+                                                            <span className={styles.currencyPrefix}>R$</span>
+                                                            <input className={styles.inputSmall} type="number" value={batch.price} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'price', e.target.value)} placeholder="0,00" min="0" step="0.01" required />
+                                                        </div>
                                                     </div>
                                                     <div className={styles.inputGroup}><input className={styles.inputSmall} type="number" value={batch.quantity} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'quantity', e.target.value)} placeholder="Qtd" min="1" required /></div>
                                                     {type.batches.length > 1 && <button type="button" onClick={() => handleRemoveBatch(typeIdx, batchIdx)} className={styles.removeBatchBtn}><FaTrashAlt size={14} /></button>}
                                                 </div>
                                             ))}
                                             <button type="button" onClick={() => handleAddBatch(typeIdx)} className={styles.addBatchBtn}><FaPlus size={12} /> Adicionar Próximo Lote</button>
+                                        </div>
+                                        <div className={styles.ticketFooter}>
+                                            <label className={styles.checkboxLabel}><input className={styles.checkbox} type="checkbox" checked={type.isHalfPrice} onChange={e => handleChangeTicketType(typeIdx, 'isHalfPrice', e.target.checked)} /> Meia-entrada disponível</label>
                                         </div>
                                     </div>
                                 ))}
@@ -476,10 +501,19 @@ const EditarEvento = () => {
                                     <div key={idx} className={styles.questionCard}>
                                         <div className={styles.questionRow}>
                                             <div className={styles.inputGroup}><label className={styles.label}>Pergunta</label><input className={styles.input} value={q.label} onChange={e => handleChangeQuestion(idx, 'label', e.target.value)} placeholder="Pergunta" required /></div>
-                                            <div className={styles.inputGroup}><label className={styles.label}>Tipo</label><select className={styles.select} value={q.type} onChange={e => handleChangeQuestion(idx, 'type', e.target.value)}><option value="text">Texto</option><option value="select">Seleção</option><option value="checkbox">Sim/Não</option></select></div>
+                                            <div className={styles.inputGroup}><label className={styles.label}>Tipo</label><select className={styles.select} value={q.type} onChange={e => handleChangeQuestion(idx, 'type', e.target.value)}>
+                                                <option value="text">Texto</option><option value="select">Seleção</option><option value="checkbox">Sim/Não</option>
+                                            </select></div>
                                         </div>
-                                        {q.type === 'select' && (<div className={styles.optionsRow}><div className={styles.inputGroup}><label className={styles.label}>Opções (separadas por vírgula)</label><input className={styles.input} value={q.options} onChange={e => handleChangeQuestion(idx, 'options', e.target.value)} /></div></div>)}
-                                        <div className={styles.questionFooter}><label className={styles.switchLabel}><input className={styles.checkbox} type="checkbox" checked={q.required} onChange={e => handleChangeQuestion(idx, 'required', e.target.checked)} /> Obrigatório</label><button type="button" onClick={() => handleRemoveQuestion(idx)} className={styles.deleteQuestionBtn}><FaTrashAlt size={14} /> Excluir</button></div>
+                                        {q.type === 'select' && (
+                                            <div className={styles.optionsRow}>
+                                                <div className={styles.inputGroup}><label className={styles.label}>Opções (separadas por vírgula)</label><input className={styles.input} value={q.options} onChange={e => handleChangeQuestion(idx, 'options', e.target.value)} /></div>
+                                            </div>
+                                        )}
+                                        <div className={styles.questionFooter}>
+                                            <label className={styles.switchLabel}><input className={styles.checkbox} type="checkbox" checked={q.required} onChange={e => handleChangeQuestion(idx, 'required', e.target.checked)} /> Obrigatório</label>
+                                            <button type="button" onClick={() => handleRemoveQuestion(idx)} className={styles.deleteQuestionBtn}><FaTrashAlt size={14} /> Excluir</button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -488,19 +522,39 @@ const EditarEvento = () => {
                     )}
 
                     <section className={styles.card}>
-                        <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Organizador</h3></div>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.iconWrapper}><FaInstagram /></div>
+                            <h3>Organizador</h3>
+                        </div>
                         <div className={styles.gridTwo}>
-                            <div className={styles.inputGroup}><label className={styles.label}>Nome</label><input className={styles.input} type="text" value={organizerName} onChange={e => setOrganizerName(e.target.value)} required /></div>
-                            <div className={styles.inputGroup}><label className={styles.label}>Instagram</label><div className={styles.inputWrapper}><FaInstagram className={styles.inputIcon} /><input className={styles.input} type="text" value={organizerInstagram} onChange={e => setOrganizerInstagram(e.target.value)} placeholder="@usuario" /></div></div>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.label}>Nome</label>
+                                <input className={styles.input} type="text" value={organizerName} onChange={e => setOrganizerName(e.target.value)} required />
+                            </div>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.label}>Instagram</label>
+                                <div className={styles.inputWrapper}><FaInstagram className={styles.inputIcon} /><input className={styles.input} type="text" value={organizerInstagram} onChange={e => setOrganizerInstagram(e.target.value)} placeholder="@usuario" /></div>
+                            </div>
                         </div>
                     </section>
 
                     <div className={`${styles.featuredBox} ${isFeaturedRequested ? styles.featuredActive : ''}`} onClick={() => setIsFeaturedRequested(!isFeaturedRequested)}>
-                        <div className={styles.featuredInfo}><div className={styles.featuredIcon}><FaStar /></div><div className={styles.featuredText}><h4>Destaque seu evento</h4><p>Apareça no topo e venda mais.</p></div></div>
-                        <div style={{display: 'flex', alignItems: 'center'}}><div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div><label className={styles.switch} onClick={e => e.stopPropagation()}><input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} /><span className={styles.slider}></span></label></div>
+                        <div className={styles.featuredInfo}>
+                            <div className={styles.featuredIcon}><FaStar /></div>
+                            <div className={styles.featuredText}><h4>Destaque seu evento</h4><p>Apareça no topo e venda mais.</p></div>
+                        </div>
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div>
+                            <label className={styles.switch} onClick={e => e.stopPropagation()}>
+                                <input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} />
+                                <span className={styles.slider}></span>
+                            </label>
+                        </div>
                     </div>
 
-                    <button type="submit" className={styles.submitButton} disabled={saving}>{saving ? 'Salvando...' : <><FaSave style={{marginRight:'10px'}}/> SALVAR ALTERAÇÕES</>}</button>
+                    <button type="submit" className={styles.submitButton} disabled={saving}>
+                        {saving ? 'Salvando...' : <><FaSave style={{marginRight:'10px'}}/> SALVAR ALTERAÇÕES</>}
+                    </button>
                 </form>
             </main>
         </div>
