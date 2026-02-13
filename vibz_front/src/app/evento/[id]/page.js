@@ -7,7 +7,7 @@ import {
     FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
     FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
     FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
-    FaInfoCircle
+    FaInfoCircle, FaClock
 } from 'react-icons/fa'; 
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
@@ -40,6 +40,18 @@ const SkeletonLoader = () => (
         </div>
     </div>
 );
+
+// Função auxiliar para formatar data (YYYY-MM-DD -> DD/MM)
+const formatDateSimple = (dateStr) => {
+    if (!dateStr) return null;
+    // Garante que pega só a parte da data caso venha ISO com hora
+    const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}`; // Retorna DD/MM
+    }
+    return null;
+};
 
 export default function EventoDetalhes() {
     const params = useParams(); 
@@ -127,16 +139,16 @@ export default function EventoDetalhes() {
                 const selectedTicket = evento.tickets.find(t => (t.id === tId || t._id === tId));
                 
                 if (selectedTicket && selectedTicket.activityDate && selectedTicket.startTime && selectedTicket.endTime) {
-                     const selDate = new Date(selectedTicket.activityDate).toISOString().split('T')[0];
-                     
-                     if (candDate === selDate) {
-                         const selStart = toMinutes(selectedTicket.startTime);
-                         const selEnd = toMinutes(selectedTicket.endTime);
+                      const selDate = new Date(selectedTicket.activityDate).toISOString().split('T')[0];
+                      
+                      if (candDate === selDate) {
+                          const selStart = toMinutes(selectedTicket.startTime);
+                          const selEnd = toMinutes(selectedTicket.endTime);
 
-                         if (Math.max(candStart, selStart) < Math.min(candEnd, selEnd)) {
-                             return true;
-                         }
-                     }
+                          if (Math.max(candStart, selStart) < Math.min(candEnd, selEnd)) {
+                              return true;
+                          }
+                      }
                 }
             }
         }
@@ -371,15 +383,26 @@ export default function EventoDetalhes() {
                                                 const isConflict = hasTimeConflict(ticket, ticketQuantities);
                                                 const disablePlus = isSoldOut || qty >= available || (qty === 0 && isConflict);
 
+                                                // Formata a data se existir
+                                                const dateLabel = formatDateSimple(ticket.activityDate);
+
                                                 return (
                                                     <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''} ${isConflict && qty === 0 ? 'ticket-conflict' : ''}`}>
                                                         <div className="ticket-info">
                                                             <span className="ticket-name">{ticket.name}</span>
                                                             <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
                                                             
+                                                            {/* ATUALIZADO: Mostra Data e Hora */}
                                                             {ticket.startTime && ticket.endTime && (
                                                                 <span className="ticket-time-badge">
-                                                                    🕒 {ticket.startTime} - {ticket.endTime}
+                                                                    {dateLabel && (
+                                                                        <>
+                                                                            <FaCalendarDay style={{marginRight:'4px'}}/> 
+                                                                            {dateLabel} 
+                                                                            <span style={{margin:'0 6px', opacity:0.4}}>|</span> 
+                                                                        </>
+                                                                    )}
+                                                                    <FaClock style={{marginRight:'4px'}}/> {ticket.startTime} - {ticket.endTime}
                                                                 </span>
                                                             )}
 
