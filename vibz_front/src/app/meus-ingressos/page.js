@@ -81,18 +81,12 @@ export default function MeusIngressos() {
             .replace(/(\d+)\s*[aAª]/g, '$1ª');
     };
 
-    // CORREÇÃO: Formatação de data segura contra fuso horário
     const formatDate = (dateString) => {
         if (!dateString) return 'Data não definida';
         try {
-            // Pega apenas a parte YYYY-MM-DD da string ISO para evitar conversão de UTC
-            const isoDate = dateString.includes('T') ? dateString.split('T')[0] : dateString;
-            const [year, month, day] = isoDate.split('-');
-            
-            // Cria a data usando o horário local do navegador (00:00:00 local)
+            const cleanDate = dateString.toString().includes('T') ? dateString.split('T')[0] : dateString;
+            const [year, month, day] = cleanDate.split('-');
             const date = new Date(year, month - 1, day);
-            
-            if (isNaN(date.getTime())) return 'Data inválida';
             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
         } catch (e) {
             return 'Erro na data';
@@ -154,9 +148,8 @@ export default function MeusIngressos() {
                         </div>
                     ) : (
                         currentList.map((ticket) => {
-                            // CORREÇÃO: Prioriza a data da atividade (Workshop/Palestra), senão usa a do evento
                             const dateToShow = ticket.ticketType?.activityDate || ticket.event?.date;
-                            
+
                             return (
                                 <div key={ticket.id || ticket._id} className="ticket-card" onClick={() => openTicket(ticket)}>
                                     <div className="ticket-left">
@@ -227,11 +220,9 @@ export default function MeusIngressos() {
                                 </div>
                                 <div className="info-row">
                                     <span>Data</span>
-                                    {/* CORREÇÃO: Também usa a data específica no modal */}
                                     <strong>{formatDate(selectedTicket.ticketType?.activityDate || selectedTicket.event?.date)}</strong>
                                 </div>
                                 
-                                {/* Mostra o horário se disponível */}
                                 {selectedTicket.ticketType?.startTime && (
                                     <div className="info-row">
                                         <span>Horário</span>

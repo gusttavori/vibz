@@ -127,6 +127,7 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     const qrSize = 150;
     doc.image(qrCodeImage, cardX + pad, y, { width: qrSize, height: qrSize });
     
+    // Mostra apenas os primeiros 8 dígitos para não poluir
     const displayCode = uniqueCode.length > 20 ? uniqueCode.substring(0, 8) + '...' : uniqueCode;
     doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_DARK)
         .text(displayCode, cardX + pad, y + qrSize + 5, { width: qrSize, align: 'center' });
@@ -158,6 +159,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
+        // Verifica se estamos em ambiente serverless (Vercel/Render) para usar /tmp
         const tempDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(__dirname, '../../tmp');
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -170,6 +172,7 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             where: { 
                 userId: user.id, 
                 eventId: event.id,
+                // Busca tickets criados nos últimos 5 minutos para evitar pegar antigos
                 createdAt: { gte: new Date(Date.now() - 300000) } 
             },
             include: { ticketType: true }
@@ -238,11 +241,13 @@ const validateTicket = async (req, res) => {
     try {
         console.log("🔍 Validando:", qrCode);
 
+        // 1. Tenta buscar pelo campo oficial qrCodeData (UUID)
         let ticket = await prisma.ticket.findUnique({ 
             where: { qrCodeData: qrCode },
             include: { event: true, user: true, ticketType: true }
         });
 
+        // 2. Fallback: Se falhar e o código parecer um ID (curto ou formato específico), tenta pelo ID
         if (!ticket) {
             try {
                 ticket = await prisma.ticket.findUnique({
@@ -250,6 +255,7 @@ const validateTicket = async (req, res) => {
                     include: { event: true, user: true, ticketType: true }
                 });
             } catch (e) {
+                // Se der erro de formato de ID, apenas ignora
             }
         }
 
@@ -335,6 +341,7 @@ const downloadTicketPDF = async (req, res) => {
     }
 };
 
+// --- FUNÇÃO DE ESPIONAGEM (DEBUG) ---
 const listLastTickets = async (req, res) => {
     try {
         const tickets = await prisma.ticket.findMany({
@@ -357,5 +364,5 @@ module.exports = {
     validateTicket, 
     getMyTickets, 
     downloadTicketPDF,
-    listLastTickets 
+    listLastTickets // Exportando a função de debug
 };

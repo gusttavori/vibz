@@ -44,7 +44,6 @@ const SkeletonLoader = () => (
 // Função auxiliar para formatar data (YYYY-MM-DD -> DD/MM)
 const formatDateSimple = (dateStr) => {
     if (!dateStr) return null;
-    // Garante que pega só a parte da data caso venha ISO com hora
     const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
     const parts = cleanDate.split('-');
     if (parts.length === 3) {
@@ -461,7 +460,18 @@ export default function EventoDetalhes() {
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header"><h3><FaClipboardList /> Dados dos Participantes</h3><button className="close-modal-btn" onClick={() => setShowParticipantModal(false)}><FaTimes /></button></div>
-                        <div className="modal-body"><p style={{marginBottom: '20px', color: '#64748b', fontSize: '0.95rem'}}>O organizador solicitou as seguintes informações.</p>{renderParticipantInputs()}</div>
+                        <div className="modal-body">
+                            <p style={{marginBottom: '20px', color: '#64748b', fontSize: '0.95rem'}}>O organizador solicitou as seguintes informações para a gestão do evento.</p>
+                            {renderParticipantInputs()}
+                            
+                            {/* ALERTA LGPD NO MODAL */}
+                            <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b'}}>
+                                <FaInfoCircle style={{marginRight: '5px', verticalAlign: 'middle'}}/>
+                                <strong>Privacidade:</strong> Os dados acima serão compartilhados com o organizador 
+                                (<strong>{organizerInfo.name}</strong>) exclusivamente para a realização deste evento. 
+                                A Vibz atua como operadora dos dados.
+                            </div>
+                        </div>
                         <div className="modal-footer"><button className="cancel-btn" onClick={() => setShowParticipantModal(false)}>Voltar</button><button className="confirm-btn" onClick={handleBuyClick}>Ir para Pagamento <FaShoppingCart /></button></div>
                     </div>
                 </div>

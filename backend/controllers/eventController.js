@@ -45,7 +45,7 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // Retorna datas formatadas para edição
+            // Retorna os campos de data para o frontend (edição)
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || ''
@@ -77,6 +77,7 @@ const createEvent = async (req, res) => {
         } = req.body;
 
         const userId = req.user.id;
+
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -146,6 +147,8 @@ const createEvent = async (req, res) => {
             isInformational: isInfoBool
         };
 
+        // --- ATUALIZAÇÃO CRUCIAL AQUI ---
+        // Mapeia os tickets incluindo os campos de data/hora
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
                 create: parsedTicketsFlat.map(t => {
@@ -253,7 +256,7 @@ const updateEvent = async (req, res) => {
                     const priceVal = parseFloat(t.price);
                     const qtdVal = parseInt(t.quantity);
                     
-                    // LÓGICA DE PROTEÇÃO DE DATA
+                    // Tratamento seguro para datas na atualização
                     let safeActivityDate = null;
                     if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
                         const d = new Date(t.activityDate);

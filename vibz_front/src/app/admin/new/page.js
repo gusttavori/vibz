@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header'; 
+import Link from 'next/link';
 import styles from './CadastroEvento.module.css';
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
@@ -43,7 +44,7 @@ const CadastroEvento = () => {
     const [ticketTypes, setTicketTypes] = useState([
         { 
             name: '', category: 'Inteira', isHalfPrice: false,
-            hasSchedule: false, // NOVO CAMPO PARA CONTROLE VISUAL
+            hasSchedule: false, 
             activityDate: '', startTime: '', endTime: '', 
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }
@@ -84,7 +85,7 @@ const CadastroEvento = () => {
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
-            hasSchedule: false, // Padrão escondido
+            hasSchedule: false,
             activityDate: '', startTime: '', endTime: '',
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }]);
@@ -98,7 +99,6 @@ const CadastroEvento = () => {
         const updated = [...ticketTypes];
         updated[index][field] = value;
 
-        // Se desmarcar o horário, limpa os campos para não enviar lixo
         if (field === 'hasSchedule' && value === false) {
             updated[index].activityDate = '';
             updated[index].startTime = '';
@@ -143,7 +143,7 @@ const CadastroEvento = () => {
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
         if (!imageFile) return toast.error('Adicione uma capa para o evento.');
-        if (!termsAccepted) return toast.error('Aceite os termos para continuar.');
+        if (!termsAccepted) return toast.error('Você deve aceitar os termos e a política de privacidade.');
         if (!category) return toast.error('Selecione uma categoria.');
         
         for (let i = 0; i < sessions.length; i++) {
@@ -155,7 +155,6 @@ const CadastroEvento = () => {
             for (const type of ticketTypes) {
                 if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório.");
                 
-                // Valida apenas se a flag estiver marcada
                 if (type.hasSchedule) {
                     if (!type.activityDate) return toast.error(`Preencha a data da atividade para o ingresso "${type.name}"`);
                     if ((type.startTime && !type.endTime) || (!type.startTime && type.endTime) || (!type.startTime && !type.endTime)) {
@@ -355,7 +354,6 @@ const CadastroEvento = () => {
                                             {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                         </div>
 
-                                        {/* CHECKBOX PARA MOSTRAR HORÁRIO */}
                                         <div style={{marginBottom: '15px'}}>
                                             <label className={styles.checkboxLabel} style={{fontSize: '0.9rem', color: '#475569', fontWeight: '600'}}>
                                                 <input 
@@ -368,7 +366,6 @@ const CadastroEvento = () => {
                                             </label>
                                         </div>
 
-                                        {/* SEÇÃO CONDICIONAL DE HORÁRIO */}
                                         {type.hasSchedule && (
                                             <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0', animation: 'fadeIn 0.3s ease'}}>
                                                 <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade</h4>
@@ -416,6 +413,12 @@ const CadastroEvento = () => {
                     {!isInformational && (
                         <section className={styles.card}>
                             <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
+                            
+                            {/* ALERTA LGPD */}
+                            <div style={{marginBottom: '20px', padding: '12px', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: '8px', color: '#c2410c', fontSize: '0.9rem'}}>
+                                <strong>⚠️ Atenção à LGPD:</strong> Evite solicitar dados sensíveis (como religião, saúde, orientação sexual ou dados bancários) a menos que seja estritamente necessário para a execução do evento. Você é o controlador desses dados.
+                            </div>
+
                             <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '24px', lineHeight: '1.5'}}>Configure aqui os dados extras que você precisa coletar de cada pessoa.</p>
                             
                             <div className={styles.questionList}>
@@ -448,7 +451,17 @@ const CadastroEvento = () => {
                     </div>
 
                     <div className={styles.footer}>
-                        <div className={styles.termsBox}><input className={styles.checkbox} type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} /><label style={{marginLeft: '10px'}}>Li e concordo com os Termos.</label></div>
+                        <div className={styles.termsBox}>
+                            <input 
+                                className={styles.checkbox} 
+                                type="checkbox" 
+                                checked={termsAccepted} 
+                                onChange={e => setTermsAccepted(e.target.checked)} 
+                            />
+                            <label style={{marginLeft: '10px'}}>
+                                Li e concordo com os <Link href="/termos" target="_blank" style={{color: '#4C01B5', textDecoration: 'underline'}}>Termos de Uso</Link> e <Link href="/politica" target="_blank" style={{color: '#4C01B5', textDecoration: 'underline'}}>Política de Privacidade</Link>.
+                            </label>
+                        </div>
                         <button type="submit" className={styles.submitButton} disabled={loading}>{loading ? 'Criando...' : 'PUBLICAR EVENTO'}</button>
                     </div>
                 </form>
