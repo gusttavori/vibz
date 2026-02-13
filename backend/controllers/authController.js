@@ -14,6 +14,7 @@ const generateToken = (id) => {
     });
 };
 
+// Configuração do Transporter (Porta 2525 - Brevo)
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 2525, 
@@ -150,16 +151,16 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        // Verificação de Segurança das Credenciais
+        // Verificação de Segurança das Variáveis
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
             throw new Error("Credenciais de email não configuradas no servidor.");
         }
 
         const mailOptions = {
             to: user.email,
-            // AQUI É A CORREÇÃO: Usar apenas o email process.env.EMAIL_USER, sem nome fantasia, para evitar bloqueio do Brevo
+            // CORREÇÃO: Usar apenas o e-mail puro para evitar bloqueio de alias no Brevo
             from: process.env.EMAIL_USER, 
-            subject: 'Recuperação de Senha - Vibz',
+            subject: 'Redefinir Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
                     <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
