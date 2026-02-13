@@ -33,7 +33,6 @@ export default function Header() {
         };
 
         checkLogin();
-        // Escuta eventos de login/logout de outras abas ou componentes
         window.addEventListener('storage', checkLogin);
         return () => window.removeEventListener('storage', checkLogin);
     }, []);
@@ -104,7 +103,7 @@ export default function Header() {
                                     <FaTicketAlt /> Painel do Organizador
                                 </button>
 
-                                {/* --- NOVO BOTÃO: MEUS INGRESSOS --- */}
+                                {/* --- BOTÃO MEUS INGRESSOS --- */}
                                 <button className="dropdown-item" onClick={() => router.push('/meus-ingressos')}>
                                     <FaWallet /> Meus Ingressos
                                 </button>

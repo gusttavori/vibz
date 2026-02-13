@@ -36,7 +36,7 @@ const Footer = () => {
 
                             <div className={styles.navGroup}>
                                 <span className={styles.navTitle}>Para Produtores</span>
-                                <Link href="/cadastrar-evento" className={styles.link}>Crie seu evento</Link>
+                                <Link href="/admin/new" className={styles.link}>Crie seu evento</Link>
                             </div>
 
                             <div className={styles.navGroup}>
@@ -47,7 +47,7 @@ const Footer = () => {
                         </div>
                     </div>
 
-                    {/* COLUNA DIREITA: Pagamento e Segurança (Movido da parte branca) */}
+                    {/* COLUNA DIREITA: Pagamento e Segurança */}
                     <div className={styles.rightColumn}>
                         
                         <div className={styles.trustBlock}>
