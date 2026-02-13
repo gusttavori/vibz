@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 
-// Gera token JWT
 const generateToken = (id) => {
     if (!process.env.JWT_SECRET) {
         return jwt.sign({ id }, 'secret_temporario_vibz', { expiresIn: '7d' });
@@ -15,19 +14,23 @@ const generateToken = (id) => {
     });
 };
 
+// Log de segurança para verificar se as variáveis estão carregando (mascarado)
+console.log("🔧 Config SMTP Auth:");
+console.log("User:", process.env.EMAIL_USER);
+console.log("Pass:", process.env.EMAIL_PASS ? (process.env.EMAIL_PASS.substring(0, 2) + "...") : "NÃO CARREGOU");
+
 // --- CONFIGURAÇÃO IGUAL AO TICKET CONTROLLER (Funcional) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
-    port: 2525, // Porta mágica que evita bloqueios na Render
-    secure: false,
+    port: 2525, 
+    secure: false, // TLS deve ser false para porta 2525/587
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false // Permite conexão mesmo com SSL oscilando
+        rejectUnauthorized: false
     },
-    // Timeouts para evitar travamento da API
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     socketTimeout: 10000
@@ -125,7 +128,7 @@ const googleLogin = async (req, res) => {
             return res.status(201).json({ msg: "Cadastro Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         }
     } catch (err) {
-        console.error("Erro Google Login:", err);
+        console.error("Erro Geral Google Login:", err); 
         res.status(500).json({ msg: "Falha na autenticação Google." });
     }
 };
@@ -156,9 +159,8 @@ const forgotPassword = async (req, res) => {
 
         const mailOptions = {
             to: user.email,
-            // REMETENTE: Sem alias ("Vibz <email>") para evitar rejeição do Brevo em contas free.
-            // Usando apenas o e-mail puro, igual ao ticketController.
-            from: process.env.EMAIL_USER, 
+            // CORREÇÃO: Formato "Nome" <email> para evitar rejeição do Brevo
+            from: `Vibz <${process.env.EMAIL_USER}>`, 
             subject: 'Redefinir Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -210,6 +212,12 @@ const resetPassword = async (req, res) => {
         });
         if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
+        // Só verifica a senha antiga se o usuário tiver senha
+        if (user.password) {
+            const isSame = await bcrypt.compare(newPassword, user.password);
+            if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -234,7 +242,6 @@ const getMe = async (req, res) => {
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
 
-        // Ajuste para não quebrar se não houver eventos
         const myEvents = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             orderBy: { createdAt: 'desc' }
