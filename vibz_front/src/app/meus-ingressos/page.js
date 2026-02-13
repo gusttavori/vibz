@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
-import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes, FaDownload } from 'react-icons/fa';
+import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes, FaDownload, FaClock } from 'react-icons/fa';
 import './MeusIngressos.css';
 
 const getApiBaseUrl = () => {
@@ -81,10 +81,17 @@ export default function MeusIngressos() {
             .replace(/(\d+)\s*[aAª]/g, '$1ª');
     };
 
+    // CORREÇÃO: Formatação de data segura contra fuso horário
     const formatDate = (dateString) => {
         if (!dateString) return 'Data não definida';
         try {
-            const date = new Date(dateString);
+            // Pega apenas a parte YYYY-MM-DD da string ISO para evitar conversão de UTC
+            const isoDate = dateString.includes('T') ? dateString.split('T')[0] : dateString;
+            const [year, month, day] = isoDate.split('-');
+            
+            // Cria a data usando o horário local do navegador (00:00:00 local)
+            const date = new Date(year, month - 1, day);
+            
             if (isNaN(date.getTime())) return 'Data inválida';
             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
         } catch (e) {
@@ -100,7 +107,6 @@ export default function MeusIngressos() {
     const openTicket = (ticket) => setSelectedTicket(ticket);
     const closeTicket = () => setSelectedTicket(null);
 
-    // --- NOVA TELA DE LOADING ANIMADA ---
     if (loading) return (
         <div className="wallet-page">
             <Header />
@@ -147,38 +153,43 @@ export default function MeusIngressos() {
                             <button className="btn-explore" onClick={() => router.push('/')}>Explorar Eventos</button>
                         </div>
                     ) : (
-                        currentList.map((ticket) => (
-                            <div key={ticket.id || ticket._id} className="ticket-card" onClick={() => openTicket(ticket)}>
-                                <div className="ticket-left">
-                                    <img 
-                                        src={ticket.event?.imageUrl || '/img/default-event.jpg'} 
-                                        alt={ticket.event?.title} 
-                                        className="ticket-thumb"
-                                    />
-                                </div>
-                                
-                                <div className="ticket-center">
-                                    <h3>{formatText(ticket.event?.title || "Evento Desconhecido")}</h3>
-                                    <span className="ticket-type">{formatText(ticket.ticketType?.name || "Ingresso")}</span>
+                        currentList.map((ticket) => {
+                            // CORREÇÃO: Prioriza a data da atividade (Workshop/Palestra), senão usa a do evento
+                            const dateToShow = ticket.ticketType?.activityDate || ticket.event?.date;
+                            
+                            return (
+                                <div key={ticket.id || ticket._id} className="ticket-card" onClick={() => openTicket(ticket)}>
+                                    <div className="ticket-left">
+                                        <img 
+                                            src={ticket.event?.imageUrl || '/img/default-event.jpg'} 
+                                            alt={ticket.event?.title} 
+                                            className="ticket-thumb"
+                                        />
+                                    </div>
                                     
-                                    <div className="ticket-meta">
-                                        <span className="meta-item">
-                                            <FaCalendarDay /> {formatDate(ticket.event?.date)}
-                                        </span>
-                                        <span className="separator">•</span>
-                                        <span className="meta-item">
-                                            <FaMapMarkerAlt /> {ticket.event?.city || "Local não informado"}
-                                        </span>
+                                    <div className="ticket-center">
+                                        <h3>{formatText(ticket.event?.title || "Evento Desconhecido")}</h3>
+                                        <span className="ticket-type">{formatText(ticket.ticketType?.name || "Ingresso")}</span>
+                                        
+                                        <div className="ticket-meta">
+                                            <span className="meta-item">
+                                                <FaCalendarDay /> {formatDate(dateToShow)}
+                                            </span>
+                                            <span className="separator">•</span>
+                                            <span className="meta-item">
+                                                <FaMapMarkerAlt /> {ticket.event?.city || "Local não informado"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="ticket-right">
+                                        <button className="btn-qr">
+                                            <FaQrcode />
+                                        </button>
                                     </div>
                                 </div>
-                                
-                                <div className="ticket-right">
-                                    <button className="btn-qr">
-                                        <FaQrcode />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </main>
@@ -216,8 +227,18 @@ export default function MeusIngressos() {
                                 </div>
                                 <div className="info-row">
                                     <span>Data</span>
-                                    <strong>{formatDate(selectedTicket.event?.date)}</strong>
+                                    {/* CORREÇÃO: Também usa a data específica no modal */}
+                                    <strong>{formatDate(selectedTicket.ticketType?.activityDate || selectedTicket.event?.date)}</strong>
                                 </div>
+                                
+                                {/* Mostra o horário se disponível */}
+                                {selectedTicket.ticketType?.startTime && (
+                                    <div className="info-row">
+                                        <span>Horário</span>
+                                        <strong>{selectedTicket.ticketType.startTime} - {selectedTicket.ticketType.endTime}</strong>
+                                    </div>
+                                )}
+
                                 <div className="status-row">
                                     <span className={`status-pill ${selectedTicket.status}`}>
                                         {selectedTicket.status === 'valid' ? 'VÁLIDO PARA USO' : 'JÁ UTILIZADO'}
