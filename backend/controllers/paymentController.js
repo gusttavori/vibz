@@ -152,6 +152,24 @@ const createCheckoutSession = async (req, res) => {
                 return res.status(400).json({ message: `O ingresso "${tType.name}" esgotou ou não tem quantidade suficiente.` });
             }
 
+            // --- VALIDAÇÃO DE LIMITE POR USUÁRIO ---
+            const userBoughtCount = await prisma.ticket.count({
+                where: {
+                    userId: userId,
+                    ticketTypeId: ticketTypeId,
+                    status: { in: ['valid', 'used'] }
+                }
+            });
+
+            const maxAllowed = tType.maxPerUser || 4; 
+            
+            if ((userBoughtCount + quantity) > maxAllowed) {
+                return res.status(400).json({ 
+                    message: `Limite excedido para "${tType.name}". Você já possui ${userBoughtCount} e o limite é ${maxAllowed} por pessoa.` 
+                });
+            }
+            // ----------------------------------------
+
             const unitPrice = parseFloat(tType.price); 
             
             let unitPlatformFee = 0;

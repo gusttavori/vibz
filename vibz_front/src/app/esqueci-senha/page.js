@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import '../Auth.css'; // Usa o CSS de autenticação existente
+import '../Auth.css'; 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'; // Ajustado para /api se for o padrão do seu backend
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ForgotPasswordStep1() {
   const router = useRouter();
@@ -20,7 +20,6 @@ export default function ForgotPasswordStep1() {
     setError('');
 
     try {
-      // Rota ajustada para /api/auth/forgot-password
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -30,7 +29,6 @@ export default function ForgotPasswordStep1() {
       const data = await response.json();
 
       if (response.ok) {
-        // SUCESSO: Salva o email na sessão e vai para a tela do código
         sessionStorage.setItem('resetEmail', email);
         setMessage('Código enviado com sucesso! Redirecionando...');
         

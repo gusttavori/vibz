@@ -90,12 +90,10 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
         .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
     y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 25;
 
-    // --- LÓGICA DE DATA/HORA ESPECÍFICA DO INGRESSO ---
     let dateStr = "";
     let timeStr = "";
 
     if (ticketType && ticketType.activityDate) {
-        // Se o ingresso tem data específica (Palestra/Oficina)
         const dateObj = new Date(ticketType.activityDate);
         dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
         
@@ -107,12 +105,10 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
              timeStr = eventD.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
     } else {
-        // Data geral do evento
         const dateObj = new Date(event.eventDate || event.createdAt || new Date());
         dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
         timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
-    // --------------------------------------------------
 
     doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_LIGHT).text('DATA', cardX + pad, y);
     doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_DARK).text(`${dateStr} • ${timeStr}`, cardX + pad, y + 15);
@@ -127,7 +123,6 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     const qrSize = 150;
     doc.image(qrCodeImage, cardX + pad, y, { width: qrSize, height: qrSize });
     
-    // Mostra apenas os primeiros 8 dígitos para não poluir
     const displayCode = uniqueCode.length > 20 ? uniqueCode.substring(0, 8) + '...' : uniqueCode;
     doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_DARK)
         .text(displayCode, cardX + pad, y + qrSize + 5, { width: qrSize, align: 'center' });
@@ -159,7 +154,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
         const recipientEmail = stripeEmail || user.email;
         const recipientName = stripeName || user.name;
 
-        // Verifica se estamos em ambiente serverless (Vercel/Render) para usar /tmp
         const tempDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(__dirname, '../../tmp');
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -172,7 +166,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
             where: { 
                 userId: user.id, 
                 eventId: event.id,
-                // Busca tickets criados nos últimos 5 minutos para evitar pegar antigos
                 createdAt: { gte: new Date(Date.now() - 300000) } 
             },
             include: { ticketType: true }
@@ -238,28 +231,40 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 
 const validateTicket = async (req, res) => {
     const { qrCode } = req.body;
+    
+    // VERIFICAÇÃO DE SEGURANÇA (PRIORIDADE ALTA)
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: 'Não autorizado. Faça login.' });
+    }
+
     try {
         console.log("🔍 Validando:", qrCode);
 
-        // 1. Tenta buscar pelo campo oficial qrCodeData (UUID)
+        // 1. Busca o ticket
         let ticket = await prisma.ticket.findUnique({ 
             where: { qrCodeData: qrCode },
             include: { event: true, user: true, ticketType: true }
         });
 
-        // 2. Fallback: Se falhar e o código parecer um ID (curto ou formato específico), tenta pelo ID
+        // 2. Fallback para ID
         if (!ticket) {
             try {
                 ticket = await prisma.ticket.findUnique({
                     where: { id: qrCode },
                     include: { event: true, user: true, ticketType: true }
                 });
-            } catch (e) {
-                // Se der erro de formato de ID, apenas ignora
-            }
+            } catch (e) {}
         }
 
         if (!ticket) return res.status(404).json({ valid: false, message: 'Ingresso não encontrado.' });
+
+        // 3. TRAVA DE SEGURANÇA: Apenas o dono do evento pode validar
+        if (ticket.event.organizerId !== req.user.id) {
+            return res.status(403).json({ 
+                valid: false, 
+                message: 'Permissão negada. Você não é o organizador deste evento.' 
+            });
+        }
         
         if (ticket.status !== 'valid') {
             const usedDate = ticket.usedAt ? new Date(ticket.usedAt).toLocaleString('pt-BR') : 'Anteriormente';
@@ -341,7 +346,6 @@ const downloadTicketPDF = async (req, res) => {
     }
 };
 
-// --- FUNÇÃO DE ESPIONAGEM (DEBUG) ---
 const listLastTickets = async (req, res) => {
     try {
         const tickets = await prisma.ticket.findMany({
@@ -364,5 +368,5 @@ module.exports = {
     validateTicket, 
     getMyTickets, 
     downloadTicketPDF,
-    listLastTickets // Exportando a função de debug
+    listLastTickets 
 };

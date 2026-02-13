@@ -69,6 +69,10 @@ model User {
   coverPicture   String?
   bio            String?
 
+  // Reset de Senha (NOVOS CAMPOS)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

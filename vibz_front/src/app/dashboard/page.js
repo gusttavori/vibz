@@ -9,7 +9,7 @@ import confetti from 'canvas-confetti';
 import { 
     FaMoneyBillWave, FaTicketAlt, FaUserCheck, FaChartLine, 
     FaRegClock, FaCheckCircle, FaExclamationCircle,
-    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList
+    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -198,7 +198,14 @@ const DashboardContent = () => {
                         <h1>Painel do Organizador</h1>
                         <p>Bem-vindo, {userData?.name}</p>
                     </div>
-                    <div className="live-indicator"><span className="dot"></span> Online</div>
+                    
+                    {/* BOTÃO DE CHECK-IN (NOVO) */}
+                    <div className="header-actions-dash">
+                        <button className="btn-checkin" onClick={() => router.push('/checkin')}>
+                            <FaQrcode /> Validar Ingressos
+                        </button>
+                        <div className="live-indicator"><span className="dot"></span> Online</div>
+                    </div>
                 </div>
 
                 <div className="wallet-section-dashboard">
@@ -257,7 +264,6 @@ const DashboardContent = () => {
                             <div className="events-management-section">
                                 <div className="section-header-dash">
                                     <h2><FaCalendarAlt /> Meus Eventos</h2>
-                                    {/* CORREÇÃO AQUI: Rota atualizada para /admin/new */}
                                     <button className="btn-new-event" onClick={() => router.push('/admin/new')}>Criar Novo</button>
                                 </div>
                                 <div className="events-list-dash">
@@ -281,8 +287,6 @@ const DashboardContent = () => {
                                                     >
                                                         <FaList /> Participantes
                                                     </button>
-                                                    
-                                                    {/* Atenção: Verifique se a rota de edição também é no /admin */}
                                                     <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
                                                         <FaEdit /> Editar
                                                     </button>

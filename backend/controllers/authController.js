@@ -7,7 +7,6 @@ const nodemailer = require('nodemailer');
 
 const generateToken = (id) => {
     if (!process.env.JWT_SECRET) {
-        // Fallback temporário para evitar crash se esquecer o .env
         return jwt.sign({ id }, 'secret_temporario_vibz', { expiresIn: '7d' });
     }
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -16,7 +15,9 @@ const generateToken = (id) => {
 };
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail', 
+    host: 'smtp-relay.brevo.com', // Ajuste conforme seu provedor
+    port: 587,
+    secure: false,
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS
@@ -73,8 +74,6 @@ const loginUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
     const { googleAccessToken } = req.body;
-    
-    // Se não vier token, tentamos pegar dados diretos (caso seu front mande o objeto user direto)
     const { email: directEmail, name: directName, googleId: directGoogleId } = req.body;
 
     try {
@@ -82,7 +81,6 @@ const googleLogin = async (req, res) => {
         let nameToUse = directName;
         let googleIdToUse = directGoogleId;
 
-        // Se veio Access Token, buscamos no Google
         if (googleAccessToken) {
             try {
                 const response = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -101,16 +99,12 @@ const googleLogin = async (req, res) => {
             return res.status(400).json({ msg: "Não foi possível obter o email do Google." });
         }
 
-        // Verifica se usuário existe
         let user = await prisma.user.findUnique({ where: { email: emailToUse } });
 
         if (user) {
-            // Usuário existe -> Login
-            // REMOVIDO: user.update({ googleId }) para evitar erro de schema
             const token = generateToken(user.id);
             return res.json({ msg: "Login Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         } else {
-            // Usuário novo -> Criação
             const randomPassword = Math.random().toString(36).slice(-8) + process.env.JWT_SECRET;
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(randomPassword, salt);
@@ -120,7 +114,6 @@ const googleLogin = async (req, res) => {
                     name: nameToUse || 'Usuário Google',
                     email: emailToUse,
                     password: hashedPassword,
-                    // googleId: googleIdToUse, // REMOVIDO: Comentado para não quebrar se a coluna não existir
                     isAdmin: false
                 }
             });
@@ -128,10 +121,12 @@ const googleLogin = async (req, res) => {
             return res.status(201).json({ msg: "Cadastro Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         }
     } catch (err) {
-        console.error("Erro Geral Google Login:", err); // Agora vai aparecer o erro real no terminal se der pau
+        console.error("Erro Geral Google Login:", err); 
         res.status(500).json({ msg: "Falha na autenticação Google." });
     }
 };
+
+// --- FLUXO DE RECUPERAÇÃO DE SENHA ---
 
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
@@ -145,19 +140,30 @@ const forgotPassword = async (req, res) => {
             where: { email },
             data: {
                 resetPasswordToken: code,
-                resetPasswordExpires: new Date(Date.now() + 3600000)
+                resetPasswordExpires: new Date(Date.now() + 3600000) // 1 hora
             }
         });
 
         const mailOptions = {
             to: user.email,
-            from: 'Vibz <no-reply@vibz.com>',
-            subject: 'Recuperação de Senha',
-            text: `Seu código: ${code}`
+            from: `"Vibz Segurança" <${process.env.EMAIL_USER}>`,
+            subject: 'Recuperação de Senha - Vibz',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
+                    <p>Você solicitou a redefinição de sua senha na Vibz.</p>
+                    <p>Seu código de verificação é:</p>
+                    <h1 style="letter-spacing: 5px; background: #f3e8ff; display: inline-block; padding: 10px 20px; border-radius: 8px;">${code}</h1>
+                    <p>Este código expira em 1 hora.</p>
+                    <hr/>
+                    <p style="font-size: 12px; color: #777;">Se você não solicitou isso, ignore este e-mail.</p>
+                </div>
+            `
         };
         await transporter.sendMail(mailOptions);
         res.status(200).json({ msg: 'Código enviado!' });
     } catch (error) {
+        console.error("Erro forgotPassword:", error);
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
@@ -172,7 +178,7 @@ const validateResetCode = async (req, res) => {
                 resetPasswordExpires: { gt: new Date() }
             }
         });
-        if (!user) return res.status(400).json({ msg: 'Código inválido/expirado.' });
+        if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
         res.status(200).json({ msg: 'Código válido.' });
     } catch (error) {
         res.status(500).json({ msg: 'Erro ao validar.' });
@@ -189,7 +195,7 @@ const resetPassword = async (req, res) => {
                 resetPasswordExpires: { gt: new Date() }
             }
         });
-        if (!user) return res.status(400).json({ msg: 'Código inválido.' });
+        if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
         const isSame = await bcrypt.compare(newPassword, user.password);
         if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
@@ -206,9 +212,9 @@ const resetPassword = async (req, res) => {
             }
         });
 
-        res.status(200).json({ msg: 'Senha alterada!' });
+        res.status(200).json({ msg: 'Senha alterada com sucesso!' });
     } catch (error) {
-        res.status(500).json({ msg: 'Erro ao redefinir.' });
+        res.status(500).json({ msg: 'Erro ao redefinir senha.' });
     }
 };
 

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import '../../Auth.css'; 
 
-// CORREÇÃO: Variável padrão
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ForgotPasswordStep3() {
@@ -47,7 +46,6 @@ export default function ForgotPasswordStep3() {
     setMessage('');
 
     try {
-      // CORREÇÃO: Removeu '/api' manual
       const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

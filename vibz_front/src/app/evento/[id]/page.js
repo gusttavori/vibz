@@ -7,7 +7,7 @@ import {
     FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
     FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
     FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
-    FaInfoCircle, FaClock
+    FaInfoCircle, FaClock, FaCopy
 } from 'react-icons/fa'; 
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
@@ -41,13 +41,12 @@ const SkeletonLoader = () => (
     </div>
 );
 
-// Função auxiliar para formatar data (YYYY-MM-DD -> DD/MM)
 const formatDateSimple = (dateStr) => {
     if (!dateStr) return null;
     const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
     const parts = cleanDate.split('-');
     if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}`; // Retorna DD/MM
+        return `${parts[2]}/${parts[1]}`; 
     }
     return null;
 };
@@ -69,6 +68,9 @@ export default function EventoDetalhes() {
 
     const [showParticipantModal, setShowParticipantModal] = useState(false);
     const [participantsData, setParticipantsData] = useState({});
+    
+    // NOVO ESTADO: Controla a replicação de dados
+    const [replicateData, setReplicateData] = useState(false);
 
     useEffect(() => {
         if (!id) return; 
@@ -114,9 +116,19 @@ export default function EventoDetalhes() {
     }, [id]);
 
     const handleQuantityChange = (ticketId, delta) => {
+        const ticket = evento.tickets.find(t => t.id === ticketId || t._id === ticketId);
+        const maxPerUser = ticket?.maxPerUser || 4; 
+
         setTicketQuantities(prev => {
             const currentQty = prev[ticketId] || 0;
-            return { ...prev, [ticketId]: Math.max(0, currentQty + delta) };
+            const newQty = currentQty + delta;
+
+            if (newQty > maxPerUser) {
+                toast.error(`Limite de ${maxPerUser} ingressos por pessoa.`);
+                return prev;
+            }
+
+            return { ...prev, [ticketId]: Math.max(0, newQty) };
         });
     };
 
@@ -156,18 +168,14 @@ export default function EventoDetalhes() {
 
     const handleApplyCoupon = async () => {
         if (!couponCode) return;
-        
         const toastId = toast.loading("Validando cupom...");
-
         try {
             const response = await fetch(`${API_BASE_URL}/payments/validate-coupon`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: couponCode, eventId: id })
             });
-
             const data = await response.json();
-
             if (response.ok && data.valid) {
                 setAppliedCoupon({ code: data.code, feeRate: 0.03 }); 
                 toast.success(data.message, { id: toastId });
@@ -187,14 +195,67 @@ export default function EventoDetalhes() {
         toast('Cupom removido.', { icon: '🗑️' });
     };
 
+    // Função auxiliar para pegar todas as chaves de participantes (ticketId_index)
+    const getAllParticipantKeys = () => {
+        const keys = [];
+        Object.entries(ticketQuantities).forEach(([ticketId, qty]) => {
+            for (let i = 0; i < qty; i++) {
+                keys.push(`${ticketId}_${i}`);
+            }
+        });
+        return keys;
+    };
+
+    const handleReplicateDataToggle = (e) => {
+        const isChecked = e.target.checked;
+        setReplicateData(isChecked);
+
+        if (isChecked) {
+            const allKeys = getAllParticipantKeys();
+            if (allKeys.length > 1) {
+                const firstKey = allKeys[0];
+                const firstData = participantsData[firstKey] || {};
+                
+                setParticipantsData(prev => {
+                    const newData = { ...prev };
+                    allKeys.slice(1).forEach(key => {
+                        newData[key] = { ...newData[key], ...firstData };
+                    });
+                    return newData;
+                });
+                toast.success("Dados copiados para todos os ingressos!");
+            }
+        }
+    };
+
     const handleInputChange = (ticketId, index, questionLabel, value) => {
         const key = `${ticketId}_${index}`;
-        setParticipantsData(prev => ({ ...prev, [key]: { ...prev[key], [questionLabel]: value } }));
+        
+        setParticipantsData(prev => {
+            // Atualiza o campo atual
+            const newData = { ...prev, [key]: { ...prev[key], [questionLabel]: value } };
+
+            // Se a replicação estiver ativa e estamos editando o PRIMEIRO participante
+            if (replicateData) {
+                const allKeys = getAllParticipantKeys();
+                const firstKey = allKeys[0];
+
+                if (key === firstKey) {
+                    // Copia o valor para todos os outros participantes
+                    allKeys.slice(1).forEach(targetKey => {
+                        newData[targetKey] = { 
+                            ...newData[targetKey], 
+                            [questionLabel]: value 
+                        };
+                    });
+                }
+            }
+            return newData;
+        });
     };
 
     const validateParticipants = () => {
         if (!evento.formSchema || evento.formSchema.length === 0) return true;
-        
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
 
         for (const [ticketId, qty] of Object.entries(ticketQuantities)) {
@@ -269,6 +330,7 @@ export default function EventoDetalhes() {
     const renderParticipantInputs = () => {
         const inputs = [];
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
+        let globalIndex = 0;
 
         Object.entries(ticketQuantities).forEach(([ticketId, qty]) => {
             if (qty > 0) {
@@ -276,9 +338,16 @@ export default function EventoDetalhes() {
                 for (let i = 0; i < qty; i++) {
                     const key = `${ticketId}_${i}`;
                     const currentData = participantsData[key] || {};
+                    const isFirst = globalIndex === 0; // Identifica se é o primeiro formulário de todos
+                    
                     inputs.push(
                         <div key={key} className="participant-card">
-                            <span className="participant-badge"><FaUserAlt style={{marginRight: '6px'}}/>{ticketInfo?.name} - Participante #{i + 1}</span>
+                            <span className="participant-badge">
+                                <FaUserAlt style={{marginRight: '6px'}}/>
+                                {ticketInfo?.name} - Participante #{i + 1}
+                                {isFirst && replicateData && <span style={{marginLeft: '10px', fontSize: '0.7em', color: '#0369a1'}}>(Principal - Dados serão copiados)</span>}
+                            </span>
+                            
                             {schema.map((q, qIdx) => (
                                 <div key={qIdx} className="form-group">
                                     <label className="form-label">{q.label} {q.required && <span className="required-mark">*</span>}</label>
@@ -295,6 +364,7 @@ export default function EventoDetalhes() {
                             ))}
                         </div>
                     );
+                    globalIndex++;
                 }
             }
         });
@@ -379,10 +449,12 @@ export default function EventoDetalhes() {
                                                 const available = ticket.quantity - (ticket.sold || 0);
                                                 const isSoldOut = available <= 0;
                                                 
-                                                const isConflict = hasTimeConflict(ticket, ticketQuantities);
-                                                const disablePlus = isSoldOut || qty >= available || (qty === 0 && isConflict);
+                                                const maxPerUser = ticket.maxPerUser || 4;
+                                                const isMaxReached = qty >= maxPerUser;
 
-                                                // Formata a data se existir
+                                                const isConflict = hasTimeConflict(ticket, ticketQuantities);
+                                                const disablePlus = isSoldOut || qty >= available || isMaxReached || (qty === 0 && isConflict);
+
                                                 const dateLabel = formatDateSimple(ticket.activityDate);
 
                                                 return (
@@ -390,21 +462,16 @@ export default function EventoDetalhes() {
                                                         <div className="ticket-info">
                                                             <span className="ticket-name">{ticket.name}</span>
                                                             <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                            
-                                                            {/* ATUALIZADO: Mostra Data e Hora */}
                                                             {ticket.startTime && ticket.endTime && (
                                                                 <span className="ticket-time-badge">
                                                                     {dateLabel && (
                                                                         <>
-                                                                            <FaCalendarDay style={{marginRight:'4px'}}/> 
-                                                                            {dateLabel} 
-                                                                            <span style={{margin:'0 6px', opacity:0.4}}>|</span> 
+                                                                            <FaCalendarDay style={{marginRight:'4px'}}/> {dateLabel} <span style={{margin:'0 6px', opacity:0.4}}>|</span> 
                                                                         </>
                                                                     )}
                                                                     <FaClock style={{marginRight:'4px'}}/> {ticket.startTime} - {ticket.endTime}
                                                                 </span>
                                                             )}
-
                                                             <div className="ticket-price-row">
                                                                 <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
                                                                 {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
@@ -425,7 +492,6 @@ export default function EventoDetalhes() {
                                         ) : (
                                             <p className="no-tickets-msg">Nenhum ingresso disponível no momento.</p>
                                         )}
-                                        
                                         {ticketsList.length > 0 && (
                                             <>
                                                 <div className="coupon-section">
@@ -461,10 +527,23 @@ export default function EventoDetalhes() {
                     <div className="modal-content">
                         <div className="modal-header"><h3><FaClipboardList /> Dados dos Participantes</h3><button className="close-modal-btn" onClick={() => setShowParticipantModal(false)}><FaTimes /></button></div>
                         <div className="modal-body">
+                            {/* --- FEATURE: PREENCHIMENTO AUTOMÁTICO --- */}
+                            <div className="replicate-container" style={{backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center'}}>
+                                <input 
+                                    type="checkbox" 
+                                    id="replicateCheck" 
+                                    checked={replicateData} 
+                                    onChange={handleReplicateDataToggle} 
+                                    style={{width: '18px', height: '18px', marginRight: '10px', cursor: 'pointer'}} 
+                                />
+                                <label htmlFor="replicateCheck" style={{fontSize: '0.9rem', color: '#0369a1', cursor: 'pointer', fontWeight: '600'}}>
+                                    Repetir dados do primeiro participante para todos
+                                </label>
+                            </div>
+
                             <p style={{marginBottom: '20px', color: '#64748b', fontSize: '0.95rem'}}>O organizador solicitou as seguintes informações para a gestão do evento.</p>
                             {renderParticipantInputs()}
                             
-                            {/* ALERTA LGPD NO MODAL */}
                             <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b'}}>
                                 <FaInfoCircle style={{marginRight: '5px', verticalAlign: 'middle'}}/>
                                 <strong>Privacidade:</strong> Os dados acima serão compartilhados com o organizador 
