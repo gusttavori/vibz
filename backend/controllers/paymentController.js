@@ -66,11 +66,15 @@ const createCheckoutSession = async (req, res) => {
 
         if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
 
+        // TRAVA DE SEGURANÇA: Evento Informativo não pode ter venda
         if (event.isInformational) {
             return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
         }
 
+        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO ---
         const ticketIdsToCheck = Object.keys(tickets).filter(tid => tickets[tid] > 0);
+        
+        // Só verifica se houver mais de 1 tipo de ingresso selecionado
         if (ticketIdsToCheck.length > 1) {
             const dbTickets = await prisma.ticketType.findMany({
                 where: { id: { in: ticketIdsToCheck } }
@@ -87,16 +91,20 @@ const createCheckoutSession = async (req, res) => {
                     const t1 = dbTickets[i];
                     const t2 = dbTickets[j];
 
+                    // Verifica se ambos têm configuração de horário
                     if (t1.activityDate && t2.activityDate && t1.startTime && t2.startTime && t1.endTime && t2.endTime) {
                         const d1 = new Date(t1.activityDate).toISOString().split('T')[0];
                         const d2 = new Date(t2.activityDate).toISOString().split('T')[0];
 
+                        // Se for no mesmo dia
                         if (d1 === d2) {
                             const start1 = toMinutes(t1.startTime);
                             const end1 = toMinutes(t1.endTime);
                             const start2 = toMinutes(t2.startTime);
                             const end2 = toMinutes(t2.endTime);
 
+                            // Lógica de sobreposição: (InicioA < FimB) e (FimA > InicioB)
+                            // Aqui simplificado: O máximo dos inícios deve ser menor que o mínimo dos fins
                             if (Math.max(start1, start2) < Math.min(end1, end2)) {
                                 return res.status(400).json({ 
                                     message: `Conflito de horário: "${t1.name}" e "${t2.name}" ocorrem simultaneamente.` 
@@ -107,6 +115,7 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
         }
+        // --- FIM VALIDAÇÃO ---
 
         let validCoupon = null;
         let platformRate = 0.08; 
@@ -188,6 +197,7 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
+        // --- LÓGICA DE EVENTO GRATUITO ---
         if (totalPaid === 0) {
             const order = await prisma.order.create({
                 data: {
@@ -247,6 +257,7 @@ const createCheckoutSession = async (req, res) => {
             });
         }
 
+        // --- FLUXO PAGO (STRIPE) ---
         let paymentIntentData = {};
         const organizerStripeId = event.organizer?.stripeAccountId;
         const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;

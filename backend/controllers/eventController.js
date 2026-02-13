@@ -45,7 +45,6 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // Retorna os campos de data para o frontend (edição)
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || ''
@@ -147,8 +146,6 @@ const createEvent = async (req, res) => {
             isInformational: isInfoBool
         };
 
-        // --- ATUALIZAÇÃO CRUCIAL AQUI ---
-        // Mapeia os tickets incluindo os campos de data/hora
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
                 create: parsedTicketsFlat.map(t => ({
@@ -160,7 +157,6 @@ const createEvent = async (req, res) => {
                     description: t.description,
                     isHalfPrice: t.isHalfPrice || false,
                     status: 'active',
-                    // Salva data e hora se existirem e não forem string vazia
                     activityDate: (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null,
                     startTime: (t.startTime && t.startTime !== "") ? t.startTime : null,
                     endTime: (t.endTime && t.endTime !== "") ? t.endTime : null
@@ -246,7 +242,6 @@ const updateEvent = async (req, res) => {
                     const priceVal = parseFloat(t.price);
                     const qtdVal = parseInt(t.quantity);
                     
-                    // Tratamento seguro para datas na atualização
                     const actDate = (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null;
                     const startT = (t.startTime && t.startTime !== "") ? t.startTime : null;
                     const endT = (t.endTime && t.endTime !== "") ? t.endTime : null;
@@ -277,7 +272,12 @@ const updateEvent = async (req, res) => {
             }
         }
 
-        res.json(mapEventToFrontend(updatedEvent));
+        const updated = await prisma.event.findUnique({
+            where: { id },
+            include: { ticketTypes: true }
+        });
+
+        res.json(mapEventToFrontend(updated));
 
     } catch (error) {
         console.error("Erro updateEvent:", error);
