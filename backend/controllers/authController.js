@@ -14,14 +14,21 @@ const generateToken = (id) => {
     });
 };
 
+// --- CORREÇÃO: Configuração IDÊNTICA ao ticketController (que funciona) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', // Ajuste conforme seu provedor
-    port: 587,
+    host: 'smtp-relay.brevo.com', // Se estiver usando Gmail, confirme se é smtp.gmail.com
+    port: 2525, // Porta alterada para 2525 (a mesma dos ingressos)
     secure: false,
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS
-    }
+    },
+    tls: {
+        rejectUnauthorized: false // Importante para evitar erro de certificado na Render
+    },
+    connectionTimeout: 10000, 
+    greetingTimeout: 10000,
+    socketTimeout: 10000
 });
 
 const registerUser = async (req, res) => {
@@ -130,6 +137,8 @@ const googleLogin = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
+    console.log("📨 Tentando enviar email para:", email);
+
     try {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return res.status(404).json({ msg: 'Email não encontrado.' });
@@ -144,9 +153,14 @@ const forgotPassword = async (req, res) => {
             }
         });
 
+        // Verificação de Segurança das Credenciais
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            throw new Error("Credenciais de email não configuradas no servidor.");
+        }
+
         const mailOptions = {
             to: user.email,
-            from: `"Vibz Segurança" <${process.env.EMAIL_USER}>`,
+            from: `"Vibz Segurança" <${process.env.EMAIL_USER}>`, // Usa o mesmo email das variaveis
             subject: 'Recuperação de Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -160,10 +174,18 @@ const forgotPassword = async (req, res) => {
                 </div>
             `
         };
+        
+        console.log("🚀 Enviando e-mail..."); 
         await transporter.sendMail(mailOptions);
+        console.log("✅ E-mail enviado com sucesso!"); 
+        
         res.status(200).json({ msg: 'Código enviado!' });
     } catch (error) {
-        console.error("Erro forgotPassword:", error);
+        console.error("❌ ERRO NO ENVIO DE EMAIL:", error); 
+        
+        if (error.code === 'EAUTH') return res.status(500).json({ msg: 'Erro de autenticação no servidor de email.' });
+        if (error.code === 'ETIMEDOUT') return res.status(500).json({ msg: 'Timeout ao conectar no servidor de email.' });
+        
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
@@ -197,8 +219,11 @@ const resetPassword = async (req, res) => {
         });
         if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
-        const isSame = await bcrypt.compare(newPassword, user.password);
-        if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
+        // Só verifica a senha antiga se o usuário tiver senha
+        if (user.password) {
+            const isSame = await bcrypt.compare(newPassword, user.password);
+            if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
@@ -214,6 +239,7 @@ const resetPassword = async (req, res) => {
 
         res.status(200).json({ msg: 'Senha alterada com sucesso!' });
     } catch (error) {
+        console.error("Erro resetPassword:", error);
         res.status(500).json({ msg: 'Erro ao redefinir senha.' });
     }
 };
