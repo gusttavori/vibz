@@ -8,7 +8,7 @@ import styles from './CadastroEvento.module.css';
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaStar, FaCalendarAlt, FaMapMarkerAlt,
-    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList, FaClock
+    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList, FaClock, FaUserLock
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -45,6 +45,7 @@ const CadastroEvento = () => {
         { 
             name: '', category: 'Inteira', isHalfPrice: false,
             hasSchedule: false, 
+            maxPerUser: 4, // NOVO CAMPO (Padrão 4)
             activityDate: '', startTime: '', endTime: '', 
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }
@@ -86,6 +87,7 @@ const CadastroEvento = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
             hasSchedule: false,
+            maxPerUser: 4,
             activityDate: '', startTime: '', endTime: '',
             batches: [{ name: 'Lote Único', price: '0', quantity: '' }]
         }]);
@@ -154,6 +156,7 @@ const CadastroEvento = () => {
             if (ticketTypes.length === 0) return toast.error("Adicione pelo menos um ingresso.");
             for (const type of ticketTypes) {
                 if (!type.name) return toast.error("Nome do tipo de ingresso é obrigatório.");
+                if (!type.maxPerUser || type.maxPerUser < 1) return toast.error(`Limite por pessoa inválido para o ingresso "${type.name}".`);
                 
                 if (type.hasSchedule) {
                     if (!type.activityDate) return toast.error(`Preencha a data da atividade para o ingresso "${type.name}"`);
@@ -211,6 +214,7 @@ const CadastroEvento = () => {
                         activityDate: type.hasSchedule ? type.activityDate : null,
                         startTime: type.hasSchedule ? type.startTime : null,
                         endTime: type.hasSchedule ? type.endTime : null,
+                        maxPerUser: parseInt(type.maxPerUser), // ENVIA O LIMITE
                         batch: batch.name, 
                         price: parseFloat(batch.price.toString().replace(',', '.')),
                         quantity: parseInt(batch.quantity),
@@ -349,21 +353,36 @@ const CadastroEvento = () => {
                                 {ticketTypes.map((type, typeIdx) => (
                                     <div key={typeIdx} className={styles.ticketTypeCard}>
                                         <div className={styles.ticketTypeHeader}>
-                                            <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Palestra de Marketing ou Área VIP" required /></div>
+                                            <div className={styles.inputGroup} style={{flex: 2}}><label className={styles.label}>Nome do Ingresso</label><input className={styles.input} type="text" value={type.name} onChange={e => handleChangeTicketType(typeIdx, 'name', e.target.value)} placeholder="Ex: Palestra ou Área VIP" required /></div>
                                             <div className={styles.inputGroup} style={{flex: 1}}><label className={styles.label}>Categoria</label><select className={styles.select} value={type.category} onChange={e => handleChangeTicketType(typeIdx, 'category', e.target.value)}><option>Inteira</option><option>Meia / Estudante</option><option>VIP</option><option>Cortesia</option></select></div>
                                             {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                         </div>
 
-                                        <div style={{marginBottom: '15px'}}>
-                                            <label className={styles.checkboxLabel} style={{fontSize: '0.9rem', color: '#475569', fontWeight: '600'}}>
+                                        <div style={{display:'flex', gap:'20px', marginBottom: '15px', flexWrap:'wrap'}}>
+                                            {/* CAMPO NOVO: MÁX POR PESSOA */}
+                                            <div className={styles.inputGroup} style={{flex: '0 0 180px'}}>
+                                                <label className={styles.label}><FaUserLock style={{marginRight:'5px'}}/> Máx. por pessoa</label>
                                                 <input 
-                                                    className={styles.checkbox} 
-                                                    type="checkbox" 
-                                                    checked={type.hasSchedule} 
-                                                    onChange={e => handleChangeTicketType(typeIdx, 'hasSchedule', e.target.checked)} 
+                                                    className={styles.input} 
+                                                    type="number" 
+                                                    min="1"
+                                                    value={type.maxPerUser} 
+                                                    onChange={e => handleChangeTicketType(typeIdx, 'maxPerUser', e.target.value)} 
+                                                    required 
                                                 />
-                                                Definir data/horário específico para este ingresso (Palestras/Workshops)
-                                            </label>
+                                            </div>
+
+                                            <div style={{display:'flex', alignItems:'center', paddingTop:'20px'}}>
+                                                <label className={styles.checkboxLabel} style={{fontSize: '0.9rem', color: '#475569', fontWeight: '600'}}>
+                                                    <input 
+                                                        className={styles.checkbox} 
+                                                        type="checkbox" 
+                                                        checked={type.hasSchedule} 
+                                                        onChange={e => handleChangeTicketType(typeIdx, 'hasSchedule', e.target.checked)} 
+                                                    />
+                                                    Data/horário específico (Palestras)
+                                                </label>
+                                            </div>
                                         </div>
 
                                         {type.hasSchedule && (
@@ -414,7 +433,6 @@ const CadastroEvento = () => {
                         <section className={styles.card}>
                             <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
                             
-                            {/* ALERTA LGPD */}
                             <div style={{marginBottom: '20px', padding: '12px', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: '8px', color: '#c2410c', fontSize: '0.9rem'}}>
                                 <strong>⚠️ Atenção à LGPD:</strong> Evite solicitar dados sensíveis (como religião, saúde, orientação sexual ou dados bancários) a menos que seja estritamente necessário para a execução do evento. Você é o controlador desses dados.
                             </div>
