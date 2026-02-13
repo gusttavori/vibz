@@ -70,7 +70,6 @@ const createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
         }
 
-        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO ---
         const ticketIdsToCheck = Object.keys(tickets).filter(tid => tickets[tid] > 0);
         if (ticketIdsToCheck.length > 1) {
             const dbTickets = await prisma.ticketType.findMany({
@@ -108,7 +107,6 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
         }
-        // --- FIM VALIDAÇÃO ---
 
         let validCoupon = null;
         let platformRate = 0.08; 

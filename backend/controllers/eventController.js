@@ -74,7 +74,6 @@ const createEvent = async (req, res) => {
 
         const userId = req.user.id;
 
-        // Converte strings "true"/"false" do FormData para Boolean
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -88,7 +87,6 @@ const createEvent = async (req, res) => {
             return res.status(400).json({ message: "Dados JSON inválidos." });
         }
 
-        // Validação: Se NÃO for informativo, exige ingressos
         if (!isInfoBool && parsedTicketsFlat.length === 0) {
             return res.status(400).json({ message: "Eventos com inscrição precisam de pelo menos um tipo de ingresso." });
         }
@@ -115,7 +113,6 @@ const createEvent = async (req, res) => {
             instagram: organizerInstagram || ""
         };
 
-        // Calcula preço mínimo apenas se houver ingressos
         let minPrice = 0;
         if (parsedTicketsFlat.length > 0) {
             minPrice = parsedTicketsFlat.reduce((min, t) => {
@@ -146,7 +143,6 @@ const createEvent = async (req, res) => {
             isInformational: isInfoBool
         };
 
-        // Só adiciona a relação de criação de tickets se o array não estiver vazio
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
                 create: parsedTicketsFlat.map(t => ({
@@ -157,7 +153,10 @@ const createEvent = async (req, res) => {
                     quantity: parseInt(t.quantity),
                     description: t.description,
                     isHalfPrice: t.isHalfPrice || false,
-                    status: 'active'
+                    status: 'active',
+                    activityDate: t.activityDate ? new Date(t.activityDate) : null,
+                    startTime: t.startTime || null,
+                    endTime: t.endTime || null
                 }))
             };
         }
@@ -192,10 +191,9 @@ const updateEvent = async (req, res) => {
             title, description, category, ageRating, 
             refundPolicy, location, city, 
             sessions, tickets, organizerInfo, formSchema,
-            isInformational // Extrair novo campo
+            isInformational 
         } = req.body;
 
-        // Converte para boolean se vier como string
         let isInfoBool = existingEvent.isInformational;
         if (isInformational !== undefined) {
             isInfoBool = isInformational === 'true' || isInformational === true;
@@ -229,11 +227,10 @@ const updateEvent = async (req, res) => {
                 sessions: parsedSessions,
                 organizerInfo: parsedOrganizerInfo,
                 formSchema: parsedFormSchema,
-                isInformational: isInfoBool // Atualiza o campo
+                isInformational: isInfoBool 
             }
         });
 
-        // Atualização de tickets apenas se enviado e não vazio
         if (tickets) {
             const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
             
@@ -246,14 +243,20 @@ const updateEvent = async (req, res) => {
                             where: { id: t.id },
                             data: {
                                 name: t.name, price: priceVal, quantity: qtdVal, 
-                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
+                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
+                                activityDate: t.activityDate ? new Date(t.activityDate) : null,
+                                startTime: t.startTime || null,
+                                endTime: t.endTime || null
                             }
                         });
                     } else {
                         await prisma.ticketType.create({
                             data: {
                                 eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
-                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice
+                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
+                                activityDate: t.activityDate ? new Date(t.activityDate) : null,
+                                startTime: t.startTime || null,
+                                endTime: t.endTime || null
                             }
                         });
                     }
