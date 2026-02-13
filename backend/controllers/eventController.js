@@ -44,7 +44,11 @@ const mapEventToFrontend = (event) => {
             batch: t.batchName, 
             price: t.price,
             quantity: t.quantity, 
-            sold: t.sold
+            sold: t.sold,
+            // Retorna os campos de data para o frontend (edição)
+            activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
+            startTime: t.startTime || '',
+            endTime: t.endTime || ''
         })) : [],
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
         organizer: organizerData,
@@ -143,6 +147,8 @@ const createEvent = async (req, res) => {
             isInformational: isInfoBool
         };
 
+        // --- ATUALIZAÇÃO CRUCIAL AQUI ---
+        // Mapeia os tickets incluindo os campos de data/hora
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
                 create: parsedTicketsFlat.map(t => ({
@@ -154,9 +160,10 @@ const createEvent = async (req, res) => {
                     description: t.description,
                     isHalfPrice: t.isHalfPrice || false,
                     status: 'active',
-                    activityDate: t.activityDate ? new Date(t.activityDate) : null,
-                    startTime: t.startTime || null,
-                    endTime: t.endTime || null
+                    // Salva data e hora se existirem e não forem string vazia
+                    activityDate: (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null,
+                    startTime: (t.startTime && t.startTime !== "") ? t.startTime : null,
+                    endTime: (t.endTime && t.endTime !== "") ? t.endTime : null
                 }))
             };
         }
@@ -238,15 +245,21 @@ const updateEvent = async (req, res) => {
                 for (const t of ticketsData) {
                     const priceVal = parseFloat(t.price);
                     const qtdVal = parseInt(t.quantity);
+                    
+                    // Tratamento seguro para datas na atualização
+                    const actDate = (t.activityDate && t.activityDate !== "") ? new Date(t.activityDate) : null;
+                    const startT = (t.startTime && t.startTime !== "") ? t.startTime : null;
+                    const endT = (t.endTime && t.endTime !== "") ? t.endTime : null;
+
                     if (t.id) {
                         await prisma.ticketType.update({
                             where: { id: t.id },
                             data: {
                                 name: t.name, price: priceVal, quantity: qtdVal, 
                                 batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: t.activityDate ? new Date(t.activityDate) : null,
-                                startTime: t.startTime || null,
-                                endTime: t.endTime || null
+                                activityDate: actDate,
+                                startTime: startT,
+                                endTime: endT
                             }
                         });
                     } else {
@@ -254,9 +267,9 @@ const updateEvent = async (req, res) => {
                             data: {
                                 eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
                                 batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: t.activityDate ? new Date(t.activityDate) : null,
-                                startTime: t.startTime || null,
-                                endTime: t.endTime || null
+                                activityDate: actDate,
+                                startTime: startT,
+                                endTime: endT
                             }
                         });
                     }
