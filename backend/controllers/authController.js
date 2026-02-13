@@ -14,17 +14,16 @@ const generateToken = (id) => {
     });
 };
 
-// --- CORREÇÃO: Configuração IDÊNTICA ao ticketController (que funciona) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', // Se estiver usando Gmail, confirme se é smtp.gmail.com
-    port: 2525, // Porta alterada para 2525 (a mesma dos ingressos)
+    host: 'smtp-relay.brevo.com',
+    port: 2525, 
     secure: false,
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false // Importante para evitar erro de certificado na Render
+        rejectUnauthorized: false
     },
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
@@ -133,8 +132,6 @@ const googleLogin = async (req, res) => {
     }
 };
 
-// --- FLUXO DE RECUPERAÇÃO DE SENHA ---
-
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
     console.log("📨 Tentando enviar email para:", email);
@@ -149,7 +146,7 @@ const forgotPassword = async (req, res) => {
             where: { email },
             data: {
                 resetPasswordToken: code,
-                resetPasswordExpires: new Date(Date.now() + 3600000) // 1 hora
+                resetPasswordExpires: new Date(Date.now() + 3600000) 
             }
         });
 
@@ -160,7 +157,8 @@ const forgotPassword = async (req, res) => {
 
         const mailOptions = {
             to: user.email,
-            from: `"Vibz Segurança" <${process.env.EMAIL_USER}>`, // Usa o mesmo email das variaveis
+            // AQUI É A CORREÇÃO: Usar apenas o email process.env.EMAIL_USER, sem nome fantasia, para evitar bloqueio do Brevo
+            from: process.env.EMAIL_USER, 
             subject: 'Recuperação de Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -219,7 +217,6 @@ const resetPassword = async (req, res) => {
         });
         if (!user) return res.status(400).json({ msg: 'Código inválido ou expirado.' });
 
-        // Só verifica a senha antiga se o usuário tiver senha
         if (user.password) {
             const isSame = await bcrypt.compare(newPassword, user.password);
             if (isSame) return res.status(400).json({ msg: 'Nova senha não pode ser igual à anterior.' });
