@@ -21,7 +21,7 @@ export default function Sobre() {
                     </div>
                     
                     <div className={styles.heroContent}>
-                        <h1 className={styles.heroTitle}>VIBZ <br/> EVENTOS</h1>
+                        <h1 className={styles.heroTitle}>VIBZ</h1>
                         <p className={styles.heroSubtitle}>
                             Nosso objetivo é conectar pessoas a experiências únicas, 
                             tornando o entretenimento e o conhecimento acessíveis para todos.
@@ -62,7 +62,7 @@ export default function Sobre() {
                 </section>
 
                 {/* SEÇÃO 2: Foco no Público (Invertido) */}
-                <section className={`${styles.contentSection} ${styles.bgGrey}`}>
+                <section className={`${styles.contentSection}`}>
                     <div className={styles.container}>
                         <div className={`${styles.row} ${styles.reverseRow}`}>
                             <div className={styles.imageCol}>
@@ -89,14 +89,6 @@ export default function Sobre() {
                                 </Link>
                             </div>
                         </div>
-                    </div>
-                </section>
-
-                {/* CTA FINAL */}
-                <section className={styles.ctaSection}>
-                    <div className={styles.ctaContent}>
-                        <h2>Pronto para viver o novo?</h2>
-                        <Link href="/" className={styles.primaryBtn}>Acessar Plataforma</Link>
                     </div>
                 </section>
             </main>
