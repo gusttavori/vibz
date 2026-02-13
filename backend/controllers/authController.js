@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend'); // Adicionado suporte ao Resend
+
+// Inicializa Resend se a chave existir
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const generateToken = (id) => {
     if (!process.env.JWT_SECRET) {
@@ -14,7 +18,7 @@ const generateToken = (id) => {
     });
 };
 
-// Configuração do Transporter (Porta 2525 - Brevo)
+// Configuração do Transporter (SMTP Brevo)
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 2525, 
@@ -135,7 +139,7 @@ const googleLogin = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
-    console.log("📨 Tentando enviar email para:", email);
+    console.log("📨 Solicitando reset para:", email);
 
     try {
         const user = await prisma.user.findUnique({ where: { email } });
@@ -151,40 +155,56 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        // Verificação de Segurança das Variáveis
+        const htmlContent = `
+            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
+                <p>Você solicitou a redefinição de sua senha na Vibz.</p>
+                <p>Seu código de verificação é:</p>
+                <h1 style="letter-spacing: 5px; background: #f3e8ff; display: inline-block; padding: 10px 20px; border-radius: 8px;">${code}</h1>
+                <p>Este código expira em 1 hora.</p>
+                <hr/>
+                <p style="font-size: 12px; color: #777;">Se você não solicitou isso, ignore este e-mail.</p>
+            </div>
+        `;
+
+        // Tenta usar Resend primeiro (Mais estável), senão usa Nodemailer (SMTP)
+        if (resend) {
+            try {
+                console.log("🚀 Enviando via Resend API...");
+                await resend.emails.send({
+                    from: 'Vibz <onboarding@resend.dev>', // Email padrão de teste do Resend ou seu domínio verificado
+                    to: user.email,
+                    subject: 'Redefinir Senha - Vibz',
+                    html: htmlContent
+                });
+                console.log("✅ Enviado via Resend!");
+                return res.status(200).json({ msg: 'Código enviado!' });
+            } catch (resendError) {
+                console.error("⚠️ Falha no Resend, tentando SMTP...", resendError);
+            }
+        }
+
+        // Fallback: SMTP (Brevo)
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            throw new Error("Credenciais de email não configuradas no servidor.");
+            throw new Error("Credenciais de email não configuradas.");
         }
 
         const mailOptions = {
             to: user.email,
-            // CORREÇÃO: Usar apenas o e-mail puro (sem nome "Vibz Segurança") para evitar bloqueio do Brevo
-            from: process.env.EMAIL_USER, 
+            // IMPORTANTE: Nome simples + email exato para passar no filtro do Brevo
+            from: `Vibz <${process.env.EMAIL_USER}>`, 
             subject: 'Redefinir Senha - Vibz',
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                    <h2 style="color: #4C01B5;">Recuperação de Senha</h2>
-                    <p>Você solicitou a redefinição de sua senha na Vibz.</p>
-                    <p>Seu código de verificação é:</p>
-                    <h1 style="letter-spacing: 5px; background: #f3e8ff; display: inline-block; padding: 10px 20px; border-radius: 8px;">${code}</h1>
-                    <p>Este código expira em 1 hora.</p>
-                    <hr/>
-                    <p style="font-size: 12px; color: #777;">Se você não solicitou isso, ignore este e-mail.</p>
-                </div>
-            `
+            html: htmlContent
         };
         
-        console.log("🚀 Enviando e-mail..."); 
+        console.log("🚀 Enviando via SMTP..."); 
         await transporter.sendMail(mailOptions);
-        console.log("✅ E-mail enviado com sucesso!"); 
+        console.log("✅ E-mail enviado com sucesso via SMTP!"); 
         
         res.status(200).json({ msg: 'Código enviado!' });
+
     } catch (error) {
-        console.error("❌ ERRO NO ENVIO DE EMAIL:", error); 
-        
-        if (error.code === 'EAUTH') return res.status(500).json({ msg: 'Erro de autenticação no servidor de email.' });
-        if (error.code === 'ETIMEDOUT') return res.status(500).json({ msg: 'Timeout ao conectar no servidor de email.' });
-        
+        console.error("❌ ERRO FATAL NO ENVIO:", error); 
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
@@ -261,11 +281,7 @@ const getMe = async (req, res) => {
             ticketsSold: 0   
         };
 
-        const userResponse = {
-            ...user,
-            _id: user.id 
-        };
-
+        const userResponse = { ...user, _id: user.id };
         const eventsResponse = myEvents.map(e => ({ ...e, _id: e.id }));
 
         res.json({ 
