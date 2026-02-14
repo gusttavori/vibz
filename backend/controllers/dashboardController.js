@@ -152,20 +152,37 @@ const getOrganizerEvents = async (req, res) => {
 
         let events = [];
         
-        // Busca eventos
+        // Definição do que queremos incluir na busca (TicketTypes)
+        // Isso garante que o status, quantidade e vendas venham do banco
+        const includeOptions = {
+            ticketTypes: {
+                select: {
+                    id: true,
+                    name: true,
+                    status: true,
+                    sold: true,
+                    quantity: true,
+                    batchName: true
+                }
+            }
+        };
+
+        // Busca eventos com tratamento de erro de compatibilidade de schema
         try {
             events = await prisma.event.findMany({
                 where: { organizerId: userId },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
+                include: includeOptions // <--- AQUI ESTAVA FALTANDO
             });
         } catch (e) {
             console.log("Fallback busca eventos (sem ordem)...");
             events = await prisma.event.findMany({
-                where: { organizerId: userId }
+                where: { organizerId: userId },
+                include: includeOptions // <--- ADICIONADO AQUI TAMBÉM
             });
         }
 
-        // Formata os dados para o Frontend (Corrigindo Data e Status)
+        // Formata os dados para o Frontend
         const formattedEvents = events.map(event => {
             // 1. Lógica para definir a data correta
             let displayDate = event.eventDate;
@@ -190,12 +207,14 @@ const getOrganizerEvents = async (req, res) => {
                 title: event.title,
                 imageUrl: event.imageUrl,
                 city: event.city,
-                status: event.status, // O Frontend já está tratando a tradução
-                date: displayDate // <--- Agora garantimos que 'date' sempre tem valor
+                status: event.status, 
+                date: displayDate,
+                // Passa os tickets encontrados para o frontend
+                tickets: event.ticketTypes || [] 
             };
         });
 
-        res.json(formattedEvents);
+        res.json({ myEvents: formattedEvents }); // Mantendo padrão { myEvents: [] }
     } catch (error) {
         console.error("ERRO GET EVENTS:", error);
         res.status(500).json({ message: "Erro ao buscar eventos." });
