@@ -45,8 +45,10 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
+            // CRÍTICO: Envia status e data limite para o front controlar o bloqueio
             status: t.status, 
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
+            
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || '',
@@ -312,7 +314,17 @@ const getMyEvents = async (req, res) => {
                 _count: { select: { tickets: true } },
                 
                 // CORREÇÃO: Traz os tipos de ingresso COMPLETO (nome, id, status, etc)
-                ticketTypes: true 
+                ticketTypes: { 
+                    select: { 
+                        id: true, 
+                        name: true, 
+                        price: true, 
+                        sold: true, 
+                        quantity: true, 
+                        status: true,
+                        batchName: true
+                    } 
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
