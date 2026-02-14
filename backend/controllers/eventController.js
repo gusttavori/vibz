@@ -45,8 +45,10 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // ADICIONADO: Envia a data de encerramento para o front
+            // NOVOS CAMPOS PARA CONTROLE DE VENDAS
+            status: t.status, 
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
+            
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || '',
@@ -79,7 +81,6 @@ const createEvent = async (req, res) => {
         } = req.body;
 
         const userId = req.user.id;
-
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -309,16 +310,68 @@ const getMyEvents = async (req, res) => {
             where: { organizerId: req.user.id },
             include: {
                 _count: { select: { tickets: true } },
-                ticketTypes: { select: { price: true } }
+                // CORREÇÃO: Buscando dados completos do ticket para o painel de controle
+                ticketTypes: { 
+                    select: { 
+                        id: true, 
+                        name: true, 
+                        price: true, 
+                        sold: true, 
+                        quantity: true, 
+                        status: true,
+                        batchName: true
+                    } 
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
         const formattedEvents = events.map(mapEventToFrontend);
-        const metrics = { activeEvents: events.length, totalRevenue: 0, ticketsSold: 0 };
+        
+        // Métricas básicas para o dashboard
+        const totalTicketsSold = events.reduce((acc, ev) => {
+            return acc + ev.ticketTypes.reduce((sum, t) => sum + t.sold, 0);
+        }, 0);
+
+        const metrics = { 
+            activeEvents: events.length, 
+            totalRevenue: 0, 
+            ticketsSold: totalTicketsSold 
+        };
+
         res.json({ myEvents: formattedEvents, metrics });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao carregar dashboard.' });
+    }
+};
+
+// --- NOVA FUNÇÃO PARA PAUSAR/ATIVAR VENDAS ---
+const toggleTicketStatus = async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        const { status } = req.body; // 'active' ou 'paused'
+
+        const ticket = await prisma.ticketType.findUnique({
+            where: { id: ticketId },
+            include: { event: true }
+        });
+
+        if (!ticket) return res.status(404).json({ message: 'Ingresso não encontrado.' });
+        
+        // Segurança: Apenas o dono do evento pode alterar
+        if (ticket.event.organizerId !== req.user.id) {
+            return res.status(403).json({ message: 'Sem permissão.' });
+        }
+
+        const updatedTicket = await prisma.ticketType.update({
+            where: { id: ticketId },
+            data: { status: status }
+        });
+
+        res.json({ success: true, status: updatedTicket.status });
+    } catch (error) {
+        console.error("Erro toggleStatus:", error);
+        res.status(500).json({ message: 'Erro ao atualizar status.' });
     }
 };
 
@@ -484,5 +537,5 @@ module.exports = {
     toggleFavorite, getEventsByCategory, getFeaturedEvents, getEventCities,
     searchEvents, getPendingEvents, approveEvent, rejectEvent, 
     getPendingHighlights, approveHighlight, rejectHighlight,
-    getEventParticipants
+    getEventParticipants, toggleTicketStatus 
 };

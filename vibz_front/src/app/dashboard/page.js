@@ -9,7 +9,7 @@ import confetti from 'canvas-confetti';
 import { 
     FaMoneyBillWave, FaTicketAlt, FaUserCheck, FaChartLine, 
     FaRegClock, FaCheckCircle, FaExclamationCircle,
-    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode
+    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaToggleOn, FaToggleOff
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -18,7 +18,95 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// Componente Interno com a Lógica do Dashboard
+// --- MODAL DE GERENCIAMENTO DE VENDAS ---
+const ManageSalesModal = ({ event, onClose, onUpdate }) => {
+    const [tickets, setTickets] = useState(event.tickets || []);
+    const [loadingId, setLoadingId] = useState(null);
+    const API_BASE_URL = getApiBaseUrl();
+
+    const handleToggle = async (ticket) => {
+        setLoadingId(ticket.id || ticket._id);
+        // Alterna entre active e paused
+        const newStatus = ticket.status === 'active' ? 'paused' : 'active';
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/events/tickets/${ticket.id || ticket._id}/status`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (res.ok) {
+                // Atualiza estado local
+                const updatedTickets = tickets.map(t => 
+                    (t.id === ticket.id || t._id === ticket.id) ? { ...t, status: newStatus } : t
+                );
+                setTickets(updatedTickets);
+                toast.success(`Vendas ${newStatus === 'active' ? 'ativadas' : 'pausadas'}!`);
+                onUpdate(); // Atualiza a lista principal do dashboard
+            } else {
+                toast.error('Erro ao atualizar status.');
+            }
+        } catch (error) {
+            toast.error('Erro de conexão.');
+        } finally {
+            setLoadingId(null);
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content" style={{maxWidth: '500px'}}>
+                <div className="modal-header">
+                    <h3>Gerenciar Vendas: {event.title}</h3>
+                    <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
+                </div>
+                <div className="modal-body">
+                    <p style={{marginBottom:'20px', color:'#64748b', fontSize:'0.9rem'}}>
+                        Pause as vendas de ingressos específicos instantaneamente caso acabem ou haja imprevistos.
+                    </p>
+                    <div className="ticket-manage-list">
+                        {tickets.map(t => (
+                            <div key={t.id || t._id} className="ticket-manage-item" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'#f8fafc', borderRadius:'8px', marginBottom:'10px', border:'1px solid #e2e8f0'}}>
+                                <div>
+                                    <strong style={{display:'block', color:'#1e293b'}}>{t.name}</strong>
+                                    <span style={{fontSize:'0.8rem', color:'#64748b'}}>
+                                        {t.sold} / {t.quantity} vendidos • {t.batch || t.batchName}
+                                    </span>
+                                </div>
+                                <button 
+                                    onClick={() => handleToggle(t)} 
+                                    disabled={loadingId === (t.id || t._id)}
+                                    style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        fontSize: '2rem', display: 'flex', alignItems: 'center',
+                                        color: t.status === 'active' ? '#10b981' : '#cbd5e1',
+                                        transition: 'color 0.2s'
+                                    }}
+                                    title={t.status === 'active' ? "Pausar Vendas" : "Ativar Vendas"}
+                                >
+                                    {loadingId === (t.id || t._id) ? 
+                                        <FaSync className="fa-spin" style={{fontSize:'1.2rem', color:'#64748b'}}/> : 
+                                        (t.status === 'active' ? <FaToggleOn /> : <FaToggleOff />)
+                                    }
+                                </button>
+                            </div>
+                        ))}
+                        {tickets.length === 0 && <p>Este evento não possui ingressos cadastrados.</p>}
+                    </div>
+                </div>
+                <div className="modal-footer">
+                    <button className="cancel-btn" onClick={onClose} style={{width:'100%'}}>Fechar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const DashboardContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -30,6 +118,9 @@ const DashboardContent = () => {
     const [loading, setLoading] = useState(true);
     const [loadingStripe, setLoadingStripe] = useState(false);
     const [connectionError, setConnectionError] = useState(false);
+    
+    // NOVO: Estado para abrir o modal de gestão de vendas
+    const [selectedEventForManage, setSelectedEventForManage] = useState(null);
 
     // Efeito para detectar retorno do Stripe (Sucesso)
     useEffect(() => {
@@ -55,7 +146,6 @@ const DashboardContent = () => {
         }
 
         try {
-            // 1. Dados do Usuário
             const userRes = await fetch(`${API_BASE_URL}/users/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -65,7 +155,6 @@ const DashboardContent = () => {
                 setUserData(userDataResponse.user || userDataResponse);
             }
 
-            // 2. Estatísticas
             const statsRes = await fetch(`${API_BASE_URL}/dashboard/stats`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -75,14 +164,14 @@ const DashboardContent = () => {
                 setStats(data);
             }
 
-            // 3. Meus Eventos
             const eventsRes = await fetch(`${API_BASE_URL}/dashboard/events`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (eventsRes.ok) {
                 const data = await eventsRes.json();
-                setMyEvents(Array.isArray(data) ? data : []);
+                // Ajuste para garantir que seja array
+                setMyEvents(Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []));
             }
 
         } catch (error) {
@@ -199,7 +288,6 @@ const DashboardContent = () => {
                         <p>Bem-vindo, {userData?.name}</p>
                     </div>
                     
-                    {/* BOTÃO DE CHECK-IN (NOVO) */}
                     <div className="header-actions-dash">
                         <button className="btn-checkin" onClick={() => router.push('/admin/checkin')}>
                             <FaQrcode /> Validar Ingressos
@@ -281,14 +369,25 @@ const DashboardContent = () => {
                                                     </span>
                                                 </div>
                                                 <div className="event-actions">
+                                                    {/* BOTÃO GERENCIAR VENDAS (NOVO) */}
+                                                    {!event.isInformational && (
+                                                        <button 
+                                                            className="btn-edit-dash" 
+                                                            onClick={() => setSelectedEventForManage(event)}
+                                                            title="Pausar/Ativar Vendas"
+                                                        >
+                                                            <FaCog />
+                                                        </button>
+                                                    )}
+
                                                     <button 
                                                         className="btn-participants-dash" 
                                                         onClick={() => router.push(`/eventos/${event.id}/participantes`)}
                                                     >
-                                                        <FaList /> Participantes
+                                                        <FaList />
                                                     </button>
                                                     <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
-                                                        <FaEdit /> Editar
+                                                        <FaEdit />
                                                     </button>
                                                 </div>
                                             </div>
@@ -336,13 +435,22 @@ const DashboardContent = () => {
                         </div>
                     </>
                 )}
+
+                {/* MODAL DE GESTÃO DE VENDAS */}
+                {selectedEventForManage && (
+                    <ManageSalesModal 
+                        event={selectedEventForManage} 
+                        onClose={() => setSelectedEventForManage(null)} 
+                        onUpdate={fetchAllData}
+                    />
+                )}
+
             </main>
             <Footer />
         </div>
     );
 };
 
-// Componente Principal Wrapper com Suspense (CORREÇÃO DE BUILD)
 export default function Dashboard() {
     return (
         <Suspense fallback={<div className="loading-screen">Carregando painel...</div>}>
