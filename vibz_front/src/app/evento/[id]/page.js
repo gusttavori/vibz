@@ -7,7 +7,7 @@ import {
     FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
     FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
     FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
-    FaInfoCircle, FaClock, FaCopy
+    FaInfoCircle, FaClock, FaCopy, FaLock
 } from 'react-icons/fa'; 
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
@@ -195,7 +195,6 @@ export default function EventoDetalhes() {
         toast('Cupom removido.', { icon: '🗑️' });
     };
 
-    // Função auxiliar para pegar todas as chaves de participantes (ticketId_index)
     const getAllParticipantKeys = () => {
         const keys = [];
         Object.entries(ticketQuantities).forEach(([ticketId, qty]) => {
@@ -232,16 +231,13 @@ export default function EventoDetalhes() {
         const key = `${ticketId}_${index}`;
         
         setParticipantsData(prev => {
-            // Atualiza o campo atual
             const newData = { ...prev, [key]: { ...prev[key], [questionLabel]: value } };
 
-            // Se a replicação estiver ativa e estamos editando o PRIMEIRO participante
             if (replicateData) {
                 const allKeys = getAllParticipantKeys();
                 const firstKey = allKeys[0];
 
                 if (key === firstKey) {
-                    // Copia o valor para todos os outros participantes
                     allKeys.slice(1).forEach(targetKey => {
                         newData[targetKey] = { 
                             ...newData[targetKey], 
@@ -338,7 +334,7 @@ export default function EventoDetalhes() {
                 for (let i = 0; i < qty; i++) {
                     const key = `${ticketId}_${i}`;
                     const currentData = participantsData[key] || {};
-                    const isFirst = globalIndex === 0; // Identifica se é o primeiro formulário de todos
+                    const isFirst = globalIndex === 0; 
                     
                     inputs.push(
                         <div key={key} className="participant-card">
@@ -381,6 +377,10 @@ export default function EventoDetalhes() {
     let total = 0;
     
     const ticketsList = evento.tickets || evento.ticketTypes || [];
+    
+    // --- VERIFICAÇÃO SE EVENTO JÁ ACABOU ---
+    // Considera evento encerrado se a data do evento já passou
+    const isEventEnded = new Date() > new Date(evento.eventDate);
 
     if (ticketsList.length > 0) {
         ticketsList.forEach(ticket => {
@@ -441,58 +441,81 @@ export default function EventoDetalhes() {
                                 <div className="tickets-header" onClick={() => setIsTicketsOpen(!isTicketsOpen)}><h3><FaTicketAlt /> Ingressos</h3>{isTicketsOpen ? <FaChevronUp /> : <FaChevronDown />}</div>
                                 {isTicketsOpen && (
                                     <div className="tickets-content">
-                                        {ticketsList.length > 0 ? (
-                                            ticketsList.map(ticket => {
-                                                const tId = ticket.id || ticket._id;
-                                                const qty = ticketQuantities[tId] || 0;
-                                                const fee = ticket.price * rate; 
-                                                const available = ticket.quantity - (ticket.sold || 0);
-                                                const isSoldOut = available <= 0;
-                                                
-                                                const maxPerUser = ticket.maxPerUser || 4;
-                                                const isMaxReached = qty >= maxPerUser;
-
-                                                const isConflict = hasTimeConflict(ticket, ticketQuantities);
-                                                const disablePlus = isSoldOut || qty >= available || isMaxReached || (qty === 0 && isConflict);
-
-                                                const dateLabel = formatDateSimple(ticket.activityDate);
-
-                                                return (
-                                                    <div key={tId} className={`ticket-item ${isSoldOut ? 'ticket-sold-out' : ''} ${isConflict && qty === 0 ? 'ticket-conflict' : ''}`}>
-                                                        <div className="ticket-info">
-                                                            <span className="ticket-name">{ticket.name}</span>
-                                                            <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                            {ticket.startTime && ticket.endTime && (
-                                                                <span className="ticket-time-badge">
-                                                                    {dateLabel && (
-                                                                        <>
-                                                                            <FaCalendarDay style={{marginRight:'4px'}}/> {dateLabel} <span style={{margin:'0 6px', opacity:0.4}}>|</span> 
-                                                                        </>
-                                                                    )}
-                                                                    <FaClock style={{marginRight:'4px'}}/> {ticket.startTime} - {ticket.endTime}
-                                                                </span>
-                                                            )}
-                                                            <div className="ticket-price-row">
-                                                                <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
-                                                                {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
-                                                            </div>
-                                                            {isSoldOut && <span className="sold-out-badge">ESGOTADO</span>}
-                                                            {isConflict && qty === 0 && (
-                                                                <span className="conflict-warning">Choque de horário com outro item</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="ticket-controls">
-                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isSoldOut}><FaMinus size={10}/></button>
-                                                            <span className="qty-display">{qty}</span>
-                                                            <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={10}/></button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
+                                        {isEventEnded ? (
+                                            <div className="sales-ended-msg">
+                                                <FaLock size={24} style={{marginBottom:'10px', color: '#94a3b8'}}/>
+                                                <h3>Vendas Encerradas</h3>
+                                                <p>Este evento já aconteceu ou as vendas foram finalizadas.</p>
+                                            </div>
                                         ) : (
-                                            <p className="no-tickets-msg">Nenhum ingresso disponível no momento.</p>
+                                            ticketsList.length > 0 ? (
+                                                ticketsList.map(ticket => {
+                                                    const tId = ticket.id || ticket._id;
+                                                    const qty = ticketQuantities[tId] || 0;
+                                                    const fee = ticket.price * rate; 
+                                                    const available = ticket.quantity - (ticket.sold || 0);
+                                                    
+                                                    // --- LÓGICA DE BLOQUEIO ATUALIZADA ---
+                                                    const now = new Date();
+                                                    const isSoldOut = available <= 0;
+                                                    const isPaused = ticket.status !== 'active';
+                                                    
+                                                    // Verifica se o ingresso tem data limite e se já passou
+                                                    const isSalesExpired = ticket.salesEnd && new Date(ticket.salesEnd) < now;
+
+                                                    // Bloqueia compra se: Esgotado, Pausado, Expirado ou Atingiu limite pessoal
+                                                    const maxPerUser = ticket.maxPerUser || 4;
+                                                    const isMaxReached = qty >= maxPerUser;
+                                                    const isUnavailable = isSoldOut || isPaused || isSalesExpired;
+                                                    
+                                                    const isConflict = hasTimeConflict(ticket, ticketQuantities);
+                                                    const disablePlus = isUnavailable || qty >= available || isMaxReached || (qty === 0 && isConflict);
+
+                                                    const dateLabel = formatDateSimple(ticket.activityDate);
+
+                                                    return (
+                                                        <div key={tId} className={`ticket-item ${isUnavailable ? 'ticket-sold-out' : ''} ${isConflict && qty === 0 ? 'ticket-conflict' : ''}`}>
+                                                            <div className="ticket-info">
+                                                                <span className="ticket-name">{ticket.name}</span>
+                                                                <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
+                                                                {ticket.startTime && ticket.endTime && (
+                                                                    <span className="ticket-time-badge">
+                                                                        {dateLabel && (
+                                                                            <>
+                                                                                <FaCalendarDay style={{marginRight:'4px'}}/> {dateLabel} <span style={{margin:'0 6px', opacity:0.4}}>|</span> 
+                                                                            </>
+                                                                        )}
+                                                                        <FaClock style={{marginRight:'4px'}}/> {ticket.startTime} - {ticket.endTime}
+                                                                    </span>
+                                                                )}
+                                                                <div className="ticket-price-row">
+                                                                    <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
+                                                                    {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
+                                                                </div>
+                                                                
+                                                                {/* BADGES VISUAIS DE STATUS */}
+                                                                {isSoldOut && !isSalesExpired && <span className="sold-out-badge">ESGOTADO</span>}
+                                                                {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{background:'#64748b'}}>INDISPONÍVEL</span>}
+                                                                {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>VENDAS ENCERRADAS</span>}
+                                                                
+                                                                {isConflict && qty === 0 && (
+                                                                    <span className="conflict-warning">Choque de horário com outro item</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="ticket-controls">
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable}><FaMinus size={10}/></button>
+                                                                <span className="qty-display">{qty}</span>
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={10}/></button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="no-tickets-msg">Nenhum ingresso disponível no momento.</p>
+                                            )
                                         )}
-                                        {ticketsList.length > 0 && (
+                                        
+                                        {!isEventEnded && ticketsList.length > 0 && (
                                             <>
                                                 <div className="coupon-section">
                                                     {!appliedCoupon ? (

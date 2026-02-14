@@ -45,6 +45,8 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
+            // ADICIONADO: Envia a data de encerramento para o front
+            salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || '',
@@ -164,13 +166,13 @@ const createEvent = async (req, res) => {
                         batchName: t.batch,
                         price: parseFloat(t.price),
                         quantity: parseInt(t.quantity),
+                        maxPerUser: parseInt(t.maxPerUser) || 4,
                         description: t.description,
                         isHalfPrice: t.isHalfPrice || false,
                         status: 'active',
                         activityDate: safeActivityDate,
                         startTime: (t.startTime && t.startTime.trim() !== "") ? t.startTime : null,
-                        endTime: (t.endTime && t.endTime.trim() !== "") ? t.endTime : null,
-                        maxPerUser: parseInt(t.maxPerUser) || 4
+                        endTime: (t.endTime && t.endTime.trim() !== "") ? t.endTime : null
                     };
                 })
             };
@@ -253,6 +255,7 @@ const updateEvent = async (req, res) => {
                 for (const t of ticketsData) {
                     const priceVal = parseFloat(t.price);
                     const qtdVal = parseInt(t.quantity);
+                    const maxPerUserVal = parseInt(t.maxPerUser) || 4;
                     
                     let safeActivityDate = null;
                     if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
@@ -263,7 +266,6 @@ const updateEvent = async (req, res) => {
                     }
                     const startT = (t.startTime && t.startTime.trim() !== "") ? t.startTime : null;
                     const endT = (t.endTime && t.endTime.trim() !== "") ? t.endTime : null;
-                    const maxPerUserVal = parseInt(t.maxPerUser) || 4;
 
                     if (t.id) {
                         await prisma.ticketType.update({
