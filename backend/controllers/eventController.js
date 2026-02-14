@@ -124,15 +124,9 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        // --- DISPARO DE E-MAILS (Non-blocking) ---
-        console.log(`[Event] Criado: ${title}. Iniciando e-mails...`);
-        sendEventReceivedEmail(req.user.email, organizerName, title)
-            .catch(err => console.error("[Email] Erro organizador:", err.message));
-        
-        sendAdminNotificationEmail({ 
-            title, organizerName, city, 
-            date: mainEventDate.toLocaleDateString('pt-BR') 
-        }).catch(err => console.error("[Email] Erro admin:", err.message));
+        // Notificações assíncronas
+        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("Erro email org:", err));
+        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("Erro email admin:", err));
 
         res.status(201).json({ 
             message: 'Evento enviado para análise.', 
@@ -154,11 +148,7 @@ const updateEvent = async (req, res) => {
         if (!existingEvent) return res.status(404).json({ message: 'Evento não encontrado.' });
         if (existingEvent.organizerId !== userId) return res.status(403).json({ message: 'Sem permissão.' });
 
-        const { 
-            title, description, category, ageRating, refundPolicy, location, city, 
-            sessions, tickets, organizerInfo, formSchema, isInformational 
-        } = req.body;
-
+        const { title, description, category, ageRating, refundPolicy, location, city, sessions, tickets, organizerInfo, formSchema, isInformational } = req.body;
         let isInfoBool = isInformational !== undefined ? (isInformational === 'true' || isInformational === true) : existingEvent.isInformational;
 
         let imageUrl = existingEvent.imageUrl;
@@ -170,43 +160,32 @@ const updateEvent = async (req, res) => {
         }
 
         const parsedSessions = typeof sessions === 'string' ? JSON.parse(sessions) : sessions;
-        const parsedOrganizerInfo = typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo;
-        const parsedFormSchema = typeof formSchema === 'string' ? JSON.parse(formSchema) : formSchema;
-
         let mainEventDate = existingEvent.eventDate;
-        if (parsedSessions && parsedSessions.length > 0) {
-            mainEventDate = new Date(parsedSessions[0].date);
-        }
+        if (parsedSessions && parsedSessions.length > 0) mainEventDate = new Date(parsedSessions[0].date);
 
         const updatedEvent = await prisma.event.update({
             where: { id },
             data: {
-                title, description, 
-                category: category ? category.trim() : existingEvent.category,
+                title, description, category: category ? category.trim() : existingEvent.category,
                 ageRating, refundPolicy, imageUrl, location, city,
                 eventDate: mainEventDate, sessions: parsedSessions,
-                organizerInfo: parsedOrganizerInfo, formSchema: parsedFormSchema,
+                organizerInfo: typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo,
+                formSchema: typeof formSchema === 'string' ? JSON.parse(formSchema) : formSchema,
                 isInformational: isInfoBool 
             }
         });
 
         if (tickets) {
             const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
-            if (ticketsData.length > 0) {
-                for (const t of ticketsData) {
-                    let safeActivityDate = t.activityDate ? new Date(t.activityDate) : null;
-                    const ticketPayload = {
-                        name: t.name, price: parseFloat(t.price), quantity: parseInt(t.quantity), 
-                        batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                        activityDate: safeActivityDate, startTime: t.startTime || null,
-                        endTime: t.endTime || null, maxPerUser: parseInt(t.maxPerUser) || 4
-                    };
-                    if (t.id) {
-                        await prisma.ticketType.update({ where: { id: t.id }, data: ticketPayload });
-                    } else {
-                        await prisma.ticketType.create({ data: { ...ticketPayload, eventId: id } });
-                    }
-                }
+            for (const t of ticketsData) {
+                const payload = {
+                    name: t.name, price: parseFloat(t.price), quantity: parseInt(t.quantity), 
+                    batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
+                    activityDate: t.activityDate ? new Date(t.activityDate) : null, 
+                    startTime: t.startTime || null, endTime: t.endTime || null, maxPerUser: parseInt(t.maxPerUser) || 4
+                };
+                if (t.id) { await prisma.ticketType.update({ where: { id: t.id }, data: payload }); }
+                else { await prisma.ticketType.create({ data: { ...payload, eventId: id } }); }
             }
         }
         res.json(mapEventToFrontend(updatedEvent));
@@ -228,7 +207,7 @@ const getMyEvents = async (req, res) => {
         res.json({ myEvents: formattedEvents, metrics: { activeEvents: events.length, totalRevenue: 0, ticketsSold: totalTicketsSold } });
     } catch (error) {
         console.error("Erro getMyEvents:", error);
-        res.status(500).json({ message: 'Erro ao carregar dashboard.' });
+        res.status(500).json({ message: 'Erro dashboard.' });
     }
 };
 
@@ -240,11 +219,14 @@ const approveEvent = async (req, res) => {
             data: { status: 'approved' },
             include: { organizer: { select: { email: true, name: true } } }
         });
-        console.log(`[Moderation] Aprovado: ${event.title}`);
+        
+        console.log(`[Moderation] Evento aprovado: ${event.title}`);
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id)
-            .catch(e => console.error("[Email] Erro notificação aprovação:", e.message));
+            .catch(e => console.error("[Email] Erro ao notificar aprovação:", e.message));
+
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
+        console.error("Erro ao aprovar evento:", error);
         res.status(500).json({ message: "Erro ao aprovar evento." });
     }
 };
@@ -258,11 +240,14 @@ const rejectEvent = async (req, res) => {
             data: { status: 'rejected' },
             include: { organizer: { select: { email: true, name: true } } }
         });
-        console.log(`[Moderation] Rejeitado: ${event.title}`);
+
+        console.log(`[Moderation] Evento rejeitado: ${event.title}`);
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason)
-            .catch(e => console.error("[Email] Erro notificação rejeição:", e.message));
+            .catch(e => console.error("[Email] Erro ao notificar rejeição:", e.message));
+
         res.json({ success: true, message: "Evento reprovado e organizador notificado." });
     } catch (error) {
+        console.error("Erro ao reprovar evento:", error);
         res.status(500).json({ message: "Erro ao reprovar evento." });
     }
 };
@@ -289,9 +274,7 @@ const getEvents = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
         res.status(200).json(events.map(mapEventToFrontend));
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar eventos.' });
-    }
+    } catch (error) { res.status(500).json({ message: 'Erro ao buscar eventos.' }); }
 };
 
 const getEventById = async (req, res) => {
@@ -302,9 +285,7 @@ const getEventById = async (req, res) => {
         });
         if (!event) return res.status(404).json({ message: 'Evento não encontrado' });
         res.json(mapEventToFrontend(event));
-    } catch (err) {
-        res.status(500).json({ message: 'Erro no servidor' });
-    }
+    } catch (err) { res.status(500).json({ message: 'Erro no servidor' }); }
 };
 
 const getFeaturedEvents = async (req, res) => {
@@ -323,9 +304,7 @@ const getEventsByCategory = async (req, res) => {
             orderBy: { eventDate: 'asc' }
         });
         res.json(events.map(mapEventToFrontend));
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar por categoria' });
-    }
+    } catch (error) { res.status(500).json({ message: 'Erro ao buscar por categoria' }); }
 };
 
 const searchEvents = async (req, res) => {
@@ -359,9 +338,7 @@ const getEventParticipants = async (req, res) => {
             eventTitle: event.title,
             participants: tickets.map(t => ({ id: t.id, status: t.status, buyerName: t.user.name, buyerEmail: t.user.email, ticketType: t.ticketType.name, ...t.participantData })) 
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao carregar lista.' });
-    }
+    } catch (error) { res.status(500).json({ message: 'Erro ao carregar lista.' }); }
 };
 
 const getPendingEvents = async (req, res) => { 
