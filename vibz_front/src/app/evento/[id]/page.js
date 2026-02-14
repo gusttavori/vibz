@@ -28,6 +28,7 @@ const SkeletonLoader = () => (
                     <div className="content-box">
                         <div className="skeleton-line" style={{width: '40%', height: '30px', marginBottom: '20px'}}></div>
                         <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
+                        <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
                     </div>
                 </div>
                 <div className="event-details-right-column">
@@ -50,7 +51,7 @@ const formatDateSimple = (dateStr) => {
     return null;
 };
 
-// Formata data completa para o seletor (ex: "Sáb, 14/02")
+// Formata data completa para o seletor (ex: "Sáb, 14 Fev")
 const formatDateSelector = (dateStr) => {
     if (!dateStr) return '';
     try {
@@ -58,11 +59,8 @@ const formatDateSelector = (dateStr) => {
         const userTimezoneOffset = date.getTimezoneOffset() * 60000;
         const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
         
-        // Formato mais limpo: "Seg, 02/03"
         const week = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(adjustedDate).replace('.', '');
         const dayMonth = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(adjustedDate);
-        
-        // Capitaliza a primeira letra do dia da semana (seg -> Seg)
         const weekCap = week.charAt(0).toUpperCase() + week.slice(1);
         
         return `${weekCap}, ${dayMonth}`;
@@ -114,7 +112,6 @@ export default function EventoDetalhes() {
                     if (!eventDate && eventData.createdAt) eventDate = new Date(eventData.createdAt);
                     setDisplayDate(eventDate);
 
-                    // Extrair datas únicas dos ingressos
                     const tickets = eventData.tickets || eventData.ticketTypes || [];
                     const dates = new Set();
                     
@@ -478,11 +475,10 @@ export default function EventoDetalhes() {
                                 {isTicketsOpen && (
                                     <div className="tickets-content">
                                         
-                                        {/* --- SELETOR DE DATAS EM GRID (ATUALIZADO) --- */}
+                                        {/* --- SELETOR DE DATAS EM GRID --- */}
                                         {availableDates.length > 1 && (
                                             <div className="date-selector-container">
                                                 <p className="date-selector-label"><FaCalendarAlt /> Escolha a data:</p>
-                                                {/* Agora usa a classe 'date-selector-grid' em vez de scroll */}
                                                 <div className="date-selector-grid">
                                                     {availableDates.map(dateStr => (
                                                         <button 
@@ -523,27 +519,34 @@ export default function EventoDetalhes() {
 
                                                     return (
                                                         <div key={tId} className={`ticket-item ${isUnavailable ? 'ticket-sold-out' : ''}`}>
-                                                            <div className="ticket-info">
+                                                            {/* LAYOUT DO TICKET ATUALIZADO (HORIZONTAL) */}
+                                                            <div className="ticket-info" style={{width: '65%'}}>
                                                                 <span className="ticket-name">{ticket.name}</span>
-                                                                <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                                {ticket.startTime && (
-                                                                    <span className="ticket-time-badge">
-                                                                        <FaClock style={{marginRight:'4px'}}/> {ticket.startTime} {ticket.endTime && `- ${ticket.endTime}`}
-                                                                    </span>
-                                                                )}
-                                                                <div className="ticket-price-row">
-                                                                    <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
-                                                                    {ticket.price > 0 && <div className="fee-container"><span className={`ticket-fee ${appliedCoupon ? 'discounted-fee' : ''}`}>+ {formatCurrency(fee)} taxa</span></div>}
+                                                                <div style={{display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap', marginTop:'4px'}}>
+                                                                    <span className="ticket-batch" style={{fontSize:'0.7rem'}}>{ticket.batch || ticket.batchName || 'Lote Único'}</span>
+                                                                    {ticket.startTime && (
+                                                                        <span className="ticket-time-badge" style={{fontSize:'0.7rem', padding:'2px 6px', width:'auto'}}>
+                                                                            <FaClock size={10} style={{marginRight:'3px'}}/> {ticket.startTime}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                                 
+                                                                {/* Status Messages */}
                                                                 {isSoldOut && !isSalesExpired && <span className="sold-out-badge">ESGOTADO</span>}
                                                                 {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{background:'#64748b'}}>INDISPONÍVEL</span>}
-                                                                {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>VENDAS ENCERRADAS</span>}
+                                                                {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>ENCERRADO</span>}
                                                             </div>
-                                                            <div className="ticket-controls">
-                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable}><FaMinus size={10}/></button>
-                                                                <span className="qty-display">{qty}</span>
-                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={10}/></button>
+
+                                                            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'6px'}}>
+                                                                <div className="ticket-price-row" style={{marginBottom:0}}>
+                                                                    <span className="ticket-price" style={{fontSize:'1rem'}}>{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
+                                                                </div>
+                                                                
+                                                                <div className="ticket-controls">
+                                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable} style={{width:'24px', height:'24px'}}><FaMinus size={8}/></button>
+                                                                    <span className="qty-display" style={{fontSize:'0.9rem', minWidth:'15px'}}>{qty}</span>
+                                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus} style={{width:'24px', height:'24px'}}><FaPlus size={8}/></button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
