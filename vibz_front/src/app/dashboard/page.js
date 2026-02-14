@@ -9,7 +9,7 @@ import confetti from 'canvas-confetti';
 import { 
     FaMoneyBillWave, FaTicketAlt, FaUserCheck, FaChartLine, 
     FaRegClock, FaCheckCircle, FaExclamationCircle,
-    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaToggleOn, FaToggleOff
+    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -18,20 +18,23 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// --- MODAL DE GERENCIAMENTO DE VENDAS ---
+// --- MODAL DE GERENCIAMENTO DE VENDAS (COM SWITCH VISUAL) ---
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
-    const [tickets, setTickets] = useState(event.tickets || []);
+    // Inicializa o estado com os tickets passados pelo evento
+    const [tickets, setTickets] = useState(event.ticketTypes || event.tickets || []);
     const [loadingId, setLoadingId] = useState(null);
     const API_BASE_URL = getApiBaseUrl();
 
     const handleToggle = async (ticket) => {
-        setLoadingId(ticket.id || ticket._id);
-        // Alterna entre active e paused
+        const ticketId = ticket.id || ticket._id;
+        setLoadingId(ticketId);
+        
+        // Lógica: Se está 'active', muda para 'paused'. Se não, muda para 'active'.
         const newStatus = ticket.status === 'active' ? 'paused' : 'active';
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
         try {
-            const res = await fetch(`${API_BASE_URL}/events/tickets/${ticket.id || ticket._id}/status`, {
+            const res = await fetch(`${API_BASE_URL}/events/tickets/${ticketId}/status`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -41,17 +44,26 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
             });
 
             if (res.ok) {
-                // Atualiza estado local
+                // Atualiza o estado local do modal imediatamente para feedback visual
                 const updatedTickets = tickets.map(t => 
-                    (t.id === ticket.id || t._id === ticket.id) ? { ...t, status: newStatus } : t
+                    (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t
                 );
                 setTickets(updatedTickets);
-                toast.success(`Vendas ${newStatus === 'active' ? 'ativadas' : 'pausadas'}!`);
-                onUpdate(); // Atualiza a lista principal do dashboard
+                
+                if (newStatus === 'active') {
+                    toast.success('Vendas Liberadas! 🟢');
+                } else {
+                    toast('Vendas Pausadas 🔴', { icon: '🛑' });
+                }
+                
+                // Chama a função para atualizar o dashboard pai (se necessário)
+                if (onUpdate) onUpdate(); 
             } else {
-                toast.error('Erro ao atualizar status.');
+                const err = await res.json();
+                toast.error(err.message || 'Erro ao atualizar status.');
             }
         } catch (error) {
+            console.error(error);
             toast.error('Erro de conexão.');
         } finally {
             setLoadingId(null);
@@ -59,48 +71,61 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{maxWidth: '500px'}}>
+        <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) onClose(); }}>
+            <div className="modal-content">
                 <div className="modal-header">
                     <h3>Gerenciar Vendas: {event.title}</h3>
                     <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
                 </div>
                 <div className="modal-body">
                     <p style={{marginBottom:'20px', color:'#64748b', fontSize:'0.9rem'}}>
-                        Pause as vendas de ingressos específicos instantaneamente caso acabem ou haja imprevistos.
+                        Use os interruptores abaixo para abrir ou fechar as vendas imediatamente.
                     </p>
+                    
                     <div className="ticket-manage-list">
-                        {tickets.map(t => (
-                            <div key={t.id || t._id} className="ticket-manage-item" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'#f8fafc', borderRadius:'8px', marginBottom:'10px', border:'1px solid #e2e8f0'}}>
-                                <div>
-                                    <strong style={{display:'block', color:'#1e293b'}}>{t.name}</strong>
-                                    <span style={{fontSize:'0.8rem', color:'#64748b'}}>
-                                        {t.sold} / {t.quantity} vendidos • {t.batch || t.batchName}
-                                    </span>
-                                </div>
-                                <button 
-                                    onClick={() => handleToggle(t)} 
-                                    disabled={loadingId === (t.id || t._id)}
-                                    style={{
-                                        background: 'none', border: 'none', cursor: 'pointer',
-                                        fontSize: '2rem', display: 'flex', alignItems: 'center',
-                                        color: t.status === 'active' ? '#10b981' : '#cbd5e1',
-                                        transition: 'color 0.2s'
-                                    }}
-                                    title={t.status === 'active' ? "Pausar Vendas" : "Ativar Vendas"}
-                                >
-                                    {loadingId === (t.id || t._id) ? 
-                                        <FaSync className="fa-spin" style={{fontSize:'1.2rem', color:'#64748b'}}/> : 
-                                        (t.status === 'active' ? <FaToggleOn /> : <FaToggleOff />)
-                                    }
-                                </button>
+                        {tickets.length > 0 ? (
+                            tickets.map(t => {
+                                const tId = t.id || t._id;
+                                const isActive = t.status === 'active';
+                                const isLoading = loadingId === tId;
+
+                                return (
+                                    <div key={tId} className="ticket-manage-item" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'#f8fafc', borderRadius:'12px', marginBottom:'12px', border:'1px solid #e2e8f0'}}>
+                                        <div style={{flex: 1}}>
+                                            <strong style={{display:'block', color:'#1e293b', fontSize:'1rem'}}>{t.name}</strong>
+                                            <span style={{fontSize:'0.8rem', color:'#64748b'}}>
+                                                {t.sold} / {t.quantity} vendidos • {t.batch || t.batchName || 'Lote Único'}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* INTERRUPTOR (SWITCH) VISUAL */}
+                                        <div className="switch-container">
+                                            <span className={`status-label ${isActive ? 'status-active' : 'status-paused'}`}>
+                                                {isLoading ? '...' : (isActive ? 'VENDENDO' : 'PAUSADO')}
+                                            </span>
+                                            
+                                            <label className="switch">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isActive} 
+                                                    onChange={() => handleToggle(t)} 
+                                                    disabled={isLoading}
+                                                />
+                                                <span className="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>
+                                Este evento não possui ingressos cadastrados.
                             </div>
-                        ))}
-                        {tickets.length === 0 && <p>Este evento não possui ingressos cadastrados.</p>}
+                        )}
                     </div>
                 </div>
-                <div className="modal-footer">
-                    <button className="cancel-btn" onClick={onClose} style={{width:'100%'}}>Fechar</button>
+                <div className="modal-footer" style={{marginTop: '20px'}}>
+                    <button className="cancel-btn" onClick={onClose} style={{width:'100%', padding:'12px', borderRadius:'8px', border:'none', background:'#e2e8f0', color:'#475569', fontWeight:'bold', cursor:'pointer'}}>Concluir</button>
                 </div>
             </div>
         </div>
@@ -119,7 +144,7 @@ const DashboardContent = () => {
     const [loadingStripe, setLoadingStripe] = useState(false);
     const [connectionError, setConnectionError] = useState(false);
     
-    // NOVO: Estado para abrir o modal de gestão de vendas
+    // Estado para controlar qual evento está sendo gerenciado no modal
     const [selectedEventForManage, setSelectedEventForManage] = useState(null);
 
     // Efeito para detectar retorno do Stripe (Sucesso)
@@ -146,31 +171,26 @@ const DashboardContent = () => {
         }
 
         try {
-            const userRes = await fetch(`${API_BASE_URL}/users/me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            // Busca dados em paralelo para ser mais rápido
+            const [userRes, statsRes, eventsRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/users/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_BASE_URL}/dashboard/events`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
 
             if (userRes.ok) {
                 const userDataResponse = await userRes.json();
                 setUserData(userDataResponse.user || userDataResponse);
             }
 
-            const statsRes = await fetch(`${API_BASE_URL}/dashboard/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
             if (statsRes.ok) {
                 const data = await statsRes.json();
                 setStats(data);
             }
 
-            const eventsRes = await fetch(`${API_BASE_URL}/dashboard/events`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
             if (eventsRes.ok) {
                 const data = await eventsRes.json();
-                // Ajuste para garantir que seja array
+                // Ajuste robusto para garantir que setMyEvents receba sempre um array
                 setMyEvents(Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []));
             }
 
@@ -253,6 +273,10 @@ const DashboardContent = () => {
         }
     };
 
+    const openManageModal = (event) => {
+        setSelectedEventForManage(event);
+    };
+
     if (loading) return <div className="loading-screen">Carregando Painel...</div>;
 
     if (connectionError) {
@@ -323,117 +347,92 @@ const DashboardContent = () => {
                 </div>
 
                 {stats && (
-                    <>
-                        <div className="stats-grid">
-                            <div className="stat-card purple">
-                                <div className="stat-icon"><FaMoneyBillWave /></div>
-                                <div className="stat-info">
-                                    <h3>Receita Total</h3>
-                                    <p className="stat-value">{stats.revenue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}</p>
-                                </div>
+                    <div className="dashboard-sections">
+                        <div className="events-management-section">
+                            <div className="section-header-dash">
+                                <h2><FaCalendarAlt /> Meus Eventos</h2>
+                                <button className="btn-new-event" onClick={() => router.push('/admin/new')}>Criar Novo</button>
                             </div>
-                            <div className="stat-card blue">
-                                <div className="stat-icon"><FaTicketAlt /></div>
-                                <div className="stat-info">
-                                    <h3>Ingressos</h3>
-                                    <p className="stat-value">{stats.ticketsSold || 0}</p>
-                                </div>
-                            </div>
-                            <div className="stat-card green">
-                                <div className="stat-icon"><FaUserCheck /></div>
-                                <div className="stat-info">
-                                    <h3>Check-ins</h3>
-                                    <p className="stat-value">{stats.checkins || 0}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="dashboard-sections">
-                            <div className="events-management-section">
-                                <div className="section-header-dash">
-                                    <h2><FaCalendarAlt /> Meus Eventos</h2>
-                                    <button className="btn-new-event" onClick={() => router.push('/admin/new')}>Criar Novo</button>
-                                </div>
-                                <div className="events-list-dash">
-                                    {myEvents.length === 0 ? (
-                                        <div className="empty-state-sales"><p>Nenhum evento criado.</p></div>
-                                    ) : (
-                                        myEvents.map((event) => (
-                                            <div key={event.id || event._id} className="event-row-dash">
-                                                <img src={event.imageUrl} alt={event.title} className="event-thumb" />
-                                                <div className="event-info-dash">
-                                                    <strong>{formatText(event.title)}</strong>
-                                                    <span>{formatDate(event.date)} • {event.city}</span>
-                                                    <span className={`status-badge ${event.status}`}>
-                                                        {getStatusLabel(event.status)}
-                                                    </span>
-                                                </div>
-                                                <div className="event-actions">
-                                                    {/* BOTÃO GERENCIAR VENDAS (NOVO) */}
-                                                    {!event.isInformational && (
-                                                        <button 
-                                                            className="btn-edit-dash" 
-                                                            onClick={() => setSelectedEventForManage(event)}
-                                                            title="Pausar/Ativar Vendas"
-                                                        >
-                                                            <FaCog />
-                                                        </button>
-                                                    )}
-
+                            <div className="events-list-dash">
+                                {myEvents.length === 0 ? (
+                                    <div className="empty-state-sales"><p>Nenhum evento criado.</p></div>
+                                ) : (
+                                    myEvents.map((event) => (
+                                        <div key={event.id || event._id} className="event-row-dash">
+                                            <img src={event.imageUrl} alt={event.title} className="event-thumb" />
+                                            <div className="event-info-dash">
+                                                <strong>{formatText(event.title)}</strong>
+                                                <span>{formatDate(event.date)} • {event.city}</span>
+                                                <span className={`status-badge ${event.status}`}>
+                                                    {getStatusLabel(event.status)}
+                                                </span>
+                                            </div>
+                                            <div className="event-actions">
+                                                {/* BOTÃO GERENCIAR VENDAS (COM ÍCONE DE ENGRENAGEM) */}
+                                                {!event.isInformational && (
                                                     <button 
-                                                        className="btn-participants-dash" 
-                                                        onClick={() => router.push(`/eventos/${event.id}/participantes`)}
+                                                        className="btn-edit-dash" 
+                                                        onClick={() => openManageModal(event)}
+                                                        title="Pausar/Ativar Vendas"
+                                                        style={{border: '1px solid #cbd5e1', marginRight: '5px'}}
                                                     >
-                                                        <FaList />
+                                                        <FaCog style={{color: '#475569'}} /> Gerenciar
                                                     </button>
-                                                    <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
-                                                        <FaEdit />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
+                                                )}
 
-                            <div className="chart-section">
-                                <h2><FaChartLine /> Vendas (7 dias)</h2>
-                                <div className="chart-wrapper">
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <LineChart data={chartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#888'}} tickFormatter={(val) => `R$${val}`} />
-                                            <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} contentStyle={{borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}} />
-                                            <Line type="monotone" dataKey="vendas" stroke="#4C01B5" strokeWidth={3} dot={{r: 4}} activeDot={{r: 8}} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            <div className="recent-sales-section">
-                                <div className="sales-header-row">
-                                    <h2><FaRegClock /> Vendas Recentes</h2>
-                                </div>
-                                <div className="sales-list">
-                                    {(!stats.recentSales || stats.recentSales.length === 0) ? (
-                                        <div className="empty-state-sales"><p>Nenhuma venda recente.</p></div>
-                                    ) : (
-                                        stats.recentSales.map((sale) => (
-                                            <div key={sale.id || sale._id} className="sale-item">
-                                                <div className="sale-avatar">{sale.user?.name?.charAt(0).toUpperCase() || 'U'}</div>
-                                                <div className="sale-details">
-                                                    <strong>{sale.user?.name || 'Cliente'}</strong>
-                                                    <span>{formatText(sale.ticketType?.name)} • {formatText(sale.event?.title)}</span>
-                                                </div>
-                                                <div className="sale-price">+{sale.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                                                <button 
+                                                    className="btn-participants-dash" 
+                                                    onClick={() => router.push(`/eventos/${event.id}/participantes`)}
+                                                >
+                                                    <FaList /> Participantes
+                                                </button>
+                                                <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
+                                                    <FaEdit /> Editar
+                                                </button>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
-                    </>
+
+                        <div className="chart-section">
+                            <h2><FaChartLine /> Vendas (7 dias)</h2>
+                            <div className="chart-wrapper">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <LineChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888'}} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#888'}} tickFormatter={(val) => `R$${val}`} />
+                                        <Tooltip formatter={(value) => `R$ ${value.toFixed(2)}`} contentStyle={{borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}} />
+                                        <Line type="monotone" dataKey="vendas" stroke="#4C01B5" strokeWidth={3} dot={{r: 4}} activeDot={{r: 8}} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="recent-sales-section">
+                            <div className="sales-header-row">
+                                <h2><FaRegClock /> Vendas Recentes</h2>
+                            </div>
+                            <div className="sales-list">
+                                {(!stats.recentSales || stats.recentSales.length === 0) ? (
+                                    <div className="empty-state-sales"><p>Nenhuma venda recente.</p></div>
+                                ) : (
+                                    stats.recentSales.map((sale) => (
+                                        <div key={sale.id || sale._id} className="sale-item">
+                                            <div className="sale-avatar">{sale.user?.name?.charAt(0).toUpperCase() || 'U'}</div>
+                                            <div className="sale-details">
+                                                <strong>{sale.user?.name || 'Cliente'}</strong>
+                                                <span>{formatText(sale.ticketType?.name)} • {formatText(sale.event?.title)}</span>
+                                            </div>
+                                            <div className="sale-price">+{sale.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* MODAL DE GESTÃO DE VENDAS */}
