@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
     port: 587,
     auth: {
         user: process.env.EMAIL_USER, // Seu e-mail de login no Brevo
-        pass: process.env.EMAIL_PASS  // Sua chave SMTP (Master Password) do Brevo
+        pass: process.env.EMAIL_PASS  // Sua chave SMTP do Brevo
     }
 });
 
@@ -69,7 +69,7 @@ exports.sendTicketEmail = async (user, event, tickets) => {
     }
 };
 
-// E-mail de Status do Evento (Enviado para o ORGANIZADOR - Tópico 7)
+// E-mail de Status do Evento (Enviado para o ORGANIZADOR ao Aprovar/Reprovar)
 exports.sendEventStatusEmail = async (organizerEmail, organizerName, eventTitle, status, eventId, reason = "") => {
     const isApproved = status === 'approved';
     const subject = isApproved ? `✅ Seu evento foi APROVADO: ${eventTitle}` : `❌ Atualização sobre o evento: ${eventTitle}`;
@@ -83,31 +83,46 @@ exports.sendEventStatusEmail = async (organizerEmail, organizerName, eventTitle,
             <div style="padding: 30px;">
                 <p>Olá, <strong>${organizerName}</strong>,</p>
                 <p>O status do seu evento <strong>${eventTitle}</strong> foi atualizado.</p>
-                
                 ${isApproved 
                     ? `<p>Parabéns! Seu evento já está publicado e pronto para receber vendas.</p>
                        <a href="${eventLink}" style="display: inline-block; padding: 12px 25px; background: #4C01B5; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Ver Evento Publicado</a>`
                     : `<p>Infelizmente seu evento não foi aprovado nesta análise.</p>
                        <div style="background: #fff5f5; padding: 15px; border-left: 4px solid #ef4444; margin: 15px 0;">
                            <strong>Motivo:</strong> ${reason || "Não especificado pela moderação."}
-                       </div>
-                       <p>Você pode ajustar os detalhes no seu painel e reenviar para análise.</p>`
+                       </div>`
                 }
-            </div>
-            <div style="padding: 20px; background: #f8fafc; text-align: center; font-size: 12px; color: #64748b;">
-                Equipe de Moderação Vibz
             </div>
         </div>
     `;
+    await transporter.sendMail({ from: '"Vibz Moderação" <contato@vibz.com>', to: organizerEmail, subject: subject, html: htmlContent });
+};
 
-    try {
-        await transporter.sendMail({
-            from: '"Vibz Moderação" <contato@vibz.com>',
-            to: organizerEmail,
-            subject: subject,
-            html: htmlContent
-        });
-    } catch (error) {
-        console.error("Erro ao enviar e-mail de status:", error);
-    }
+// E-mail de Confirmação de Recebimento (Enviado para o ORGANIZADOR ao Criar)
+exports.sendEventReceivedEmail = async (organizerEmail, organizerName, eventTitle) => {
+    const htmlContent = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto;">
+            <h2>Olá, ${organizerName}!</h2>
+            <p>Recebemos o cadastro do seu evento: <strong>${eventTitle}</strong>.</p>
+            <p>Ele foi enviado para nossa equipe de curadoria e em breve você receberá um e-mail confirmando a aprovação.</p>
+            <p>Atenciosamente,<br>Equipe Vibz</p>
+        </div>
+    `;
+    await transporter.sendMail({ from: '"Vibz" <contato@vibz.com>', to: organizerEmail, subject: `📝 Evento Recebido: ${eventTitle}`, html: htmlContent });
+};
+
+// E-mail para a PLATAFORMA (Notifica que há um novo evento para moderar)
+exports.sendAdminNotificationEmail = async (eventDetails) => {
+    const htmlContent = `
+        <div style="font-family: sans-serif; color: #333; border: 1px solid #4C01B5; padding: 20px;">
+            <h2 style="color: #4C01B5;">🔔 Novo Evento para Moderação</h2>
+            <p>Um novo evento foi cadastrado e aguarda aprovação:</p>
+            <hr>
+            <p><strong>Evento:</strong> ${eventDetails.title}</p>
+            <p><strong>Organizador:</strong> ${eventDetails.organizerName}</p>
+            <p><strong>Cidade:</strong> ${eventDetails.city}</p>
+            <hr>
+            <p>Acesse o painel administrativo para revisar.</p>
+        </div>
+    `;
+    await transporter.sendMail({ from: '"Vibz Sistema" <sistema@vibz.com>', to: process.env.EMAIL_USER, subject: `🔔 NOVO EVENTO: ${eventDetails.title}`, html: htmlContent });
 };

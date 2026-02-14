@@ -1,7 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const cloudinary = require('../config/cloudinary');
-const { sendEventStatusEmail } = require('../services/emailService');
+const { 
+    sendEventStatusEmail, 
+    sendEventReceivedEmail, 
+    sendAdminNotificationEmail 
+} = require('../services/emailService');
 
 const mapEventToFrontend = (event) => {
     const safeDate = event.eventDate ? new Date(event.eventDate).toISOString() : new Date(event.createdAt).toISOString();
@@ -81,10 +85,6 @@ const createEvent = async (req, res) => {
             return res.status(400).json({ message: "Dados JSON inválidos." });
         }
 
-        if (!isInfoBool && parsedTicketsFlat.length === 0) {
-            return res.status(400).json({ message: "Eventos com inscrição precisam de pelo menos um tipo de ingresso." });
-        }
-
         let imageUrl = '';
         if (req.file) {
             const b64 = Buffer.from(req.file.buffer).toString("base64");
@@ -96,73 +96,33 @@ const createEvent = async (req, res) => {
         }
         
         let mainEventDate = new Date();
-        if (date) {
-            mainEventDate = new Date(date);
-        } else if (parsedSessions.length > 0) {
-            mainEventDate = new Date(parsedSessions[0].date);
-        }
-
-        const organizerInfoObj = {
-            name: organizerName || "Organizador",
-            instagram: organizerInstagram || ""
-        };
-
-        let minPrice = 0;
-        if (parsedTicketsFlat.length > 0) {
-            minPrice = parsedTicketsFlat.reduce((min, t) => {
-                const p = parseFloat(t.price);
-                return p < min ? p : min;
-            }, parseFloat(parsedTicketsFlat[0]?.price || 0));
-        }
+        if (date) { mainEventDate = new Date(date); } 
+        else if (parsedSessions.length > 0) { mainEventDate = new Date(parsedSessions[0].date); }
 
         const eventData = {
-            title,
-            description,
-            imageUrl,
-            city,
+            title, description, imageUrl, city,
             location: location || parsedAddress.street,
             category: category ? category.trim() : "Geral",
-            ageRating, 
-            priceFrom: minPrice,
-            status: 'pending',
-            organizerId: userId,
-            isFeaturedRequested: isFeaturedBool,
+            ageRating, priceFrom: 0, status: 'pending',
+            organizerId: userId, isFeaturedRequested: isFeaturedBool,
             highlightStatus: isFeaturedBool ? 'pending' : 'none',
-            highlightFee: isFeaturedBool ? 9.90 : 0,
             refundPolicy: refundPolicy || "7 dias após a compra",
             eventDate: mainEventDate,
             sessions: parsedSessions,
-            organizerInfo: organizerInfoObj,
+            organizerInfo: { name: organizerName || "Organizador", instagram: organizerInstagram || "" },
             formSchema: parsedFormSchema,
             isInformational: isInfoBool
         };
 
         if (parsedTicketsFlat.length > 0) {
             eventData.ticketTypes = {
-                create: parsedTicketsFlat.map(t => {
-                    let safeActivityDate = null;
-                    if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
-                        const d = new Date(t.activityDate);
-                        if (!isNaN(d.getTime())) {
-                            safeActivityDate = d;
-                        }
-                    }
-
-                    return {
-                        name: t.name,
-                        category: t.category,
-                        batchName: t.batch,
-                        price: parseFloat(t.price),
-                        quantity: parseInt(t.quantity),
-                        maxPerUser: parseInt(t.maxPerUser) || 4,
-                        description: t.description,
-                        isHalfPrice: t.isHalfPrice || false,
-                        status: 'active',
-                        activityDate: safeActivityDate,
-                        startTime: (t.startTime && t.startTime.trim() !== "") ? t.startTime : null,
-                        endTime: (t.endTime && t.endTime.trim() !== "") ? t.endTime : null
-                    };
-                })
+                create: parsedTicketsFlat.map(t => ({
+                    name: t.name, batchName: t.batch, price: parseFloat(t.price),
+                    quantity: parseInt(t.quantity), maxPerUser: parseInt(t.maxPerUser) || 4,
+                    status: 'active',
+                    activityDate: t.activityDate ? new Date(t.activityDate) : null,
+                    startTime: t.startTime || null, endTime: t.endTime || null
+                }))
             };
         }
 
@@ -171,14 +131,17 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
+        sendEventReceivedEmail(req.user.email, organizerName, title);
+        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') });
+
         res.status(201).json({ 
-            message: parsedTicketsFlat.length > 0 ? 'Evento criado com ingressos.' : 'Evento informativo criado.', 
+            message: 'Evento enviado para análise.', 
             event: mapEventToFrontend(event) 
         });
 
     } catch (error) {
         console.error("Erro no createEvent:", error);
-        res.status(500).json({ message: 'Erro interno ao criar evento.', error: error.message });
+        res.status(500).json({ message: 'Erro interno ao criar evento.' });
     }
 };
 
