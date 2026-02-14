@@ -56,7 +56,7 @@
 .organizer-insta-btn:hover { background-color: var(--primary-purple); color: white; border-color: var(--primary-purple); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(76, 1, 181, 0.25); }
 
 /* --- NOVO SELETOR DE DATAS (GRID CLEAN) --- */
-.date-selector-container { padding: 15px 20px; background-color: #ffffff; border-bottom: 1px solid #f1f5f9; }
+.date-selector-container { padding: 0 0 30px; background-color: #ffffff; border-bottom: 1px solid #f1f5f9; }
 .date-selector-label { font-size: 0.9rem; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .date-selector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
 .date-chip { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; padding: 10px 5px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s ease; width: 100%; display: flex; justify-content: center; align-items: center; }
@@ -69,7 +69,7 @@
 .tickets-header { background: linear-gradient(135deg, var(--dark-purple), var(--primary-purple)); color: var(--white); padding: 20px 28px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.3s; }
 .tickets-header:hover { opacity: 0.95; }
 .tickets-header h3 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; font-weight: 700; }
-.tickets-content { padding: 25px; }
+.tickets-content { padding: 5px 25px 25px 25px; }
 .ticket-item { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px dashed #e2e8f0; }
 .ticket-info { display: flex; flex-direction: column; gap: 4px; }
 .ticket-name { font-weight: 700; color: var(--text-dark); font-size: 1rem; }
@@ -88,7 +88,7 @@
 .no-tickets-msg { text-align: center; color: #64748b; font-style: italic; padding: 20px; }
 
 /* Coupon & Footer */
-.coupon-section { margin-top: 20px; padding-top: 20px; border-top: 1px dashed #e2e8f0; }
+.coupon-section { margin-top: 20px; padding-top: 20px; }
 .coupon-input-group { display: flex; gap: 10px; }
 .coupon-input { flex: 1; padding: 12px 15px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none; font-size: 0.95rem; transition: border-color 0.2s; }
 .coupon-input:focus { border-color: var(--primary-purple); }
