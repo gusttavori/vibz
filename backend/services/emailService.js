@@ -51,7 +51,7 @@ exports.sendTicketEmail = async (user, event, tickets) => {
         ).join('');
 
         const mailOptions = {
-            from: '"Vibz Ingressos" <contato@vibz.com>',
+            from: '"Vibz Ingressos" <vibzeventos@gmail.com>',
             to: user.email,
             subject: `🎟️ Seus ingressos para: ${event.title}`,
             html: `<div style="font-family: sans-serif; color: #333;">
@@ -81,7 +81,7 @@ exports.sendEventStatusEmail = async (organizerEmail, organizerName, eventTitle,
             ${isApproved ? `<a href="${eventLink}">Ver Evento Publicado</a>` : `<p>Motivo: ${reason}</p>`}
         </div>`;
 
-        await transporter.sendMail({ from: '"Vibz Moderação" <contato@vibz.com>', to: organizerEmail, subject: subject, html: htmlContent });
+        await transporter.sendMail({ from: '"Vibz Moderação" <vibzeventos@gmail.com>', to: organizerEmail, subject: subject, html: htmlContent });
         console.log(`📧 Status enviado para: ${organizerEmail}`);
     } catch (err) { console.error("❌ Erro email status:", err.message); }
 };
@@ -94,7 +94,7 @@ exports.sendEventReceivedEmail = async (organizerEmail, organizerName, eventTitl
             <p>Recebemos o cadastro do seu evento: <strong>${eventTitle}</strong>.</p>
             <p>Em breve você receberá um e-mail confirmando a aprovação.</p>
         </div>`;
-        await transporter.sendMail({ from: '"Vibz" <contato@vibz.com>', to: organizerEmail, subject: `📝 Evento Recebido: ${eventTitle}`, html: htmlContent });
+        await transporter.sendMail({ from: '"Vibz" <vibzeventos@gmail.com>', to: organizerEmail, subject: `📝 Evento Recebido: ${eventTitle}`, html: htmlContent });
         console.log(`📧 Recebimento enviado para: ${organizerEmail}`);
     } catch (err) { console.error("❌ Erro email recebimento:", err.message); }
 };
@@ -109,7 +109,7 @@ exports.sendAdminNotificationEmail = async (eventDetails) => {
             <p>Acesse o painel para revisar.</p>
         </div>`;
         await transporter.sendMail({ 
-            from: '"Vibz Sistema" <sistema@vibz.com>', 
+            from: '"Vibz Eventos" <vibzeventos@gmail.com>', 
             to: process.env.EMAIL_USER, 
             subject: `🔔 NOVO EVENTO: ${eventDetails.title}`, 
             html: htmlContent 
