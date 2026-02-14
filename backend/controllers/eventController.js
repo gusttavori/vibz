@@ -38,6 +38,7 @@ const mapEventToFrontend = (event) => {
         },
         sessions: parsedSessions,
         date: safeDate,
+        // Mapeia os ingressos garantindo que todos os campos (status, sold, etc) vão para o front
         tickets: event.ticketTypes ? event.ticketTypes.map(t => ({
             ...t,
             _id: t.id,
@@ -45,10 +46,8 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // CRÍTICO: Envia status e data limite para o front controlar o bloqueio
-            status: t.status, 
+            status: t.status, // Essencial para o botão Switch
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
-            
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || '',
@@ -305,23 +304,22 @@ const updateEvent = async (req, res) => {
     }
 };
 
+// --- VERSÃO COMPLETA DO getMyEvents ---
 const getMyEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             include: {
-                // Conta quantos ingressos "Tickets" (vendidos) existem
                 _count: { select: { tickets: true } },
-                
-                // CORREÇÃO: Traz os tipos de ingresso COMPLETO (nome, id, status, etc)
+                // AQUI: Trazendo TUDO (incluindo sold e quantity)
                 ticketTypes: { 
                     select: { 
                         id: true, 
                         name: true, 
                         price: true, 
-                        sold: true, 
-                        quantity: true, 
-                        status: true,
+                        sold: true,      // Completo
+                        quantity: true,  // Completo
+                        status: true,    
                         batchName: true
                     } 
                 }
@@ -329,7 +327,6 @@ const getMyEvents = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        // O 'mapEventToFrontend' vai usar o ticketTypes carregado acima
         const formattedEvents = events.map(mapEventToFrontend);
         
         const totalTicketsSold = events.reduce((acc, ev) => {
@@ -349,6 +346,7 @@ const getMyEvents = async (req, res) => {
     }
 };
 
+// --- FUNÇÃO PARA O BOTÃO PAUSAR/ATIVAR ---
 const toggleTicketStatus = async (req, res) => {
     try {
         const { ticketId } = req.params;

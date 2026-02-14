@@ -25,10 +25,18 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     const [loadingId, setLoadingId] = useState(null);
     const API_BASE_URL = getApiBaseUrl();
 
+    // Debug inicial para garantir que os dados chegaram
+    useEffect(() => {
+        console.log("ManageSalesModal aberto para evento:", event.title);
+        console.log("Ingressos carregados:", tickets);
+    }, [event, tickets]);
+
     const handleToggle = async (ticket) => {
         const ticketId = ticket.id || ticket._id;
         setLoadingId(ticketId);
         
+        console.log(`Tentando alterar status do ticket ID: ${ticketId}. Status atual: ${ticket.status}`);
+
         // Lógica: Se está 'active', muda para 'paused'. Se não, muda para 'active'.
         const newStatus = ticket.status === 'active' ? 'paused' : 'active';
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
@@ -43,7 +51,11 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                 body: JSON.stringify({ status: newStatus })
             });
 
+            const data = await res.json(); // Pega a resposta para logar em caso de erro
+
             if (res.ok) {
+                console.log("Status atualizado com sucesso:", data);
+                
                 // Atualiza o estado local do modal imediatamente para feedback visual
                 const updatedTickets = tickets.map(t => 
                     (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t
@@ -56,14 +68,14 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                     toast('Vendas Pausadas 🔴', { icon: '🛑' });
                 }
                 
-                // Chama a função para atualizar o dashboard pai (se necessário)
+                // Chama a função para atualizar o dashboard pai
                 if (onUpdate) onUpdate(); 
             } else {
-                const err = await res.json();
-                toast.error(err.message || 'Erro ao atualizar status.');
+                console.error("Erro ao atualizar status (Backend):", data);
+                toast.error(data.message || 'Erro ao atualizar status.');
             }
         } catch (error) {
-            console.error(error);
+            console.error("Erro de conexão (Frontend):", error);
             toast.error('Erro de conexão.');
         } finally {
             setLoadingId(null);
@@ -119,7 +131,7 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                             })
                         ) : (
                             <div style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>
-                                Este evento não possui ingressos cadastrados.
+                                Este evento não possui ingressos cadastrados ou houve erro ao carregar.
                             </div>
                         )}
                     </div>
@@ -192,6 +204,8 @@ const DashboardContent = () => {
                 const data = await eventsRes.json();
                 // Ajuste robusto para garantir que setMyEvents receba sempre um array
                 setMyEvents(Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []));
+            } else {
+                console.error("Erro ao buscar eventos:", await eventsRes.text());
             }
 
         } catch (error) {
@@ -376,7 +390,7 @@ const DashboardContent = () => {
                                                         title="Pausar/Ativar Vendas"
                                                         style={{border: '1px solid #cbd5e1', marginRight: '5px'}}
                                                     >
-                                                        <FaCog style={{color: '#475569'}} /> Gerenciar
+                                                        <FaCog style={{color: '#475569'}} />
                                                     </button>
                                                 )}
 
