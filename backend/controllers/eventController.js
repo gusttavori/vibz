@@ -131,8 +131,16 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        sendEventReceivedEmail(req.user.email, organizerName, title);
-        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') });
+        // --- DISPARO DE E-MAILS (Non-blocking para evitar Connection Timeout de derrubar o servidor) ---
+        sendEventReceivedEmail(req.user.email, organizerName, title)
+            .catch(err => console.error("Falha silenciosa e-mail org:", err.message));
+        
+        sendAdminNotificationEmail({ 
+            title, 
+            organizerName, 
+            city, 
+            date: mainEventDate.toLocaleDateString('pt-BR') 
+        }).catch(err => console.error("Falha silenciosa e-mail admin:", err.message));
 
         res.status(201).json({ 
             message: 'Evento enviado para análise.', 
@@ -141,7 +149,7 @@ const createEvent = async (req, res) => {
 
     } catch (error) {
         console.error("Erro no createEvent:", error);
-        res.status(500).json({ message: 'Erro interno ao criar evento.' });
+        if (!res.headersSent) res.status(500).json({ message: 'Erro interno ao criar evento.' });
     }
 };
 
@@ -149,7 +157,6 @@ const updateEvent = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
-
         const existingEvent = await prisma.event.findUnique({ where: { id } });
 
         if (!existingEvent) return res.status(404).json({ message: 'Evento não encontrado.' });
@@ -162,10 +169,7 @@ const updateEvent = async (req, res) => {
             isInformational 
         } = req.body;
 
-        let isInfoBool = existingEvent.isInformational;
-        if (isInformational !== undefined) {
-            isInfoBool = isInformational === 'true' || isInformational === true;
-        }
+        let isInfoBool = isInformational !== undefined ? (isInformational === 'true' || isInformational === true) : existingEvent.isInformational;
 
         let imageUrl = existingEvent.imageUrl;
         if (req.file) {
@@ -201,53 +205,25 @@ const updateEvent = async (req, res) => {
 
         if (tickets) {
             const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
-            
             if (ticketsData.length > 0) {
                 for (const t of ticketsData) {
-                    const priceVal = parseFloat(t.price);
-                    const qtdVal = parseInt(t.quantity);
-                    const maxPerUserVal = parseInt(t.maxPerUser) || 4;
-                    
-                    let safeActivityDate = null;
-                    if (t.activityDate && typeof t.activityDate === 'string' && t.activityDate.trim() !== "") {
-                        const d = new Date(t.activityDate);
-                        if (!isNaN(d.getTime())) {
-                            safeActivityDate = d;
-                        }
-                    }
-                    const startT = (t.startTime && t.startTime.trim() !== "") ? t.startTime : null;
-                    const endT = (t.endTime && t.endTime.trim() !== "") ? t.endTime : null;
+                    let safeActivityDate = t.activityDate ? new Date(t.activityDate) : null;
+                    const ticketPayload = {
+                        name: t.name, price: parseFloat(t.price), quantity: parseInt(t.quantity), 
+                        batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
+                        activityDate: safeActivityDate, startTime: t.startTime || null,
+                        endTime: t.endTime || null, maxPerUser: parseInt(t.maxPerUser) || 4
+                    };
 
                     if (t.id) {
-                        await prisma.ticketType.update({
-                            where: { id: t.id },
-                            data: {
-                                name: t.name, price: priceVal, quantity: qtdVal, 
-                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: safeActivityDate,
-                                startTime: startT,
-                                endTime: endT,
-                                maxPerUser: maxPerUserVal
-                            }
-                        });
+                        await prisma.ticketType.update({ where: { id: t.id }, data: ticketPayload });
                     } else {
-                        await prisma.ticketType.create({
-                            data: {
-                                eventId: id, name: t.name, price: priceVal, quantity: qtdVal,
-                                batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                                activityDate: safeActivityDate,
-                                startTime: startT,
-                                endTime: endT,
-                                maxPerUser: maxPerUserVal
-                            }
-                        });
+                        await prisma.ticketType.create({ data: { ...ticketPayload, eventId: id } });
                     }
                 }
             }
         }
-
         res.json(mapEventToFrontend(updatedEvent));
-
     } catch (error) {
         console.error("Erro updateEvent:", error);
         res.status(500).json({ message: 'Erro ao atualizar evento.' });
@@ -258,31 +234,12 @@ const getMyEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
-            include: {
-                _count: { select: { tickets: true } },
-                ticketTypes: true 
-            },
+            include: { _count: { select: { tickets: true } }, ticketTypes: true },
             orderBy: { createdAt: 'desc' }
         });
-
-        const formattedEvents = events.map(event => {
-            return mapEventToFrontend(event);
-        });
-        
-        const totalTicketsSold = events.reduce((acc, ev) => {
-            const eventSold = ev.ticketTypes 
-                ? ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0) 
-                : 0;
-            return acc + eventSold;
-        }, 0);
-
-        const metrics = { 
-            activeEvents: events.length, 
-            totalRevenue: 0, 
-            ticketsSold: totalTicketsSold 
-        };
-
-        res.json({ myEvents: formattedEvents, metrics });
+        const formattedEvents = events.map(mapEventToFrontend);
+        const totalTicketsSold = events.reduce((acc, ev) => acc + (ev.ticketTypes ? ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0) : 0), 0);
+        res.json({ myEvents: formattedEvents, metrics: { activeEvents: events.length, totalRevenue: 0, ticketsSold: totalTicketsSold } });
     } catch (error) {
         console.error("Erro getMyEvents:", error);
         res.status(500).json({ message: 'Erro ao carregar dashboard.' });
@@ -297,13 +254,10 @@ const approveEvent = async (req, res) => {
             data: { status: 'approved' },
             include: { organizer: { select: { email: true, name: true } } }
         });
-
-        // Envia e-mail de aprovação via Brevo
-        await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id);
-
+        sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id)
+            .catch(e => console.error("Erro email aprovação:", e.message));
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
-        console.error("Erro ao aprovar evento:", error);
         res.status(500).json({ message: "Erro ao aprovar evento." });
     }
 };
@@ -312,19 +266,15 @@ const rejectEvent = async (req, res) => {
     try {
         const { id } = req.params;
         const { reason } = req.body; 
-        
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'rejected' },
             include: { organizer: { select: { email: true, name: true } } }
         });
-
-        // Envia e-mail de reprovação com motivo
-        await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason);
-
+        sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason)
+            .catch(e => console.error("Erro email reprovação:", e.message));
         res.json({ success: true, message: "Evento reprovado e organizador notificado." });
     } catch (error) {
-        console.error("Erro ao reprovar evento:", error);
         res.status(500).json({ message: "Erro ao reprovar evento." });
     }
 };
@@ -334,14 +284,9 @@ const toggleTicketStatus = async (req, res) => {
         const { ticketId } = req.params;
         const { status } = req.body; 
         const ticket = await prisma.ticketType.findUnique({ where: { id: ticketId }, include: { event: true } });
-
         if (!ticket) return res.status(404).json({ message: 'Ingresso não encontrado.' });
         if (ticket.event.organizerId !== req.user.id) return res.status(403).json({ message: 'Sem permissão.' });
-
-        const updatedTicket = await prisma.ticketType.update({
-            where: { id: ticketId },
-            data: { status: status }
-        });
+        const updatedTicket = await prisma.ticketType.update({ where: { id: ticketId }, data: { status: status } });
         res.json({ success: true, status: updatedTicket.status });
     } catch (error) {
         res.status(500).json({ message: 'Erro ao atualizar status.' });
@@ -352,10 +297,7 @@ const getEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             where: { status: 'approved' },
-            include: { 
-                ticketTypes: true,
-                organizer: { select: { name: true, id: true } }
-            },
+            include: { ticketTypes: true, organizer: { select: { name: true, id: true } } },
             orderBy: { createdAt: 'desc' }
         });
         res.status(200).json(events.map(mapEventToFrontend));
@@ -368,10 +310,7 @@ const getEventById = async (req, res) => {
     try {
         const event = await prisma.event.findUnique({
             where: { id: req.params.id },
-            include: { 
-                organizer: { select: { name: true, id: true } }, 
-                ticketTypes: true 
-            }
+            include: { organizer: { select: { name: true, id: true } }, ticketTypes: true }
         });
         if (!event) return res.status(404).json({ message: 'Evento não encontrado' });
         res.json(mapEventToFrontend(event));
@@ -381,35 +320,22 @@ const getEventById = async (req, res) => {
 };
 
 const getFeaturedEvents = async (req, res) => {
-    const events = await prisma.event.findMany({
-        where: { isFeatured: true, status: 'approved' },
-        include: { ticketTypes: true }
-    });
-    res.json(events.map(mapEventToFrontend));
+    try {
+        const events = await prisma.event.findMany({ where: { isFeatured: true, status: 'approved' }, include: { ticketTypes: true } });
+        res.json(events.map(mapEventToFrontend));
+    } catch (e) { res.status(500).json({ message: "Erro" }); }
 };
 
 const getEventsByCategory = async (req, res) => {
     try {
         let { categoryName } = req.params;
-
-        if (categoryName) {
-            categoryName = decodeURIComponent(categoryName);
-        }
-
         const events = await prisma.event.findMany({
-            where: { 
-                category: {
-                    equals: categoryName,
-                    mode: 'insensitive' 
-                },
-                status: 'approved' 
-            },
+            where: { category: { equals: decodeURIComponent(categoryName), mode: 'insensitive' }, status: 'approved' },
             include: { ticketTypes: true },
             orderBy: { eventDate: 'asc' }
         });
         res.json(events.map(mapEventToFrontend));
     } catch (error) {
-        console.error("Erro busca categoria:", error);
         res.status(500).json({ message: 'Erro ao buscar por categoria' });
     }
 };
@@ -418,13 +344,7 @@ const searchEvents = async (req, res) => {
     const { query } = req.query;
     if (!query) return res.json([]);
     const events = await prisma.event.findMany({
-        where: {
-            status: 'approved',
-            OR: [
-                { title: { contains: query, mode: 'insensitive' } },
-                { city: { contains: query, mode: 'insensitive' } }
-            ]
-        },
+        where: { status: 'approved', OR: [{ title: { contains: query, mode: 'insensitive' } }, { city: { contains: query, mode: 'insensitive' } }] },
         include: { ticketTypes: true }
     });
     res.json(events.map(mapEventToFrontend));
@@ -433,81 +353,34 @@ const searchEvents = async (req, res) => {
 const toggleFavorite = async (req, res) => { res.status(200).json({ success: true }); };
 
 const getEventCities = async (req, res) => {
-    const cities = await prisma.event.findMany({
-        where: { status: 'approved' },
-        select: { city: true },
-        distinct: ['city']
-    });
+    const cities = await prisma.event.findMany({ where: { status: 'approved' }, select: { city: true }, distinct: ['city'] });
     res.json(cities.map(c => c.city));
 };
 
 const getEventParticipants = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
-
-        const event = await prisma.event.findUnique({
-            where: { id },
-            select: { title: true, organizerId: true, formSchema: true, imageUrl: true }
-        });
-
-        if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
-        if (event.organizerId !== userId) return res.status(403).json({ message: 'Sem permissão para ver este evento.' });
-
+        const event = await prisma.event.findUnique({ where: { id }, select: { title: true, organizerId: true } });
+        if (!event || event.organizerId !== req.user.id) return res.status(403).json({ message: 'Sem permissão.' });
         const tickets = await prisma.ticket.findMany({
-            where: { 
-                eventId: id, 
-                status: { in: ['valid', 'used'] } 
-            },
-            include: {
-                user: { select: { name: true, email: true } },
-                ticketType: { select: { name: true, batchName: true } }
-            },
+            where: { eventId: id, status: { in: ['valid', 'used'] } },
+            include: { user: { select: { name: true, email: true } }, ticketType: { select: { name: true, batchName: true } } },
             orderBy: { createdAt: 'desc' }
         });
-
-        const participants = tickets.map(t => {
-            let customData = {};
-            if (t.participantData && typeof t.participantData === 'object') {
-                customData = t.participantData;
-            }
-
-            return {
-                id: t.id,
-                code: t.qrCodeData,
-                status: t.status,
-                buyerName: t.user.name,
-                buyerEmail: t.user.email,
-                ticketType: t.ticketType.name,
-                batch: t.ticketType.batchName || '-',
-                purchaseDate: t.createdAt,
-                ...customData
-            };
-        });
-
         res.json({ 
             eventTitle: event.title,
-            eventImageUrl: event.imageUrl, 
-            formSchema: typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema,
-            participants 
+            participants: tickets.map(t => ({ id: t.id, status: t.status, buyerName: t.user.name, buyerEmail: t.user.email, ticketType: t.ticketType.name, ...t.participantData })) 
         });
-
     } catch (error) {
-        console.error("Erro ao buscar participantes:", error);
         res.status(500).json({ message: 'Erro ao carregar lista.' });
     }
 };
 
 const getPendingEvents = async (req, res) => { 
     try {
-        const events = await prisma.event.findMany({
-            where: { status: 'pending' },
-            include: { organizer: { select: { name: true, email: true } } }
-        });
+        const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
         res.json(events);
-    } catch (error) {
-        res.status(500).json({ message: "Erro ao buscar eventos pendentes." });
-    }
+    } catch (error) { res.status(500).json({ message: "Erro" }); }
 };
 
 const getPendingHighlights = async (req, res) => { res.json([]); };
