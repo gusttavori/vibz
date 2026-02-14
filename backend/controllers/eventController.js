@@ -45,10 +45,8 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // CRÍTICO: Envia status e data limite para o front controlar o bloqueio
             status: t.status, 
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
-            
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
             endTime: t.endTime || '',
@@ -310,25 +308,18 @@ const getMyEvents = async (req, res) => {
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             include: {
+                // Conta quantos ingressos "Tickets" (vendidos) existem
                 _count: { select: { tickets: true } },
-                // CORREÇÃO CRÍTICA: Busca todos os campos do ticket necessários para o modal de gestão
-                ticketTypes: { 
-                    select: { 
-                        id: true, 
-                        name: true, 
-                        price: true, 
-                        sold: true, 
-                        quantity: true, 
-                        status: true, // Necessário para o switch
-                        batchName: true
-                    } 
-                }
+                
+                // CORREÇÃO: Traz os tipos de ingresso COMPLETO (nome, id, status, etc)
+                ticketTypes: true 
             },
             orderBy: { createdAt: 'desc' }
         });
+
+        // O 'mapEventToFrontend' vai usar o ticketTypes carregado acima
         const formattedEvents = events.map(mapEventToFrontend);
         
-        // Recalcula métricas com base nos dados reais
         const totalTicketsSold = events.reduce((acc, ev) => {
             return acc + ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0);
         }, 0);
@@ -346,11 +337,10 @@ const getMyEvents = async (req, res) => {
     }
 };
 
-// --- NOVA FUNÇÃO: Pausar/Ativar Vendas ---
 const toggleTicketStatus = async (req, res) => {
     try {
         const { ticketId } = req.params;
-        const { status } = req.body; // 'active' ou 'paused'
+        const { status } = req.body; 
 
         const ticket = await prisma.ticketType.findUnique({
             where: { id: ticketId },
@@ -358,8 +348,6 @@ const toggleTicketStatus = async (req, res) => {
         });
 
         if (!ticket) return res.status(404).json({ message: 'Ingresso não encontrado.' });
-        
-        // Segurança: Verifica se o usuário é o dono do evento
         if (ticket.event.organizerId !== req.user.id) {
             return res.status(403).json({ message: 'Sem permissão.' });
         }
@@ -538,6 +526,5 @@ module.exports = {
     toggleFavorite, getEventsByCategory, getFeaturedEvents, getEventCities,
     searchEvents, getPendingEvents, approveEvent, rejectEvent, 
     getPendingHighlights, approveHighlight, rejectHighlight,
-    getEventParticipants, 
-    toggleTicketStatus // IMPORTANTE: Exportando a nova função
+    getEventParticipants, toggleTicketStatus 
 };

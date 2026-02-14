@@ -21,7 +21,7 @@ const getApiBaseUrl = () => {
 // --- MODAL DE GERENCIAMENTO DE VENDAS (COM SWITCH VISUAL) ---
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     // Inicializa o estado com os tickets passados pelo evento
-    const [tickets, setTickets] = useState(event.ticketTypes || event.tickets || []);
+    const [tickets, setTickets] = useState(event.tickets || event.ticketTypes || []);
     const [loadingId, setLoadingId] = useState(null);
     const API_BASE_URL = getApiBaseUrl();
 
