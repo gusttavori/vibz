@@ -9,13 +9,130 @@ import confetti from 'canvas-confetti';
 import { 
     FaMoneyBillWave, FaTicketAlt, FaUserCheck, FaChartLine, 
     FaRegClock, FaCheckCircle, FaExclamationCircle,
-    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode
+    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
 const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+};
+
+// --- COMPONENTE DO MODAL (POP-UP) ---
+const ManageSalesModal = ({ event, onClose, onUpdate }) => {
+    // Inicializa o estado com os tickets passados pelo evento
+    const [tickets, setTickets] = useState(event.tickets || []);
+    const [loadingId, setLoadingId] = useState(null);
+    const API_BASE_URL = getApiBaseUrl();
+
+    const handleToggle = async (ticket) => {
+        const ticketId = ticket.id || ticket._id;
+        setLoadingId(ticketId);
+        
+        // Lógica: Se está 'active', muda para 'paused'. Se não, muda para 'active'.
+        const newStatus = ticket.status === 'active' ? 'paused' : 'active';
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/events/tickets/${ticketId}/status`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                // Atualiza o estado local do modal imediatamente
+                const updatedTickets = tickets.map(t => 
+                    (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t
+                );
+                setTickets(updatedTickets);
+                
+                if (newStatus === 'active') {
+                    toast.success('Vendas Ativadas! 🟢', { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+                } else {
+                    toast.success('Vendas Pausadas 🔴', { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+                }
+                
+                // Atualiza o painel principal
+                if (onUpdate) onUpdate(); 
+            } else {
+                console.error("Erro API:", data);
+                toast.error(data.message || 'Erro ao atualizar status.');
+            }
+        } catch (error) {
+            console.error("Erro Conexão:", error);
+            toast.error('Erro de conexão.');
+        } finally {
+            setLoadingId(null);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) onClose(); }}>
+            <div className="modal-content">
+                <div className="modal-header">
+                    <h3>Gerenciar Vendas: {event.title}</h3>
+                    <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
+                </div>
+                <div className="modal-body">
+                    <p style={{marginBottom:'20px', color:'#64748b', fontSize:'0.9rem'}}>
+                        Controle a disponibilidade dos ingressos em tempo real.
+                    </p>
+                    
+                    <div className="ticket-manage-list">
+                        {tickets.length > 0 ? (
+                            tickets.map(t => {
+                                const tId = t.id || t._id;
+                                const isActive = t.status === 'active';
+                                const isLoading = loadingId === tId;
+
+                                return (
+                                    <div key={tId} className="ticket-manage-item" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'#f8fafc', borderRadius:'12px', marginBottom:'12px', border:'1px solid #e2e8f0'}}>
+                                        <div style={{flex: 1}}>
+                                            <strong style={{display:'block', color:'#1e293b', fontSize:'1rem'}}>{t.name}</strong>
+                                            <span style={{fontSize:'0.8rem', color:'#64748b'}}>
+                                                {t.sold || 0} / {t.quantity} vendidos • {t.batch || t.batchName}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* INTERRUPTOR (SWITCH) */}
+                                        <div className="switch-container">
+                                            <span className={`status-label ${isActive ? 'status-active' : 'status-paused'}`}>
+                                                {isLoading ? '...' : (isActive ? 'VENDENDO' : 'PAUSADO')}
+                                            </span>
+                                            
+                                            <label className="switch">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isActive} 
+                                                    onChange={() => handleToggle(t)} 
+                                                    disabled={isLoading}
+                                                />
+                                                <span className="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{textAlign:'center', padding:'20px', color:'#94a3b8', fontStyle: 'italic'}}>
+                                Nenhum ingresso encontrado para este evento.<br/>
+                                <small>(Verifique se o backend "dashboardController" foi atualizado)</small>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="modal-footer" style={{marginTop: '20px'}}>
+                    <button className="cancel-btn" onClick={onClose} style={{width:'100%', padding:'12px', borderRadius:'8px', border:'none', background:'#e2e8f0', color:'#475569', fontWeight:'bold', cursor:'pointer'}}>Concluir</button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const DashboardContent = () => {
@@ -30,8 +147,8 @@ const DashboardContent = () => {
     const [loadingStripe, setLoadingStripe] = useState(false);
     const [connectionError, setConnectionError] = useState(false);
     
-    // Estado para controlar qual switch está carregando (id do ticket)
-    const [loadingTicketId, setLoadingTicketId] = useState(null);
+    // Estado para controlar qual evento está aberto no modal
+    const [selectedEventForManage, setSelectedEventForManage] = useState(null);
 
     useEffect(() => {
         const stripeStatus = searchParams.get('stripe');
@@ -75,86 +192,34 @@ const DashboardContent = () => {
 
             if (eventsRes.ok) {
                 const data = await eventsRes.json();
-                console.log("Eventos recebidos (API):", data); 
-                
                 const eventsList = Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []);
                 setMyEvents(eventsList);
-
-                // Debug: Mostra no console se algum evento veio sem tickets
-                eventsList.forEach(ev => {
-                    if (!ev.tickets || ev.tickets.length === 0) {
-                        console.warn(`⚠️ Evento "${ev.title}" (ID: ${ev.id}) veio sem ingressos. Verifique se o Backend foi reiniciado.`);
-                    }
-                });
-
+                
+                // Se o modal estiver aberto, atualiza os dados dele também
+                if (selectedEventForManage) {
+                    const updatedEvent = eventsList.find(e => e.id === selectedEventForManage.id);
+                    if (updatedEvent) setSelectedEventForManage(updatedEvent);
+                }
             } else {
-                console.error("Erro API Eventos:", await eventsRes.text());
                 toast.error("Erro ao carregar eventos.");
             }
 
         } catch (error) {
-            console.error("Erro Dashboard Fetch:", error);
+            console.error("Erro Dashboard:", error);
             setConnectionError(true);
             toast.error("Erro de conexão.");
         } finally {
             setLoading(false);
         }
-    }, [API_BASE_URL, router]);
+    }, [API_BASE_URL, router, selectedEventForManage]);
 
     useEffect(() => {
         fetchAllData();
-    }, [fetchAllData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Executa apenas na montagem
 
-    // --- FUNÇÃO DE TOGGLE (DIRETA NO CARD) ---
-    const handleTicketToggle = async (ticket) => {
-        const ticketId = ticket.id || ticket._id;
-        const currentStatus = ticket.status;
-        const newStatus = currentStatus === 'active' ? 'paused' : 'active';
-        
-        setLoadingTicketId(ticketId);
-        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/events/tickets/${ticketId}/status`, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                // Atualiza o estado local instantaneamente
-                setMyEvents(prevEvents => prevEvents.map(ev => {
-                    if (ev.tickets && ev.tickets.some(t => (t.id === ticketId || t._id === ticketId))) {
-                        return {
-                            ...ev,
-                            tickets: ev.tickets.map(t => 
-                                (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t
-                            )
-                        };
-                    }
-                    return ev;
-                }));
-
-                if (newStatus === 'active') {
-                    toast.success('Vendas Ativadas! 🟢');
-                } else {
-                    toast.success('Vendas Pausadas 🔴');
-                }
-            } else {
-                console.error("Erro API:", data);
-                toast.error(data.message || 'Erro ao alterar status.');
-            }
-        } catch (error) {
-            console.error("Erro Network:", error);
-            toast.error('Erro de conexão.');
-        } finally {
-            setLoadingTicketId(null);
-        }
+    const openManageModal = (event) => {
+        setSelectedEventForManage(event);
     };
 
     const formatText = (text) => {
@@ -176,11 +241,10 @@ const DashboardContent = () => {
         try { return new Date(dateString).toLocaleDateString('pt-BR'); } catch (e) { return ''; }
     };
 
-    // Placeholders
     const handleConnectStripe = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
     const handleAccessStripeDashboard = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
 
-    if (loading) return <div className="loading-screen">Carregando Painel...</div>;
+    if (loading && !stats) return <div className="loading-screen">Carregando Painel...</div>;
 
     if (connectionError) {
         return (
@@ -256,7 +320,6 @@ const DashboardContent = () => {
                                 ) : (
                                     myEvents.map((event) => (
                                         <div key={event.id || event._id} className="event-row-dash">
-                                            {/* Topo do Card: Imagem e Info */}
                                             <div className="event-main-info">
                                                 <img src={event.imageUrl} alt={event.title} className="event-thumb" />
                                                 <div className="event-details-text">
@@ -268,54 +331,19 @@ const DashboardContent = () => {
                                                 </div>
                                             </div>
 
-                                            {/* ÁREA DE INGRESSOS (DIRETO NO CARD) */}
-                                            {!event.isInformational && (
-                                                <div className="tickets-direct-list">
-                                                    <div className="tickets-title">Gerenciar Vendas</div>
-                                                    
-                                                    {event.tickets && event.tickets.length > 0 ? (
-                                                        event.tickets.map(ticket => {
-                                                            const tId = ticket.id || ticket._id;
-                                                            const isActive = ticket.status === 'active';
-                                                            const isTicketLoading = loadingTicketId === tId;
-
-                                                            return (
-                                                                <div key={tId} className="ticket-direct-item">
-                                                                    <div className="ticket-name-info">
-                                                                        <strong>{ticket.name}</strong>
-                                                                        <span className="ticket-sales-info">
-                                                                            {ticket.sold || 0} / {ticket.quantity} vendidos • {ticket.batch || ticket.batchName}
-                                                                        </span>
-                                                                    </div>
-                                                                    
-                                                                    <div className="switch-wrapper">
-                                                                        <span className={`switch-label ${isActive ? 'label-active' : 'label-paused'}`}>
-                                                                            {isTicketLoading ? '...' : (isActive ? 'VENDENDO' : 'PAUSADO')}
-                                                                        </span>
-                                                                        <label className="switch">
-                                                                            <input 
-                                                                                type="checkbox" 
-                                                                                checked={isActive}
-                                                                                onChange={() => handleTicketToggle(ticket)}
-                                                                                disabled={isTicketLoading}
-                                                                            />
-                                                                            <span className="slider"></span>
-                                                                        </label>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        <div style={{fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', padding:'10px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center'}}>
-                                                            Nenhum ingresso encontrado. 
-                                                            <br/><small>(Se você tem ingressos criados, reinicie o backend para atualizar a API)</small>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Ações do Card (Sem o botão Gerenciar) */}
                                             <div className="event-card-actions">
+                                                {/* BOTÃO GERENCIAR (Voltou!) */}
+                                                {!event.isInformational && (
+                                                    <button 
+                                                        className="btn-edit-dash" 
+                                                        onClick={() => openManageModal(event)}
+                                                        title="Gerenciar Vendas"
+                                                        style={{border: '1px solid #cbd5e1', marginRight: '5px'}}
+                                                    >
+                                                        <FaCog style={{color: '#475569'}} /> Gerenciar
+                                                    </button>
+                                                )}
+
                                                 <button 
                                                     className="btn-participants-dash" 
                                                     onClick={() => router.push(`/eventos/${event.id}/participantes`)}
@@ -332,7 +360,6 @@ const DashboardContent = () => {
                             </div>
                         </div>
 
-                        {/* GRÁFICOS */}
                         <div className="chart-section">
                             <h2><FaChartLine /> Vendas (7 dias)</h2>
                             <div className="chart-wrapper">
@@ -349,6 +376,16 @@ const DashboardContent = () => {
                         </div>
                     </div>
                 )}
+
+                {/* MODAL DE GESTÃO DE VENDAS (Voltou!) */}
+                {selectedEventForManage && (
+                    <ManageSalesModal 
+                        event={selectedEventForManage} 
+                        onClose={() => setSelectedEventForManage(null)} 
+                        onUpdate={fetchAllData}
+                    />
+                )}
+
             </main>
             <Footer />
         </div>

@@ -411,10 +411,6 @@ export default function Home() {
                             </button>
                         )}
                     </div>
-                    
-                    <button className="search-button-styled" style={{ cursor: 'default' }}> 
-                        <FaSearch className="search-icon-right" />
-                    </button>
 
                     {showCityMenu && (
                         <div className="city-dropdown-menu">
