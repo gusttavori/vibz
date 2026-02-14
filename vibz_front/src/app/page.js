@@ -450,7 +450,6 @@ export default function Home() {
             )}
 
             <div className="categories-section">
-                <h2 className="categories-title">Os melhores eventos você encontra aqui</h2>
                 <div className="categories-carousel-wrapper">
                     <div className="categories-list">
                         {categoriesToShowInNavigation.map((cat, index) => (
