@@ -131,16 +131,21 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        // --- DISPARO DE E-MAILS (Non-blocking para evitar Connection Timeout de derrubar o servidor) ---
+        // --- DISPARO DE E-MAILS (Non-blocking para evitar que falhas de rede derrubem a requisição) ---
+        console.log(`[Email] Iniciando disparos para o evento: ${title}`);
+        
         sendEventReceivedEmail(req.user.email, organizerName, title)
-            .catch(err => console.error("Falha silenciosa e-mail org:", err.message));
+            .then(() => console.log(`[Email] Confirmação enviada para o organizador: ${req.user.email}`))
+            .catch(err => console.error("[Email] Falha ao notificar organizador:", err.message));
         
         sendAdminNotificationEmail({ 
             title, 
             organizerName, 
             city, 
             date: mainEventDate.toLocaleDateString('pt-BR') 
-        }).catch(err => console.error("Falha silenciosa e-mail admin:", err.message));
+        })
+        .then(() => console.log(`[Email] Alerta de moderação enviado para o admin`))
+        .catch(err => console.error("[Email] Falha ao notificar admin:", err.message));
 
         res.status(201).json({ 
             message: 'Evento enviado para análise.', 
@@ -254,8 +259,11 @@ const approveEvent = async (req, res) => {
             data: { status: 'approved' },
             include: { organizer: { select: { email: true, name: true } } }
         });
+        
+        console.log(`[Moderation] Aprovando evento: ${event.title}`);
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id)
-            .catch(e => console.error("Erro email aprovação:", e.message));
+            .catch(e => console.error("[Email] Erro ao notificar aprovação:", e.message));
+
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
         res.status(500).json({ message: "Erro ao aprovar evento." });
@@ -271,8 +279,11 @@ const rejectEvent = async (req, res) => {
             data: { status: 'rejected' },
             include: { organizer: { select: { email: true, name: true } } }
         });
+
+        console.log(`[Moderation] Rejeitando evento: ${event.title}`);
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason)
-            .catch(e => console.error("Erro email reprovação:", e.message));
+            .catch(e => console.error("[Email] Erro ao notificar rejeição:", e.message));
+
         res.json({ success: true, message: "Evento reprovado e organizador notificado." });
     } catch (error) {
         res.status(500).json({ message: "Erro ao reprovar evento." });
