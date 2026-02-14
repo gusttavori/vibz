@@ -38,7 +38,6 @@ const mapEventToFrontend = (event) => {
         },
         sessions: parsedSessions,
         date: safeDate,
-        // Mapeia os ingressos garantindo que todos os campos (status, sold, etc) vão para o front
         tickets: event.ticketTypes ? event.ticketTypes.map(t => ({
             ...t,
             _id: t.id,
@@ -46,7 +45,7 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            status: t.status, // Essencial para o botão Switch
+            status: t.status, 
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
             activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
             startTime: t.startTime || '',
@@ -80,7 +79,6 @@ const createEvent = async (req, res) => {
         } = req.body;
 
         const userId = req.user.id;
-
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -304,21 +302,23 @@ const updateEvent = async (req, res) => {
     }
 };
 
-// --- VERSÃO COMPLETA DO getMyEvents ---
+// --- VERSÃO CORRIGIDA COM DEBUG ---
 const getMyEvents = async (req, res) => {
     try {
+        console.log("--> Iniciando getMyEvents para usuário:", req.user.id); // DEBUG
+
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             include: {
                 _count: { select: { tickets: true } },
-                // AQUI: Trazendo TUDO (incluindo sold e quantity)
+                // Trazendo dados COMPLETOS do ticket para o front
                 ticketTypes: { 
                     select: { 
                         id: true, 
                         name: true, 
                         price: true, 
-                        sold: true,      // Completo
-                        quantity: true,  // Completo
+                        sold: true,      
+                        quantity: true,  
                         status: true,    
                         batchName: true
                     } 
@@ -326,6 +326,14 @@ const getMyEvents = async (req, res) => {
             },
             orderBy: { createdAt: 'desc' }
         });
+
+        // Debug para confirmar se o banco retornou os ingressos
+        if (events.length > 0) {
+            console.log(`--> ${events.length} eventos encontrados.`);
+            console.log(`--> Ingressos do primeiro evento (${events[0].title}):`, events[0].ticketTypes);
+        } else {
+            console.log("--> Nenhum evento encontrado para este organizador.");
+        }
 
         const formattedEvents = events.map(mapEventToFrontend);
         
@@ -341,16 +349,17 @@ const getMyEvents = async (req, res) => {
 
         res.json({ myEvents: formattedEvents, metrics });
     } catch (error) {
-        console.error("Erro getMyEvents:", error);
+        console.error("Erro CRÍTICO em getMyEvents:", error); // DEBUG
         res.status(500).json({ message: 'Erro ao carregar dashboard.' });
     }
 };
 
-// --- FUNÇÃO PARA O BOTÃO PAUSAR/ATIVAR ---
 const toggleTicketStatus = async (req, res) => {
     try {
         const { ticketId } = req.params;
         const { status } = req.body; 
+
+        console.log(`--> Alternando status do ingresso ${ticketId} para: ${status}`);
 
         const ticket = await prisma.ticketType.findUnique({
             where: { id: ticketId },
