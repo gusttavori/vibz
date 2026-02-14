@@ -19,13 +19,16 @@ const injectGeocode = (req, res, next) => {
 router.post('/', authMiddleware, upload.single('image'), injectGeocode, eventController.createEvent);
 router.put('/:id', authMiddleware, upload.single('image'), injectGeocode, eventController.updateEvent);
 
+// --- NOVA ROTA: Pausar/Ativar Vendas de Ingresso (Resolve o erro 404) ---
+router.patch('/tickets/:ticketId/status', authMiddleware, eventController.toggleTicketStatus);
+
 // Rota do Organizador
 router.get('/organizer/my-events', authMiddleware, eventController.getMyEvents);
 
 // Rota de Favoritos
 router.post('/:id/favorite', authMiddleware, eventController.toggleFavorite);
 
-// --- CORREÇÃO: ADICIONADA A ROTA DE PARTICIPANTES AQUI ---
+// Rota de Participantes
 router.get('/:id/participants', authMiddleware, eventController.getEventParticipants);
 
 // Rotas Públicas de Listagem
