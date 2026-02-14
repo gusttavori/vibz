@@ -75,19 +75,20 @@ const DashboardContent = () => {
 
             if (eventsRes.ok) {
                 const data = await eventsRes.json();
-                console.log("Eventos recebidos:", data); // LOG PARA DEBUG
+                console.log("Eventos recebidos (API):", data); 
+                
                 const eventsList = Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []);
                 setMyEvents(eventsList);
-                
-                // Verificação de debug para os ingressos
+
+                // Debug: Mostra no console se algum evento veio sem tickets
                 eventsList.forEach(ev => {
                     if (!ev.tickets || ev.tickets.length === 0) {
-                        console.warn(`Evento "${ev.title}" (ID: ${ev.id}) está sem ingressos. Verifique o getMyEvents no backend.`);
+                        console.warn(`⚠️ Evento "${ev.title}" (ID: ${ev.id}) veio sem ingressos. Verifique se o Backend foi reiniciado.`);
                     }
                 });
 
             } else {
-                console.error("Erro ao buscar eventos:", await eventsRes.text());
+                console.error("Erro API Eventos:", await eventsRes.text());
                 toast.error("Erro ao carregar eventos.");
             }
 
@@ -104,15 +105,13 @@ const DashboardContent = () => {
         fetchAllData();
     }, [fetchAllData]);
 
-    // --- FUNÇÃO DE TOGGLE (DIRETA) ---
+    // --- FUNÇÃO DE TOGGLE (DIRETA NO CARD) ---
     const handleTicketToggle = async (ticket) => {
         const ticketId = ticket.id || ticket._id;
         const currentStatus = ticket.status;
         const newStatus = currentStatus === 'active' ? 'paused' : 'active';
         
-        console.log(`Alternando ticket ${ticketId} de ${currentStatus} para ${newStatus}`);
         setLoadingTicketId(ticketId);
-
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
         try {
@@ -128,11 +127,8 @@ const DashboardContent = () => {
             const data = await res.json();
 
             if (res.ok) {
-                console.log("Sucesso ao alterar status:", data);
-                
-                // Atualiza o estado local para refletir a mudança instantaneamente
+                // Atualiza o estado local instantaneamente
                 setMyEvents(prevEvents => prevEvents.map(ev => {
-                    // Encontra o evento que tem esse ticket
                     if (ev.tickets && ev.tickets.some(t => (t.id === ticketId || t._id === ticketId))) {
                         return {
                             ...ev,
@@ -145,9 +141,9 @@ const DashboardContent = () => {
                 }));
 
                 if (newStatus === 'active') {
-                    toast.success('Vendas Ativadas!', { icon: '🟢' });
+                    toast.success('Vendas Ativadas! 🟢');
                 } else {
-                    toast.success('Vendas Pausadas.', { icon: '🔴' });
+                    toast.success('Vendas Pausadas 🔴');
                 }
             } else {
                 console.error("Erro API:", data);
@@ -155,7 +151,7 @@ const DashboardContent = () => {
             }
         } catch (error) {
             console.error("Erro Network:", error);
-            toast.error('Erro de conexão ao alterar status.');
+            toast.error('Erro de conexão.');
         } finally {
             setLoadingTicketId(null);
         }
@@ -177,14 +173,12 @@ const DashboardContent = () => {
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
-        } catch (e) { return ''; }
+        try { return new Date(dateString).toLocaleDateString('pt-BR'); } catch (e) { return ''; }
     };
 
-    const handleConnectStripe = async () => { /* ... mesma lógica ... */ };
-    const handleAccessStripeDashboard = async () => { /* ... mesma lógica ... */ };
+    // Placeholders
+    const handleConnectStripe = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
+    const handleAccessStripeDashboard = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
 
     if (loading) return <div className="loading-screen">Carregando Painel...</div>;
 
@@ -225,7 +219,6 @@ const DashboardContent = () => {
                 </div>
 
                 <div className="wallet-section-dashboard">
-                    {/* ... (Seção da Carteira mantida igual) ... */}
                     {isStripeReady ? (
                         <div className="wallet-card success">
                             <div className="wallet-icon"><FaCheckCircle /></div>
@@ -233,6 +226,9 @@ const DashboardContent = () => {
                                 <h3>Conta Pronta</h3>
                                 <p>Tudo pronto para receber pagamentos.</p>
                             </div>
+                            <button className="wallet-btn outline" onClick={handleAccessStripeDashboard} disabled={loadingStripe}>
+                                {loadingStripe ? 'Carregando...' : 'Ver Saldo e Extrato'}
+                            </button>
                         </div>
                     ) : (
                         <div className="wallet-card warning">
@@ -288,13 +284,13 @@ const DashboardContent = () => {
                                                                     <div className="ticket-name-info">
                                                                         <strong>{ticket.name}</strong>
                                                                         <span className="ticket-sales-info">
-                                                                            {ticket.sold || 0} / {ticket.quantity} vendidos
+                                                                            {ticket.sold || 0} / {ticket.quantity} vendidos • {ticket.batch || ticket.batchName}
                                                                         </span>
                                                                     </div>
                                                                     
                                                                     <div className="switch-wrapper">
                                                                         <span className={`switch-label ${isActive ? 'label-active' : 'label-paused'}`}>
-                                                                            {isActive ? 'VENDENDO' : 'PAUSADO'}
+                                                                            {isTicketLoading ? '...' : (isActive ? 'VENDENDO' : 'PAUSADO')}
                                                                         </span>
                                                                         <label className="switch">
                                                                             <input 
@@ -310,14 +306,15 @@ const DashboardContent = () => {
                                                             );
                                                         })
                                                     ) : (
-                                                        <div style={{fontSize: '0.8rem', color: '#ef4444', fontStyle: 'italic'}}>
-                                                            ⚠ Nenhuma informação de ingresso recebida. (Backend Update Required)
+                                                        <div style={{fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', padding:'10px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center'}}>
+                                                            Nenhum ingresso encontrado. 
+                                                            <br/><small>(Se você tem ingressos criados, reinicie o backend para atualizar a API)</small>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
 
-                                            {/* Ações do Card */}
+                                            {/* Ações do Card (Sem o botão Gerenciar) */}
                                             <div className="event-card-actions">
                                                 <button 
                                                     className="btn-participants-dash" 
@@ -335,7 +332,7 @@ const DashboardContent = () => {
                             </div>
                         </div>
 
-                        {/* GRÁFICOS (Mantidos) */}
+                        {/* GRÁFICOS */}
                         <div className="chart-section">
                             <h2><FaChartLine /> Vendas (7 dias)</h2>
                             <div className="chart-wrapper">

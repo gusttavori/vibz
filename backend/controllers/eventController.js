@@ -305,51 +305,43 @@ const updateEvent = async (req, res) => {
 // --- VERSÃO CORRIGIDA COM DEBUG ---
 const getMyEvents = async (req, res) => {
     try {
-        console.log("--> Iniciando getMyEvents para usuário:", req.user.id); // DEBUG
-
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
             include: {
+                // Conta total de ingressos vendidos (tabela Ticket)
                 _count: { select: { tickets: true } },
-                // Trazendo dados COMPLETOS do ticket para o front
-                ticketTypes: { 
-                    select: { 
-                        id: true, 
-                        name: true, 
-                        price: true, 
-                        sold: true,      
-                        quantity: true,  
-                        status: true,    
-                        batchName: true
-                    } 
-                }
+                
+                // Traz TODOS os dados dos tipos de ingresso (tabela TicketType)
+                // Removemos o 'select' para evitar que falte algum campo necessário
+                ticketTypes: true 
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        // Debug para confirmar se o banco retornou os ingressos
-        if (events.length > 0) {
-            console.log(`--> ${events.length} eventos encontrados.`);
-            console.log(`--> Ingressos do primeiro evento (${events[0].title}):`, events[0].ticketTypes);
-        } else {
-            console.log("--> Nenhum evento encontrado para este organizador.");
-        }
-
-        const formattedEvents = events.map(mapEventToFrontend);
+        // Mapeia para o formato do frontend
+        const formattedEvents = events.map(event => {
+            // Garante o mapeamento correto reutilizando a função padrão
+            return mapEventToFrontend(event);
+        });
         
+        // Calcula totais para os cards de estatística
         const totalTicketsSold = events.reduce((acc, ev) => {
-            return acc + ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0);
+            // Soma o campo 'sold' de cada tipo de ingresso
+            const eventSold = ev.ticketTypes 
+                ? ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0) 
+                : 0;
+            return acc + eventSold;
         }, 0);
 
         const metrics = { 
             activeEvents: events.length, 
-            totalRevenue: 0, 
+            totalRevenue: 0, // Pode implementar cálculo de receita se quiser
             ticketsSold: totalTicketsSold 
         };
 
         res.json({ myEvents: formattedEvents, metrics });
     } catch (error) {
-        console.error("Erro CRÍTICO em getMyEvents:", error); // DEBUG
+        console.error("Erro getMyEvents:", error);
         res.status(500).json({ message: 'Erro ao carregar dashboard.' });
     }
 };
