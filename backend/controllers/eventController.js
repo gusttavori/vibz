@@ -45,7 +45,7 @@ const mapEventToFrontend = (event) => {
             price: t.price,
             quantity: t.quantity, 
             sold: t.sold,
-            // NOVOS CAMPOS PARA CONTROLE DE VENDAS
+            // CRÍTICO: Envia status e data limite para o front controlar o bloqueio
             status: t.status, 
             salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
             
@@ -81,6 +81,7 @@ const createEvent = async (req, res) => {
         } = req.body;
 
         const userId = req.user.id;
+
         const isInfoBool = isInformational === 'true' || isInformational === true;
         const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
 
@@ -310,7 +311,7 @@ const getMyEvents = async (req, res) => {
             where: { organizerId: req.user.id },
             include: {
                 _count: { select: { tickets: true } },
-                // CORREÇÃO: Buscando dados completos do ticket para o painel de controle
+                // CORREÇÃO CRÍTICA: Busca todos os campos do ticket necessários para o modal de gestão
                 ticketTypes: { 
                     select: { 
                         id: true, 
@@ -318,7 +319,7 @@ const getMyEvents = async (req, res) => {
                         price: true, 
                         sold: true, 
                         quantity: true, 
-                        status: true,
+                        status: true, // Necessário para o switch
                         batchName: true
                     } 
                 }
@@ -327,9 +328,9 @@ const getMyEvents = async (req, res) => {
         });
         const formattedEvents = events.map(mapEventToFrontend);
         
-        // Métricas básicas para o dashboard
+        // Recalcula métricas com base nos dados reais
         const totalTicketsSold = events.reduce((acc, ev) => {
-            return acc + ev.ticketTypes.reduce((sum, t) => sum + t.sold, 0);
+            return acc + ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0);
         }, 0);
 
         const metrics = { 
@@ -340,12 +341,12 @@ const getMyEvents = async (req, res) => {
 
         res.json({ myEvents: formattedEvents, metrics });
     } catch (error) {
-        console.error(error);
+        console.error("Erro getMyEvents:", error);
         res.status(500).json({ message: 'Erro ao carregar dashboard.' });
     }
 };
 
-// --- NOVA FUNÇÃO PARA PAUSAR/ATIVAR VENDAS ---
+// --- NOVA FUNÇÃO: Pausar/Ativar Vendas ---
 const toggleTicketStatus = async (req, res) => {
     try {
         const { ticketId } = req.params;
@@ -358,7 +359,7 @@ const toggleTicketStatus = async (req, res) => {
 
         if (!ticket) return res.status(404).json({ message: 'Ingresso não encontrado.' });
         
-        // Segurança: Apenas o dono do evento pode alterar
+        // Segurança: Verifica se o usuário é o dono do evento
         if (ticket.event.organizerId !== req.user.id) {
             return res.status(403).json({ message: 'Sem permissão.' });
         }
@@ -537,5 +538,6 @@ module.exports = {
     toggleFavorite, getEventsByCategory, getFeaturedEvents, getEventCities,
     searchEvents, getPendingEvents, approveEvent, rejectEvent, 
     getPendingHighlights, approveHighlight, rejectHighlight,
-    getEventParticipants, toggleTicketStatus 
+    getEventParticipants, 
+    toggleTicketStatus // IMPORTANTE: Exportando a nova função
 };
