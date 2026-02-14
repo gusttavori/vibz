@@ -28,7 +28,6 @@ const SkeletonLoader = () => (
                     <div className="content-box">
                         <div className="skeleton-line" style={{width: '40%', height: '30px', marginBottom: '20px'}}></div>
                         <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
-                        <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
                     </div>
                 </div>
                 <div className="event-details-right-column">
@@ -51,20 +50,22 @@ const formatDateSimple = (dateStr) => {
     return null;
 };
 
-// Formata data completa para o seletor (ex: "Sáb, 14 Fev")
+// Formata data completa para o seletor (ex: "Sáb, 14/02")
 const formatDateSelector = (dateStr) => {
     if (!dateStr) return '';
     try {
         const date = new Date(dateStr);
-        // Ajuste de fuso horário simples para garantir dia correto visualmente
         const userTimezoneOffset = date.getTimezoneOffset() * 60000;
         const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
         
-        return new Intl.DateTimeFormat('pt-BR', { 
-            weekday: 'short', 
-            day: 'numeric', 
-            month: 'short' 
-        }).format(adjustedDate).replace('.', '');
+        // Formato mais limpo: "Seg, 02/03"
+        const week = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(adjustedDate).replace('.', '');
+        const dayMonth = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(adjustedDate);
+        
+        // Capitaliza a primeira letra do dia da semana (seg -> Seg)
+        const weekCap = week.charAt(0).toUpperCase() + week.slice(1);
+        
+        return `${weekCap}, ${dayMonth}`;
     } catch (e) {
         return dateStr;
     }
@@ -89,7 +90,7 @@ export default function EventoDetalhes() {
     const [participantsData, setParticipantsData] = useState({});
     const [replicateData, setReplicateData] = useState(false);
 
-    // --- NOVO: Estado para data selecionada ---
+    // Estado para data selecionada
     const [selectedDate, setSelectedDate] = useState(null);
     const [availableDates, setAvailableDates] = useState([]);
 
@@ -104,7 +105,6 @@ export default function EventoDetalhes() {
                 if (fetchEvent.ok && eventData) {
                     setEvento(eventData);
                     
-                    // Lógica de Data Principal do Evento
                     let eventDate = null;
                     if (eventData.eventDate) eventDate = new Date(eventData.eventDate);
                     else if (eventData.sessions?.length) {
@@ -114,28 +114,24 @@ export default function EventoDetalhes() {
                     if (!eventDate && eventData.createdAt) eventDate = new Date(eventData.createdAt);
                     setDisplayDate(eventDate);
 
-                    // --- NOVA LÓGICA: Extrair datas únicas dos ingressos ---
+                    // Extrair datas únicas dos ingressos
                     const tickets = eventData.tickets || eventData.ticketTypes || [];
                     const dates = new Set();
                     
                     tickets.forEach(t => {
                         if (t.activityDate) {
-                            // Pega apenas a parte YYYY-MM-DD para agrupar
                             const datePart = t.activityDate.includes('T') ? t.activityDate.split('T')[0] : t.activityDate;
                             dates.add(datePart);
                         }
                     });
 
-                    // Converte Set para Array e ordena
                     const uniqueDates = Array.from(dates).sort();
                     setAvailableDates(uniqueDates);
                     
-                    // Seleciona a primeira data por padrão se houver datas
                     if (uniqueDates.length > 0) {
                         setSelectedDate(uniqueDates[0]);
                     }
 
-                    // Info Organizador
                     let orgName = eventData.organizerName || (eventData.organizer && eventData.organizer.name) || "Produtor";
                     let orgInsta = eventData.organizerInstagram || "";
                     if (eventData.organizerInfo) {
@@ -420,12 +416,9 @@ export default function EventoDetalhes() {
     
     const allTickets = evento.tickets || evento.ticketTypes || [];
     
-    // --- FILTRAGEM DE INGRESSOS POR DATA ---
+    // --- FILTRAGEM ---
     const filteredTickets = allTickets.filter(ticket => {
-        // Se não tem data definida (Lote Geral), mostra sempre
-        if (!ticket.activityDate) return true; 
-        
-        // Se tem data definida, mostra apenas se for igual à data selecionada
+        if (!ticket.activityDate) return true; // Sem data = aparece sempre
         const tDate = ticket.activityDate.includes('T') ? ticket.activityDate.split('T')[0] : ticket.activityDate;
         return tDate === selectedDate;
     });
@@ -445,7 +438,6 @@ export default function EventoDetalhes() {
             <Toaster position="top-center" />
             <Header/>
             
-            {/* HERO BANNER (Mantido igual) */}
             <div className="hero-banner">
                 <div className="hero-background" style={{ backgroundImage: `url(${evento.imageUrl})` }}></div>
                 <div className="hero-content">
@@ -463,16 +455,13 @@ export default function EventoDetalhes() {
 
             <section className="event-details-main-content">
                 <div className="event-details-body">
-                    {/* COLUNA ESQUERDA (Sobre e Organizador) */}
                     <div className="event-details-left-column">
                         <div className="content-box description-box"><h3>Sobre o Evento</h3><div className="description-text">{evento.description}</div></div>
                         <div className="content-box organizer-box"><h3>Organizado por</h3><div className="organizer-profile"><div className="organizer-avatar">{organizerInfo.name.charAt(0).toUpperCase()}</div><div className="organizer-info"><h4>{organizerInfo.name}</h4>{organizerInfo.instagram && <a href={`https://instagram.com/${organizerInfo.instagram.replace('@', '')}`} target="_blank" className="organizer-insta-btn"><FaInstagram /> <span>{organizerInfo.instagram.includes('@') ? organizerInfo.instagram : `@${organizerInfo.instagram}`}</span></a>}</div></div></div>
                     </div>
 
-                    {/* COLUNA DIREITA (Ingressos) */}
                     <div className="event-details-right-column">
                         {evento.isInformational ? (
-                            // CARD INFORMATIVO (Sem mudanças)
                             <div className="info-card">
                                 <div className="info-header"><FaInfoCircle size={28} /><h3>Evento Informativo</h3></div>
                                 <div className="info-body">
@@ -489,11 +478,12 @@ export default function EventoDetalhes() {
                                 {isTicketsOpen && (
                                     <div className="tickets-content">
                                         
-                                        {/* --- SELETOR DE DATAS (NOVO) --- */}
+                                        {/* --- SELETOR DE DATAS EM GRID (ATUALIZADO) --- */}
                                         {availableDates.length > 1 && (
                                             <div className="date-selector-container">
                                                 <p className="date-selector-label"><FaCalendarAlt /> Escolha a data:</p>
-                                                <div className="date-selector-scroll">
+                                                {/* Agora usa a classe 'date-selector-grid' em vez de scroll */}
+                                                <div className="date-selector-grid">
                                                     {availableDates.map(dateStr => (
                                                         <button 
                                                             key={dateStr}
@@ -565,7 +555,6 @@ export default function EventoDetalhes() {
                                         
                                         {!isEventEnded && allTickets.length > 0 && (
                                             <>
-                                                {/* ÁREA DE CUPOM (Mantida) */}
                                                 <div className="coupon-section">
                                                     {!appliedCoupon ? (
                                                         <div className="coupon-input-group">
@@ -594,13 +583,11 @@ export default function EventoDetalhes() {
                 </div>
             </section>
             
-            {/* MODAL DE PARTICIPANTES (Mantido) */}
             {showParticipantModal && (
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header"><h3>Dados dos Participantes</h3><button className="close-modal-btn" onClick={() => setShowParticipantModal(false)}><FaTimes /></button></div>
                         <div className="modal-body">
-                             {/* ... lógica de inputs ... */}
                              <div className="replicate-container" style={{backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center'}}>
                                 <input 
                                     type="checkbox" 
