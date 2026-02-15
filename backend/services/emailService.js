@@ -54,22 +54,25 @@ exports.sendTicketEmail = async (user, event, tickets) => {
 
 // 2. E-mail de Status (ORGANIZADOR - Publicação/Aprovação)
 exports.sendEventStatusEmail = async (organizerEmail, organizerName, eventTitle, status, eventId, reason = "") => {
+    // Trava de segurança: Se não houver e-mail, não tenta enviar
+    if (!organizerEmail) {
+        console.error("❌ Tentativa de envio abortada: organizerEmail é indefinido.");
+        return;
+    }
+
     try {
         const isApproved = status === 'approved';
-        const eventLink = `${process.env.FRONTEND_URL}/evento/${eventId}`;
-
+        const subject = isApproved ? `✅ Evento APROVADO: ${eventTitle}` : `❌ Evento Reprovado: ${eventTitle}`;
+        
         await transporter.sendMail({
-            from: '"Vibz" <vibzeventos@gmail.com>', // PADRONIZADO PARA EVITAR BLOQUEIO
-            to: organizerEmail,
-            subject: isApproved ? `✅ Seu evento foi APROVADO: ${eventTitle}` : `❌ Atualização sobre o evento: ${eventTitle}`,
-            html: `<h3>Olá ${organizerName}</h3>
-                   <p>Boas notícias! O status do seu evento <strong>${eventTitle}</strong> foi atualizado.</p>
-                   <p><strong>Status:</strong> ${isApproved ? 'APROVADO' : 'REPROVADO'}</p>
-                   ${isApproved ? `<p>Seu evento já está disponível! <a href="${eventLink}">Ver Evento Publicado</a></p>` : `<p>Motivo: ${reason}</p>`}
-                   <p>Atenciosamente, <br/> Equipe Vibz</p>`
+            from: '"Vibz" <vibzeventos@gmail.com>',
+            to: organizerEmail, // Aqui estava chegando vazio/undefined
+            subject: subject,
+            html: `<h3>Olá ${organizerName}</h3><p>Seu evento <strong>${eventTitle}</strong> foi ${isApproved ? 'aprovado' : 'reprovado'}.</p>${!isApproved ? `<p>Motivo: ${reason}</p>` : ''}`
         });
-        console.log(`✅ E-mail de aprovação enviado para organizador: ${organizerEmail}`);
-    } catch (err) { console.error("❌ Erro sendEventStatusEmail:", err.message); }
+    } catch (err) { 
+        console.error("❌ Erro técnico no transporter (SMTP):", err.message); 
+    }
 };
 
 // 3. E-mail de Recebimento (ORGANIZADOR - Ao Criar)

@@ -205,6 +205,7 @@ const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Atualizamos o status e buscamos explicitamente o e-mail do dono do evento
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
@@ -215,10 +216,11 @@ const approveEvent = async (req, res) => {
             }
         });
 
-        console.log(`[MODERAÇÃO] Evento aprovado: ${event.title}. Notificando organizador em: ${event.organizer?.email}`);
+        // LOG PARA DEBUG - Verifique isso no terminal da Render
+        console.log(`[DEBUG] Tentando notificar organizador: ${event.organizer?.email}`);
 
         if (event.organizer && event.organizer.email) {
-            // Aguarda o envio para garantir que o processo termine
+            // Usamos AWAIT para garantir que o Node não encerre a execução antes do envio
             await sendEventStatusEmail(
                 event.organizer.email, 
                 event.organizer.name, 
@@ -226,13 +228,15 @@ const approveEvent = async (req, res) => {
                 'approved', 
                 event.id
             );
-            console.log("[EMAIL] E-mail de aprovação enviado com sucesso!");
+            console.log("✅ E-mail de aprovação enviado com sucesso!");
+        } else {
+            console.error("❌ ERRO: O e-mail do organizador não foi encontrado no banco.");
         }
 
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
-        console.error("Erro crítico ao aprovar evento:", error);
-        res.status(500).json({ message: "Erro ao aprovar evento." });
+        console.error("❌ Erro crítico no approveEvent:", error.message);
+        res.status(500).json({ message: "Erro interno ao aprovar evento." });
     }
 };
 
