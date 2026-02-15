@@ -124,9 +124,9 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        // Notificações assíncronas
-        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("Erro email org:", err));
-        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("Erro email admin:", err));
+        console.log(`[Event] Criado: ${title}. Enviando e-mails de recebimento...`);
+        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("[Email] Erro organizador:", err.message));
+        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("[Email] Erro admin:", err.message));
 
         res.status(201).json({ 
             message: 'Evento enviado para análise.', 
@@ -214,15 +214,20 @@ const getMyEvents = async (req, res) => {
 const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // CORREÇÃO: Garante o include do organizer para obter e-mail e nome
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
             include: { organizer: { select: { email: true, name: true } } }
         });
         
-        console.log(`[Moderation] Evento aprovado: ${event.title}`);
+        console.log(`[Moderation] Evento aprovado: ${event.title}. Notificando: ${event.organizer.email}`);
+        
+        // Disparo assíncrono do e-mail
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id)
-            .catch(e => console.error("[Email] Erro ao notificar aprovação:", e.message));
+            .then(() => console.log(`[Email] Sucesso: Organizador notificado sobre publicação.`))
+            .catch(e => console.error("[Email] Erro ao enviar confirmação de publicação:", e.message));
 
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
@@ -241,7 +246,8 @@ const rejectEvent = async (req, res) => {
             include: { organizer: { select: { email: true, name: true } } }
         });
 
-        console.log(`[Moderation] Evento rejeitado: ${event.title}`);
+        console.log(`[Moderation] Evento rejeitado: ${event.title}. Notificando: ${event.organizer.email}`);
+        
         sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason)
             .catch(e => console.error("[Email] Erro ao notificar rejeição:", e.message));
 
