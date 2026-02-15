@@ -60,15 +60,9 @@ const createEvent = async (req, res) => {
         }
 
         const { 
-            title, description, category, ageRating, 
-            date, sessions, 
-            location, city, address, 
-            tickets, 
-            organizerName, organizerInstagram,
-            isFeaturedRequested,
-            formSchema,
-            refundPolicy,
-            isInformational 
+            title, description, category, ageRating, date, sessions, 
+            location, city, address, tickets, organizerName, organizerInstagram,
+            isFeaturedRequested, formSchema, refundPolicy, isInformational 
         } = req.body;
 
         const userId = req.user.id;
@@ -124,15 +118,11 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        console.log(`[Event] Criado: ${title}. Enviando e-mails de recebimento...`);
-        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("[Email] Erro organizador:", err.message));
-        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("[Email] Erro admin:", err.message));
+        // Notificações assíncronas
+        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
+        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("[Email] Erro admin:", err));
 
-        res.status(201).json({ 
-            message: 'Evento enviado para análise.', 
-            event: mapEventToFrontend(event) 
-        });
-
+        res.status(201).json({ message: 'Evento enviado para análise.', event: mapEventToFrontend(event) });
     } catch (error) {
         console.error("Erro no createEvent:", error);
         if (!res.headersSent) res.status(500).json({ message: 'Erro interno ao criar evento.' });
@@ -215,7 +205,6 @@ const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // 1. Atualiza e busca explicitamente os dados do organizador
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
@@ -226,11 +215,10 @@ const approveEvent = async (req, res) => {
             }
         });
 
-        // LOG DE DEBUG: Verifique se isso aparece no seu console ao clicar em aprovar
-        console.log(`[MODERAÇÃO] Tentando enviar e-mail de aprovação para: ${event.organizer?.email}`);
+        console.log(`[MODERAÇÃO] Evento aprovado: ${event.title}. Notificando organizador em: ${event.organizer?.email}`);
 
         if (event.organizer && event.organizer.email) {
-            // 2. Aguarda o envio do e-mail (removi o .catch solto para tratar o erro no try/catch principal)
+            // Aguarda o envio para garantir que o processo termine
             await sendEventStatusEmail(
                 event.organizer.email, 
                 event.organizer.name, 
@@ -239,14 +227,12 @@ const approveEvent = async (req, res) => {
                 event.id
             );
             console.log("[EMAIL] E-mail de aprovação enviado com sucesso!");
-        } else {
-            console.error("[EMAIL] Erro: Organizador não possui e-mail cadastrado.");
         }
 
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
         console.error("Erro crítico ao aprovar evento:", error);
-        res.status(500).json({ message: "Erro ao aprovar evento no servidor." });
+        res.status(500).json({ message: "Erro ao aprovar evento." });
     }
 };
 
@@ -260,10 +246,12 @@ const rejectEvent = async (req, res) => {
             include: { organizer: { select: { email: true, name: true } } }
         });
 
-        console.log(`[Moderation] Evento rejeitado: ${event.title}. Notificando: ${event.organizer.email}`);
-        
-        sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason)
-            .catch(e => console.error("[Email] Erro ao notificar rejeição:", e.message));
+        console.log(`[MODERAÇÃO] Evento rejeitado: ${event.title}. Notificando: ${event.organizer?.email}`);
+
+        if (event.organizer && event.organizer.email) {
+            await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason);
+            console.log("[EMAIL] E-mail de rejeição enviado.");
+        }
 
         res.json({ success: true, message: "Evento reprovado e organizador notificado." });
     } catch (error) {
@@ -365,7 +353,7 @@ const getPendingEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
         res.json(events);
-    } catch (error) { res.status(500).json({ message: "Erro" }); }
+    } catch (error) { res.status(500).json({ message: "Erro ao buscar pendentes" }); }
 };
 
 const getPendingHighlights = async (req, res) => { res.json([]); };
