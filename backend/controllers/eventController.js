@@ -205,22 +205,24 @@ const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Atualizamos o status e buscamos explicitamente o e-mail do dono do evento
+        // Atualiza o status e busca os dados do organizador pela relação definida no schema
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
             include: { 
-                organizer: { 
-                    select: { email: true, name: true } 
-                } 
+                organizer: true // Certifique-se que o nome aqui coincide com o campo no seu modelo Event
             }
         });
 
-        // LOG PARA DEBUG - Verifique isso no terminal da Render
-        console.log(`[DEBUG] Tentando notificar organizador: ${event.organizer?.email}`);
+        // LOG DE DIAGNÓSTICO: Verifique isso no terminal da Render
+        console.log("-----------------------------------------");
+        console.log("DADOS DO ORGANIZADOR ENCONTRADOS:");
+        console.log("E-mail:", event.organizer?.email);
+        console.log("Nome:", event.organizer?.name);
+        console.log("-----------------------------------------");
 
         if (event.organizer && event.organizer.email) {
-            // Usamos AWAIT para garantir que o Node não encerre a execução antes do envio
+            // Usamos AWAIT aqui para garantir que o envio termine antes da resposta
             await sendEventStatusEmail(
                 event.organizer.email, 
                 event.organizer.name, 
@@ -228,15 +230,14 @@ const approveEvent = async (req, res) => {
                 'approved', 
                 event.id
             );
-            console.log("✅ E-mail de aprovação enviado com sucesso!");
         } else {
-            console.error("❌ ERRO: O e-mail do organizador não foi encontrado no banco.");
+            console.error("❌ Erro: O organizador deste evento não possui um e-mail válido no banco.");
         }
 
-        res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
+        res.json({ success: true, message: "Evento aprovado!" });
     } catch (error) {
-        console.error("❌ Erro crítico no approveEvent:", error.message);
-        res.status(500).json({ message: "Erro interno ao aprovar evento." });
+        console.error("Erro na aprovação:", error.message);
+        res.status(500).json({ message: "Erro interno." });
     }
 };
 
