@@ -122,7 +122,6 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                         ) : (
                             <div style={{textAlign:'center', padding:'20px', color:'#94a3b8', fontStyle: 'italic'}}>
                                 Nenhum ingresso encontrado para este evento.<br/>
-                                <small>(Verifique se o backend "dashboardController" foi atualizado)</small>
                             </div>
                         )}
                     </div>

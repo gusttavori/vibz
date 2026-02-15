@@ -214,25 +214,39 @@ const getMyEvents = async (req, res) => {
 const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
-        
-        // CORREÇÃO: Garante o include do organizer para obter e-mail e nome
+
+        // 1. Atualiza e busca explicitamente os dados do organizador
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
-            include: { organizer: { select: { email: true, name: true } } }
+            include: { 
+                organizer: { 
+                    select: { email: true, name: true } 
+                } 
+            }
         });
-        
-        console.log(`[Moderation] Evento aprovado: ${event.title}. Notificando: ${event.organizer.email}`);
-        
-        // Disparo assíncrono do e-mail
-        sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id)
-            .then(() => console.log(`[Email] Sucesso: Organizador notificado sobre publicação.`))
-            .catch(e => console.error("[Email] Erro ao enviar confirmação de publicação:", e.message));
+
+        // LOG DE DEBUG: Verifique se isso aparece no seu console ao clicar em aprovar
+        console.log(`[MODERAÇÃO] Tentando enviar e-mail de aprovação para: ${event.organizer?.email}`);
+
+        if (event.organizer && event.organizer.email) {
+            // 2. Aguarda o envio do e-mail (removi o .catch solto para tratar o erro no try/catch principal)
+            await sendEventStatusEmail(
+                event.organizer.email, 
+                event.organizer.name, 
+                event.title, 
+                'approved', 
+                event.id
+            );
+            console.log("[EMAIL] E-mail de aprovação enviado com sucesso!");
+        } else {
+            console.error("[EMAIL] Erro: Organizador não possui e-mail cadastrado.");
+        }
 
         res.json({ success: true, message: "Evento aprovado e organizador notificado!" });
     } catch (error) {
-        console.error("Erro ao aprovar evento:", error);
-        res.status(500).json({ message: "Erro ao aprovar evento." });
+        console.error("Erro crítico ao aprovar evento:", error);
+        res.status(500).json({ message: "Erro ao aprovar evento no servidor." });
     }
 };
 
