@@ -7,6 +7,7 @@
     --text-sub: #64748b;
     --success: #10b981;
     --error: #ef4444;
+    --brand-color: #4C01B5; /* Cor da marca para destaque */
 }
 
 .validator-page {
@@ -66,7 +67,7 @@
     position: relative;
 }
 
-/* Cards de Estado (Idle, Erro, Sucesso) */
+/* Cards de Estado (Idle, Erro, Sucesso, Unauthorized) */
 .state-card {
     background: var(--surface);
     width: 90%;
@@ -77,6 +78,15 @@
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     z-index: 60; /* Acima de tudo */
     animation: slideUp 0.3s ease-out;
+}
+
+/* Estilo específico para Unauthorized */
+.state-card.unauthorized {
+    border-top: 5px solid var(--error);
+}
+.state-card.unauthorized h1 {
+    margin-top: 15px;
+    color: var(--error);
 }
 
 .qr-icon-wrapper {
@@ -207,27 +217,74 @@
 .success .icon-result { color: var(--success); }
 .error .icon-result { color: var(--error); }
 
-.ticket-details {
-    background: #f1f5f9;
-    padding: 15px;
-    border-radius: 16px;
-    margin-bottom: 20px;
+/* --- NOVO ESTILO: TICKET INFO BOX (Melhorado) --- */
+.ticket-info-box {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
     width: 100%;
+    margin-bottom: 20px;
+    text-align: left;
+    border: 1px solid #e9ecef;
     box-sizing: border-box;
 }
 
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    padding: 8px 0;
-    border-bottom: 1px solid #e2e8f0;
+.info-row {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
-.detail-row:last-child { border-bottom: none; }
-.label { color: var(--text-sub); font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.value { font-weight: 700; color: var(--text-main); }
-.value.highlight { color: var(--primary); }
 
+.info-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.info-row .label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.info-row .value {
+    display: block;
+    font-size: 1.1rem;
+    color: var(--text-main);
+    font-weight: 700;
+    padding-left: 2px;
+    line-height: 1.3;
+}
+
+/* Destaques Específicos */
+.info-row .value.name {
+    font-size: 1.25rem;
+    color: var(--brand-color); /* Roxo da Vibz para o nome */
+}
+
+.info-row .value.type {
+    color: var(--success); /* Verde para o tipo de ingresso */
+}
+
+.info-row .value.batch {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    font-weight: 500;
+    margin-left: 5px;
+}
+
+.info-row .value.event {
+    font-size: 1rem;
+    color: #4b5563;
+}
+
+/* Erro Box (Mantido) */
 .error-box {
     background: #fef2f2;
     border: 1px solid #fecaca;
@@ -270,6 +327,22 @@
 
 .btn-text { background: none; border: none; color: var(--text-sub); font-weight: 600; font-size: 0.9rem; margin-top: 5px; text-decoration: underline; cursor: pointer; }
 
+/* Loader */
+.loader-container {
+    width: 100%; height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    background: var(--bg-app);
+}
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
 @keyframes breathe { 0%, 100% { border-color: rgba(255,255,255,0.3); } 50% { border-color: rgba(99, 102, 241, 1); } }
