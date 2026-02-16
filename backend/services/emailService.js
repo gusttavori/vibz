@@ -104,7 +104,7 @@ exports.sendNewSaleEmail = async (organizerEmail, organizerName, eventTitle, qua
         const formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue);
         
         await transporter.sendMail({
-            from: '"Vibz Financeiro" <financeiro@vibz.com.br>',
+            from: '"Vibz Financeiro" <vibzeventos@gmail.com>',
             to: organizerEmail,
             subject: `💰 Nova venda! ${quantity}x ingressos para ${eventTitle}`,
             html: `
