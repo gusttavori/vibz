@@ -1,4 +1,4 @@
-/* --- VIBZ PRO THEME 2.0 (Perfect Center Fix + Manual Mode) --- */
+/* --- VIBZ PRO THEME 2.0 (Full Responsive Fix) --- */
 :root {
     --primary: #6366f1;
     --bg-app: #000000;
@@ -7,14 +7,15 @@
     --text-sub: #64748b;
     --success: #10b981;
     --error: #ef4444;
-    --brand-color: #4C01B5; /* Cor da marca para destaque */
+    --brand-color: #4C01B5;
 }
 
+/* --- LAYOUT PRINCIPAL --- */
 .validator-page {
     background-color: var(--bg-app);
     width: 100%;
     height: 100vh;
-    height: 100dvh; /* Garante altura total no mobile ignorando barras do navegador */
+    height: 100dvh; /* Altura real em mobile */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -57,113 +58,77 @@
     text-transform: uppercase;
 }
 
+/* Área Principal (Centralização Corrigida) */
 .validator-main {
-    flex: 1;
+    flex: 1; /* Ocupa todo o espaço vertical disponível */
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: center; /* Centraliza Horizontalmente */
+    justify-content: center; /* Centraliza Verticalmente */
     width: 100%;
-    position: relative;
-    padding: 20px; /* Garante margem em telas pequenas */
+    padding: 20px;
     box-sizing: border-box;
+    position: relative;
+    z-index: 10;
 }
 
-/* Cards de Estado (Idle, Erro, Sucesso, Unauthorized, Manual) */
+/* --- CARDS DE ESTADO --- */
 .state-card {
     background: var(--surface);
     width: 100%;
-    max-width: 340px;
+    max-width: 360px; /* Largura ideal para leitura */
     border-radius: 24px;
-    padding: 30px 20px;
+    padding: 35px 25px;
     text-align: center;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 60; /* Acima de tudo */
-    animation: slideUp 0.3s ease-out;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    z-index: 60;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* --- ESTILO NÃO AUTORIZADO (NOVO) --- */
+/* --- ESTILO ESPECÍFICO: ACESSO RESTRITO (Corrigido) --- */
 .state-card.unauthorized {
     border-top: none;
-    overflow: hidden;
+    justify-content: center;
 }
 
 .icon-wrapper-error {
-    background: var(--error);
+    background: #fee2e2; /* Vermelho suave */
+    color: #ef4444;
     width: 80px;
     height: 80px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 20px;
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    margin: 0 auto 24px; /* Espaço abaixo do ícone */
+    font-size: 2rem;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
 }
 
 .state-card.unauthorized h1 {
-    color: var(--error);
-    margin-top: 0;
+    color: #ef4444;
+    margin: 0 0 12px 0;
+    font-size: 1.5rem;
+    font-weight: 700;
 }
 
 .state-card.unauthorized p {
     color: var(--text-main);
     margin-bottom: 30px;
-    line-height: 1.5;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: #475569;
 }
 
 .state-card.unauthorized strong {
-    color: var(--text-main);
-    font-weight: 800;
+    color: #1e293b;
+    font-weight: 700;
 }
 
-/* --- MODO MANUAL (NOVO) --- */
-.manual-form {
-    width: 100%;
-    margin-top: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.input-code {
-    width: 100%;
-    padding: 16px;
-    font-size: 1.2rem;
-    text-align: center;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    outline: none;
-    transition: border-color 0.2s;
-    background: #f8fafc;
-    color: var(--text-main);
-    text-transform: uppercase; /* Visualmente maiúsculo */
-    font-weight: 600;
-    letter-spacing: 1px;
-    box-sizing: border-box;
-}
-
-.input-code:focus {
-    border-color: var(--primary);
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-/* Ícone de Cabeçalho nas Cards */
-.icon-header {
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: center;
-    background: #e0e7ff;
-    width: 70px;
-    height: 70px;
-    border-radius: 20px;
-    align-items: center;
-}
-
-/* --- TELA INICIAL (IDLE) --- */
+/* --- ESTILO: TELA INICIAL (IDLE) --- */
 .qr-icon-wrapper {
     font-size: 2.5rem;
     color: var(--primary);
@@ -187,7 +152,50 @@
     gap: 12px;
 }
 
-/* --- SCANNER FULLSCREEN --- */
+/* --- ESTILO: MODO MANUAL --- */
+.manual-form {
+    width: 100%;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.icon-header {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    background: #e0e7ff;
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    align-items: center;
+}
+
+.input-code {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.2rem;
+    text-align: center;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s;
+    background: #f8fafc;
+    color: var(--text-main);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-sizing: border-box;
+}
+
+.input-code:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+/* --- ESTILO: SCANNER FULLSCREEN --- */
 .state-fullscreen {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -209,7 +217,6 @@
     object-fit: cover !important;
 }
 
-/* Overlay de Centralização */
 .scan-overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -221,7 +228,6 @@
     pointer-events: none;
 }
 
-/* Quadrado de Leitura */
 .scan-frame {
     width: 70vw;
     height: 70vw;
@@ -243,7 +249,6 @@
     animation: breathe 2s infinite ease-in-out;
 }
 
-/* Controles Flutuantes do Scanner */
 .scan-controls {
     position: absolute;
     bottom: 40px;
@@ -286,13 +291,12 @@
     cursor: pointer;
 }
 
-/* --- RESULTADOS --- */
+/* --- ESTILO: RESULTADOS --- */
 .result-header { margin-bottom: 20px; }
 .icon-result { font-size: 4rem; margin-bottom: 10px; display: block; margin: 0 auto; }
 .success .icon-result { color: var(--success); }
 .error .icon-result { color: var(--error); }
 
-/* Ticket Info Box (Melhorado) */
 .ticket-info-box {
     background: #f8f9fa;
     border-radius: 12px;
@@ -342,7 +346,6 @@
 .info-row .value.batch { font-size: 0.9rem; color: var(--text-sub); font-weight: 500; margin-left: 5px; }
 .info-row .value.event { font-size: 1rem; color: #4b5563; }
 
-/* Erro Box */
 .error-box {
     background: #fef2f2;
     border: 1px solid #fecaca;
@@ -362,20 +365,10 @@
     gap: 10px;
 }
 
-.debug-code {
-    font-size: 0.75rem;
-    color: #666;
-    margin-top: 10px;
-    background: rgba(255,255,255,0.5);
-    padding: 4px;
-    border-radius: 4px;
-    word-break: break-all;
-}
-
-/* Botões Gerais */
+/* --- BOTÕES GERAIS --- */
 .btn-primary-large, .btn-secondary-large {
     width: 100%;
-    padding: 14px;
+    padding: 16px;
     border-radius: 14px;
     font-size: 1rem;
     font-weight: 700;
@@ -393,9 +386,16 @@
 
 .btn-secondary-large { background: white; color: var(--text-main); border: 2px solid #e2e8f0; }
 
-.btn-text { background: none; border: none; color: var(--text-sub); font-weight: 600; font-size: 0.9rem; margin-top: 10px; text-decoration: underline; cursor: pointer; }
+.btn-text { 
+    background: none; border: none; 
+    color: var(--text-sub); 
+    font-weight: 600; font-size: 0.9rem; 
+    margin-top: 15px; 
+    text-decoration: underline; 
+    cursor: pointer; 
+}
 
-/* Loader */
+/* --- LOADER --- */
 .loader-container {
     width: 100%; height: 100vh;
     display: flex; justify-content: center; align-items: center;
