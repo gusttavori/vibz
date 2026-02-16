@@ -16,12 +16,12 @@ export default function ValidadorUniversal() {
     const [scanResult, setScanResult] = useState(null);
     const [status, setStatus] = useState('checking_permission'); 
     const [errorMessage, setErrorMessage] = useState('');
-    const [manualCode, setManualCode] = useState(''); 
-    const [inputType, setInputType] = useState('camera'); 
+    const [manualCode, setManualCode] = useState('');
+    const [inputType, setInputType] = useState('camera');
     
     const html5QrCodeRef = useRef(null);
 
-    // 1. VERIFICAÇÃO DE SEGURANÇA (PERFIL DE ORGANIZADOR)
+    // 1. VERIFICAÇÃO DE SEGURANÇA
     useEffect(() => {
         const checkPermission = async () => {
             try {
@@ -32,7 +32,6 @@ export default function ValidadorUniversal() {
                     return;
                 }
 
-                // Busca dados do usuário para ver se ele tem eventos
                 const res = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -41,8 +40,7 @@ export default function ValidadorUniversal() {
 
                 const data = await res.json();
                 
-                // LÓGICA DE BLOQUEIO:
-                // Se não tiver eventos criados (length === 0) E não for Admin -> Bloqueia
+                // Se não tiver eventos e não for admin, bloqueia
                 const hasEvents = data.myEvents && data.myEvents.length > 0;
                 const isAdmin = data.user && data.user.isAdmin;
 
@@ -66,7 +64,6 @@ export default function ValidadorUniversal() {
         }
     };
 
-    // Função unificada de validação
     const handleValidation = async (code) => {
         await stopScanner();
         setStatus('processing');
@@ -145,29 +142,10 @@ export default function ValidadorUniversal() {
         setManualCode('');
     };
 
+    // Loader inicial (pode ficar separado pois tem CSS próprio de full-screen)
     if (status === 'checking_permission') return <div className="loader-container"><div className="spinner"></div></div>;
 
-    // TELA DE ACESSO NEGADO (SEM EVENTOS)
-    if (status === 'unauthorized') return (
-        <div className="state-card unauthorized">
-            <div className="icon-wrapper-error">
-                <FaLock size={40} color="#fff" />
-            </div>
-            <h1>Acesso Restrito</h1>
-            <p>Esta área é exclusiva para <strong>organizadores com eventos ativos</strong>.</p>
-            
-            <button className="btn-primary-large" onClick={() => {
-                localStorage.removeItem('userToken');
-                window.location.href = '/login';
-            }}>
-                <FaSignInAlt /> Trocar Conta
-            </button>
-            <button className="btn-text" onClick={() => window.location.href = '/'}>
-                Voltar ao Início
-            </button>
-        </div>
-    );
-
+    // --- RENDERIZAÇÃO UNIFICADA (CORREÇÃO DE LAYOUT) ---
     return (
         <div className={`validator-page ${status}`}>
             <Toaster position="top-center" />
@@ -180,7 +158,29 @@ export default function ValidadorUniversal() {
             </header>
 
             <main className="validator-main">
-                {/* TELA INICIAL */}
+                
+                {/* 1. TELA DE ACESSO RESTRITO (Agora dentro do main centralizado) */}
+                {status === 'unauthorized' && (
+                    <div className="state-card unauthorized">
+                        <div className="icon-wrapper-error">
+                            <FaLock size={32} />
+                        </div>
+                        <h1>Acesso Restrito</h1>
+                        <p>Esta área é exclusiva para <strong>organizadores com eventos ativos</strong>.</p>
+                        
+                        <button className="btn-primary-large" onClick={() => {
+                            localStorage.removeItem('userToken');
+                            window.location.href = '/login';
+                        }}>
+                            <FaSignInAlt /> Trocar Conta
+                        </button>
+                        <button className="btn-text" onClick={() => window.location.href = '/'}>
+                            Voltar ao Início
+                        </button>
+                    </div>
+                )}
+
+                {/* 2. TELA INICIAL (IDLE) */}
                 {status === 'idle' && (
                     <div className="state-card idle">
                         <div className="pulse-ring">
@@ -200,7 +200,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* TELA DE SCANNER */}
+                {/* 3. TELA DE SCANNER */}
                 {status === 'scanning' && (
                     <div className="state-fullscreen">
                         <div id="reader"></div>
@@ -218,7 +218,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* TELA MANUAL */}
+                {/* 4. TELA MANUAL */}
                 {status === 'manual_entry' && (
                     <div className="state-card manual">
                         <div className="icon-header">
@@ -244,6 +244,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
+                {/* 5. PROCESSANDO */}
                 {status === 'processing' && (
                     <div className="state-card processing">
                         <div className="spinner"></div>
@@ -251,7 +252,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* TELA DE SUCESSO */}
+                {/* 6. TELA DE SUCESSO */}
                 {status === 'success' && (
                     <div className="state-card result success">
                         <div className="result-header">
@@ -282,7 +283,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* TELA DE ERRO */}
+                {/* 7. TELA DE ERRO */}
                 {status === 'error' && (
                     <div className="state-card result error">
                         <div className="result-header">
@@ -297,14 +298,12 @@ export default function ValidadorUniversal() {
                             <button className="btn-secondary-large" onClick={inputType === 'manual' ? switchToManual : startScanner}>
                                 <FaRedo /> Tentar Novamente
                             </button>
-                            
                             {inputType === 'camera' && (
                                 <button className="btn-primary-large" onClick={switchToManual} style={{marginTop: '10px'}}>
                                     <FaKeyboard /> Validar Manualmente
                                 </button>
                             )}
                         </div>
-                        
                         <button className="btn-text" onClick={reset}>Voltar</button>
                     </div>
                 )}
