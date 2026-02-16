@@ -71,11 +71,11 @@
 
 /* Input de Busca */
 .input-wrapper-relative {
-    display: flex;
-    align-items: center;
+    position: relative;
     flex-grow: 1;
     height: 100%;
-    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .search-input-field {
@@ -83,10 +83,51 @@
     height: 100%;
     border: none;
     outline: none;
-    padding: 0 15px;
-    font-size: 0.95rem;
-    color: var(--text-dark);
     background: transparent;
+    font-size: 0.95rem;
+    color: #333;
+    padding-right: 40px; /* Espaço para o botão X não ficar em cima do texto */
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 50%;
+    color: #94a3b8; /* Cinza suave */
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.clear-search-btn:hover {
+    background-color: #f1f5f9; /* Fundo cinza claro ao passar o mouse */
+    color: #ef4444; /* Vermelho ao passar o mouse (indicando remoção) */
+}
+
+/* Ajuste para o X da localização também, para ficar igual */
+.clear-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-left: 8px;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.clear-icon-wrapper:hover {
+    background-color: #e0e7ff;
+    color: #4C01B5;
 }
 
 .search-button-styled {
