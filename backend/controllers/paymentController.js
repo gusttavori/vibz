@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateAndSendTickets } = require('./ticketController');
+const { sendNewSaleEmail } = require('../services/emailService'); // IMPORTADO AQUI
 const crypto = require('crypto');
 
 const STRIPE_PERCENTAGE = 0.0399; 
@@ -70,7 +71,7 @@ const createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
         }
 
-        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO ---
+        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO (SUA LÓGICA ORIGINAL) ---
         const ticketIdsToCheck = Object.keys(tickets).filter(tid => tickets[tid] > 0);
         if (ticketIdsToCheck.length > 1) {
             const dbTickets = await prisma.ticketType.findMany({
@@ -108,7 +109,7 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
         }
-        // --- FIM VALIDAÇÃO ---
+        // ---------------------------------------------
 
         let validCoupon = null;
         let platformRate = 0.08; 
@@ -171,7 +172,6 @@ const createCheckoutSession = async (req, res) => {
             // ----------------------------------------
 
             const unitPrice = parseFloat(tType.price); 
-            
             let unitPlatformFee = 0;
             let unitPartnerFee = 0;
             let grossUnitTotal = 0;
@@ -263,6 +263,19 @@ const createCheckoutSession = async (req, res) => {
                 console.error("Erro ao enviar email grátis:", emailError);
             }
 
+            // --- NOVA NOTIFICAÇÃO AO ORGANIZADOR (GRÁTIS) ---
+            if (event.organizer && event.organizer.email) {
+                const totalTickets = order.items.reduce((acc, item) => acc + item.quantity, 0);
+                await sendNewSaleEmail(
+                    event.organizer.email, 
+                    event.organizer.name, 
+                    event.title, 
+                    totalTickets, 
+                    0
+                );
+            }
+            // ------------------------------------------------
+
             return res.json({ 
                 url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true` 
             });
@@ -306,6 +319,7 @@ const createCheckoutSession = async (req, res) => {
             metadata: { 
                 type: 'TICKET_SALE', 
                 orderId: order.id,
+                eventId: eventId,
                 participantsPreview: participantsJSON 
             }
         });
@@ -398,7 +412,6 @@ const handleStripeWebhook = async (req, res) => {
                                 event: { connect: { id: updatedOrder.eventId } },
                                 user: { connect: { id: updatedOrder.userId } },
                                 order: { connect: { id: updatedOrder.id } },
-                                
                                 qrCodeData: cleanQrCode,
                                 price: item.unitPrice,
                                 status: 'valid',
@@ -408,10 +421,33 @@ const handleStripeWebhook = async (req, res) => {
                     }
                 }
                 
+                // Envia ingresso ao comprador
                 const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
                 if (user) {
                     generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
                 }
+
+                // --- NOVA NOTIFICAÇÃO AO ORGANIZADOR (PAGO) ---
+                const eventData = await prisma.event.findUnique({
+                    where: { id: updatedOrder.eventId },
+                    include: { organizer: true }
+                });
+
+                if (eventData && eventData.organizer) {
+                    const totalTickets = updatedOrder.items.reduce((acc, item) => acc + item.quantity, 0);
+                    // Aqui pegamos o valor da Order no banco para precisão
+                    const totalValue = Number(updatedOrder.totalAmount);
+
+                    await sendNewSaleEmail(
+                        eventData.organizer.email,
+                        eventData.organizer.name,
+                        eventData.title,
+                        totalTickets,
+                        totalValue
+                    );
+                }
+                // ----------------------------------------------
+
             } catch (err) {
                 console.error("Erro webhook ticket:", err);
             }
