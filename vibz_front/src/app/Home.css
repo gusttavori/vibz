@@ -86,7 +86,7 @@
     background: transparent;
     font-size: 0.95rem;
     color: #333;
-    padding-right: 40px; /* Espaço para o botão X não ficar em cima do texto */
+    padding: 10px; /* Espaço para o botão X não ficar em cima do texto */
 }
 
 .clear-search-btn {

@@ -56,46 +56,74 @@ function drawIcon(doc, type, x, y, size, color) {
 }
 
 async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = null) {
-    const C = { BG: '#F2F4F8', CARD: '#FFFFFF', TEXT_DARK: '#333333', TEXT_LIGHT: '#777777', PRIMARY: '#4C01B5' };
-    const cardW = 400;
-    const cardH = 680;
-    const cardX = (595.28 - cardW) / 2;
-    const cardY = (841.89 - cardH) / 2;
+    const C = { BG: '#F2F4F8', CARD: '#FFFFFF', TEXT_DARK: '#1a1a1a', TEXT_LIGHT: '#64748b', PRIMARY: '#4C01B5', BORDER: '#e2e8f0' };
+    
+    // --- NOVAS DIMENSÕES (Card Ocupando a Página) ---
+    const pageW = doc.page.width;   // ~595
+    const pageH = doc.page.height;  // ~841
+    const margin = 20;              // Margem pequena
+    
+    const cardX = margin;
+    const cardY = margin;
+    const cardW = pageW - (margin * 2);
+    const cardH = pageH - (margin * 2);
 
     const eventImageBuffer = await fetchImage(event.imageUrl);
     const uniqueCode = ticket.qrCodeData;
-    const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 300, margin: 0, color: { dark: '#000000', light: '#ffffff' } });
+    // QR Code maior para o layout maior
+    const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 400, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
 
-    doc.rect(0, 0, 595.28, 841.89).fill(C.BG);
-    doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fillOpacity(1).fill();
+    // Fundo da Página
+    doc.rect(0, 0, pageW, pageH).fill(C.BG);
+    
+    // Sombra suave (simulada)
+    doc.roundedRect(cardX + 2, cardY + 4, cardW, cardH, 12).fillColor('#cbd5e1').fill();
 
-    const imgH = 200;
+    // Card Principal Branco
+    doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fill();
+
+    // --- IMAGEM DE CAPA (HERO) ---
+    const imgH = 240; // Altura da imagem aumentada
+    doc.save();
+    // Clip apenas no topo arredondado
+    doc.path(`M ${cardX} ${cardY + 12} Q ${cardX} ${cardY} ${cardX + 12} ${cardY} L ${cardX + cardW - 12} ${cardY} Q ${cardX + cardW} ${cardY} ${cardX + cardW} ${cardY + 12} L ${cardX + cardW} ${cardY + imgH} L ${cardX} ${cardY + imgH} Z`).clip();
+    
     if (eventImageBuffer) {
-        doc.save();
-        doc.roundedRect(cardX, cardY, cardW, imgH, 12).clip();
-        try { doc.image(eventImageBuffer, cardX, cardY, { width: cardW }); } catch (e) {}
-        doc.restore();
+        try { 
+            doc.image(eventImageBuffer, cardX, cardY, { width: cardW, height: imgH, fit: [cardW, imgH], align: 'center', valign: 'center' }); 
+        } catch (e) {}
     } else {
-        doc.save();
-        doc.roundedRect(cardX, cardY, cardW, imgH, 12).clip();
-        doc.rect(cardX, cardY, cardW, imgH).fill('#ddd');
-        doc.restore();
+        doc.rect(cardX, cardY, cardW, imgH).fill('#e0e7ff'); // Fallback cor sólida
     }
+    doc.restore();
 
-    let y = cardY + imgH + 25;
-    const pad = 30;
+    // --- CONTEÚDO ---
+    let y = cardY + imgH + 35;
+    const pad = 40; // Padding interno maior
     const contentW = cardW - (pad * 2);
 
-    doc.font('Helvetica-Bold').fontSize(20).fillColor(C.TEXT_DARK)
+    // Título do Evento
+    doc.font('Helvetica-Bold').fontSize(24).fillColor(C.TEXT_DARK)
         .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
-    y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 25;
+    
+    y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 10;
 
+    // Linha divisória
+    doc.moveTo(cardX + pad, y).lineTo(cardX + cardW - pad, y).lineWidth(1).strokeColor(C.BORDER).stroke();
+    y += 25;
+
+    // --- GRID DE INFORMAÇÕES ---
+    // Coluna 1 (Data/Local) e Coluna 2 (Participante/Ingresso)
+    const col1X = cardX + pad;
+    const col2X = cardX + (cardW / 2) + 10;
+    const initialY = y;
+
+    // DATA
     let dateStr = "";
     let timeStr = "";
-
     if (ticketType && ticketType.activityDate) {
         const dateObj = new Date(ticketType.activityDate);
-        dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
+        dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
         
         if (ticketType.startTime) {
             timeStr = ticketType.startTime;
@@ -106,44 +134,58 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
         }
     } else {
         const dateObj = new Date(event.eventDate || event.createdAt || new Date());
-        dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
+        dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
         timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
 
-    doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_LIGHT).text('DATA', cardX + pad, y);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_DARK).text(`${dateStr} • ${timeStr}`, cardX + pad, y + 15);
-    drawIcon(doc, 'calendar', cardX + cardW - pad - 20, y + 5, 18, C.PRIMARY);
-    y += 50;
-
-    doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_LIGHT).text('LOCAL', cardX + pad, y);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_DARK).text(`${event.location} - ${event.city || ''}`, cardX + pad, y + 15, { width: contentW - 30 });
-    drawIcon(doc, 'pin', cardX + cardW - pad - 20, y + 5, 18, C.PRIMARY);
-    y += 60;
-
-    const qrSize = 150;
-    doc.image(qrCodeImage, cardX + pad, y, { width: qrSize, height: qrSize });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('DATA E HORÁRIO', col1X, y);
+    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_DARK).text(dateStr, col1X, y + 15, { width: (contentW/2) - 10 });
+    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_LIGHT).text(timeStr, col1X, y + 32);
     
-    const displayCode = uniqueCode.length > 20 ? uniqueCode.substring(0, 8) + '...' : uniqueCode;
-    doc.font('Helvetica').fontSize(10).fillColor(C.TEXT_DARK)
-        .text(displayCode, cardX + pad, y + qrSize + 5, { width: qrSize, align: 'center' });
+    // LOCALIZAÇÃO
+    y += 70;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('LOCALIZAÇÃO', col1X, y);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(event.location, col1X, y + 15, { width: (contentW/2) - 10 });
+    doc.font('Helvetica').fontSize(12).fillColor(C.TEXT_LIGHT).text(event.city || '', col1X, y + 30);
 
-    const detailsX = cardX + pad + qrSize + 25;
-    let detailsY = y + 10;
+    // PARTICIPANTE (Coluna 2)
+    let y2 = initialY;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('PARTICIPANTE', col2X, y2);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(customName || user.name, col2X, y2 + 15, { width: (contentW/2) - 10, ellipsis: true });
+    
+    // INGRESSO (Coluna 2)
+    y2 += 70;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('TIPO DE INGRESSO', col2X, y2);
+    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_DARK).text(ticketType ? ticketType.name : 'Geral', col2X, y2 + 15);
+    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(ticketType?.batchName || 'Lote Único', col2X, y2 + 32);
 
-    doc.font('Helvetica').fontSize(9).fillColor(C.TEXT_LIGHT).text('INGRESSO', detailsX, detailsY);
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(ticketType ? ticketType.name : 'Ingresso', detailsX, detailsY + 12);
-    detailsY += 45;
+    // VALOR (Coluna 2)
+    y2 += 60;
+    const valor = (!ticket.price || ticket.price === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(C.TEXT_LIGHT).text('VALOR PAGO', col2X, y2);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(valor, col2X, y2 + 15);
 
-    doc.font('Helvetica').fontSize(9).fillColor(C.TEXT_LIGHT).text('PARTICIPANTE', detailsX, detailsY);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_DARK).text(customName || user.name, detailsX, detailsY + 12, { width: cardW - detailsX - pad, ellipsis: true });
-    detailsY += 45;
+    // --- QR CODE (Rodapé do Card) ---
+    // Calcula posição Y baseada no maior conteúdo ou posição fixa inferior
+    let qrY = Math.max(y + 80, y2 + 60) + 20;
+    
+    // Linha pontilhada antes do QR Code
+    doc.moveTo(cardX + 20, qrY - 20).lineTo(cardX + cardW - 20, qrY - 20).lineWidth(1).dash(5, {space: 5}).strokeColor(C.BORDER).stroke();
+    doc.undash();
 
-    doc.font('Helvetica').fontSize(9).fillColor(C.TEXT_LIGHT).text('VALOR', detailsX, detailsY);
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text((!ticket.price || ticket.price === 0) ? 'R$ 0,00' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`, detailsX, detailsY + 12);
+    const qrSize = 180; // QR Code maior
+    const qrX = (pageW - qrSize) / 2; // Centralizado na página
 
-    const logoY = cardY + cardH - 40;
-    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.PRIMARY)
-        .text('Vibz', cardX, logoY, { width: cardW, align: 'center' });
+    doc.image(qrCodeImage, qrX, qrY, { width: qrSize, height: qrSize });
+    
+    // Código numérico abaixo do QR
+    doc.font('Courier').fontSize(11).fillColor(C.TEXT_DARK)
+        .text(uniqueCode, cardX, qrY + qrSize + 10, { width: cardW, align: 'center' });
+
+    // Logo Vibz
+    const logoY = cardY + cardH - 30;
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.PRIMARY).opacity(0.8)
+        .text('Vibz Eventos', cardX, logoY, { width: cardW, align: 'center' });
 }
 
 const generateAndSendTickets = async (order, stripeEmail = null, stripeName = null) => {
