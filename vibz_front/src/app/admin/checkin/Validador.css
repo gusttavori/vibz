@@ -94,6 +94,7 @@
 /* --- ESTILO ESPECÍFICO: ACESSO RESTRITO --- */
 .state-card.unauthorized {
     border-top: none;
+    width: 80%;
 }
 
 .icon-wrapper-error {
