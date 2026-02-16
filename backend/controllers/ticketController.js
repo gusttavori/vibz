@@ -36,102 +36,107 @@ async function fetchImage(src) {
     }
 }
 
-// Função para desenhar ícones (opcional, mantida para estilo)
 function drawIcon(doc, type, x, y, size, color) {
     doc.save();
     doc.fillColor(color);
     if (type === 'calendar') {
         doc.roundedRect(x, y, size, size, size * 0.2).fill();
         doc.fillColor('white').rect(x + size * 0.2, y + size * 0.4, size * 0.6, size * 0.1).fill();
+        doc.rect(x + size * 0.2, y + size * 0.6, size * 0.6, size * 0.1).fill();
+        doc.rect(x + size * 0.3, y + size * 0.15, size * 0.1, size * 0.15).fill();
+        doc.rect(x + size * 0.6, y + size * 0.15, size * 0.1, size * 0.15).fill();
     } else if (type === 'pin') {
         doc.circle(x + size / 2, y + size * 0.4, size * 0.3).fill();
-        doc.moveTo(x + size * 0.2, y + size * 0.5).lineTo(x + size / 2, y + size).lineTo(x + size * 0.8, y + size * 0.5).fill();
+        doc.moveTo(x + size * 0.2, y + size * 0.5)
+            .lineTo(x + size / 2, y + size)
+            .lineTo(x + size * 0.8, y + size * 0.5).fill();
+        doc.fillColor('white').circle(x + size / 2, y + size * 0.4, size * 0.1).fill();
     }
     doc.restore();
 }
 
 async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = null) {
+    // Paleta de Cores
     const C = { 
         BG: '#F2F4F8', 
         CARD: '#FFFFFF', 
         TEXT_DARK: '#111827', 
-        TEXT_MED: '#374151', 
-        TEXT_LIGHT: '#6b7280', 
+        TEXT_MED: '#374151',
+        TEXT_LIGHT: '#9ca3af', 
         PRIMARY: '#4C01B5', 
         BORDER: '#e5e7eb',
-        ACCENT_BG: '#f9fafb'
+        ACCENT_BG: '#f3f4f6'
     };
     
-    // --- DIMENSÕES (Card Ocupando Página A4) ---
+    // --- DIMENSÕES MÁXIMAS (Card Ocupando a Página) ---
     const pageW = doc.page.width;   // ~595
     const pageH = doc.page.height;  // ~841
-    const margin = 20;              // Margem fina
+    const margin = 20;              // Margem fina para aproveitar o espaço
     
     const cardX = margin;
     const cardY = margin;
     const cardW = pageW - (margin * 2);
     const cardH = pageH - (margin * 2);
 
-    // Preparação dos dados
+    // Preparação de Dados
     const eventImageBuffer = await fetchImage(event.imageUrl);
     const uniqueCode = ticket.qrCodeData;
+    // QR Code grande e nítido
     const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 450, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
 
-    // 1. Fundo da Página
+    // 1. Fundo da Página (Cinza suave)
     doc.rect(0, 0, pageW, pageH).fill(C.BG);
     
-    // 2. Sombra e Card Principal
-    doc.roundedRect(cardX + 3, cardY + 3, cardW, cardH, 12).fillColor('#cbd5e1').fillOpacity(0.5).fill(); // Sombra
-    doc.fillOpacity(1); 
-    doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fill(); // Card Branco
+    // 2. Sombra do Card
+    doc.roundedRect(cardX + 4, cardY + 6, cardW, cardH, 16).fillColor('#cbd5e1').fillOpacity(0.5).fill();
+    doc.fillOpacity(1); // Reset opacidade
 
-    // --- IMAGEM DE CAPA ---
-    const imgH = 220; 
+    // 3. Card Principal Branco
+    doc.roundedRect(cardX, cardY, cardW, cardH, 16).fillColor(C.CARD).fill();
+
+    // --- CABEÇALHO / IMAGEM (Hero Aumentado) ---
+    const imgH = 320; // AUMENTADO PARA 320px
     doc.save();
-    // Clip arredondado apenas no topo
-    doc.path(`M ${cardX} ${cardY + 12} Q ${cardX} ${cardY} ${cardX + 12} ${cardY} L ${cardX + cardW - 12} ${cardY} Q ${cardX + cardW} ${cardY} ${cardX + cardW} ${cardY + 12} L ${cardX + cardW} ${cardY + imgH} L ${cardX} ${cardY + imgH} Z`).clip();
+    // Clip para arredondar apenas topo
+    doc.path(`M ${cardX} ${cardY + 16} Q ${cardX} ${cardY} ${cardX + 16} ${cardY} L ${cardX + cardW - 16} ${cardY} Q ${cardX + cardW} ${cardY} ${cardX + cardW} ${cardY + 16} L ${cardX + cardW} ${cardY + imgH} L ${cardX} ${cardY + imgH} Z`).clip();
     
     if (eventImageBuffer) {
         try { 
-            // 'cover' garante que a imagem preencha a largura sem distorcer
-            doc.image(eventImageBuffer, cardX, cardY, { width: cardW, height: imgH, align: 'center', valign: 'center', fit: [cardW, imgH] }); 
+            doc.image(eventImageBuffer, cardX, cardY, { width: cardW, height: imgH, fit: [cardW, imgH], align: 'center', valign: 'center' }); 
         } catch (e) {}
     } else {
-        doc.rect(cardX, cardY, cardW, imgH).fill(C.PRIMARY);
+        doc.rect(cardX, cardY, cardW, imgH).fill(C.PRIMARY); // Fallback Roxo
     }
     doc.restore();
 
-    // --- CONTEÚDO DO INGRESSO ---
-    let y = cardY + imgH + 30; // Margem inicial após a foto
-    const pad = 30; 
+    // --- CONTEÚDO PRINCIPAL ---
+    let y = cardY + imgH + 35; // Espaço após imagem
+    const pad = 35; // Espaçamento lateral interno
     const contentW = cardW - (pad * 2);
 
-    // Título do Evento
-    doc.font('Helvetica-Bold').fontSize(24).fillColor(C.TEXT_DARK)
-       .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
+    // Título do Evento (Grande e Bold)
+    doc.font('Helvetica-Bold').fontSize(26).fillColor(C.TEXT_DARK)
+        .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left', lineGap: 5 });
     
-    // Atualiza Y baseado na altura real do título
     y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 15;
 
-    // Linha Divisória
+    // Divisor Fino
     doc.moveTo(cardX + pad, y).lineTo(cardX + cardW - pad, y).lineWidth(1).strokeColor(C.BORDER).stroke();
-    y += 25;
+    y += 25; // Espaço após divisor
 
-    // --- GRID DE DUAS COLUNAS ---
+    // --- GRID DE INFORMAÇÕES (Layout 2 Colunas) ---
     const colGap = 20;
     const colWidth = (contentW / 2) - (colGap / 2);
     const col1X = cardX + pad;
     const col2X = cardX + pad + colWidth + colGap;
     
-    let yLeft = y;
-    let yRight = y;
+    // Altura de cada bloco do grid (reduzida ligeiramente para compactar)
+    const blockHeight = 80;
+    let currentY = y;
 
-    // === COLUNA ESQUERDA ===
+    // --- LINHA 1: DATA (Esq) vs PARTICIPANTE (Dir) ---
     
-    // Data
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('DATA E HORÁRIO', col1X, yLeft);
-    yLeft += 12;
-    
+    // Data (Esquerda)
     let dateStr = "";
     let timeStr = "";
     if (ticketType && ticketType.activityDate) {
@@ -149,79 +154,79 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
         timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
 
-    doc.font('Helvetica').fontSize(13).fillColor(C.TEXT_MED).text(dateStr, col1X, yLeft, { width: colWidth });
-    yLeft += doc.heightOfString(dateStr, { width: colWidth }) + 2;
-    doc.font('Helvetica').fontSize(12).fillColor(C.TEXT_LIGHT).text(timeStr, col1X, yLeft, { width: colWidth });
-    yLeft += 35; // Espaço para próximo bloco
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('DATA E HORÁRIO', col1X, currentY);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_MED).text(dateStr, col1X, currentY + 15, { width: colWidth });
+    doc.font('Helvetica').fontSize(12).fillColor(C.TEXT_LIGHT).text(timeStr, col1X, currentY + 32, { width: colWidth });
 
-    // Localização (AQUI ESTAVA O ERRO DE SOBREPOSIÇÃO)
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('LOCALIZAÇÃO', col1X, yLeft);
-    yLeft += 12;
-    
-    // Escreve o local e calcula a altura que ele ocupou
-    const locationName = event.location || 'Local a definir';
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_MED)
-       .text(locationName, col1X, yLeft, { width: colWidth });
-    
-    yLeft += doc.heightOfString(locationName, { width: colWidth }) + 4; // Pula a altura exata do texto + respiro
+    // Participante (Direita)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('PARTICIPANTE', col2X, currentY);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(customName || user.name, col2X, currentY + 15, { width: colWidth, ellipsis: true });
 
-    // Escreve a cidade embaixo, sem risco de sobrepor
-    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT)
-       .text(event.city || '', col1X, yLeft, { width: colWidth });
+    currentY += blockHeight; // Pula para próxima linha do grid
 
+    // --- LINHA 2: LOCAL (Esq) vs TIPO INGRESSO (Dir) ---
 
-    // === COLUNA DIREITA ===
+    // Local (Esquerda)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('LOCALIZAÇÃO', col1X, currentY);
+    // IMPORTANTE: ellipsis: true impede que textos longos invadam a outra coluna ou linhas abaixo
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_MED).text(event.location, col1X, currentY + 15, { width: colWidth, height: 30, ellipsis: true });
+    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(event.city || '', col1X, currentY + 32, { width: colWidth, ellipsis: true });
 
-    // Participante
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('PARTICIPANTE', col2X, yRight);
-    yRight += 12;
-    const pName = customName || user.name;
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(pName, col2X, yRight, { width: colWidth, ellipsis: true });
-    yRight += doc.heightOfString(pName, { width: colWidth }) + 35;
+    // Tipo Ingresso (Direita)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('TIPO DE INGRESSO', col2X, currentY);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(ticketType ? ticketType.name : 'Geral', col2X, currentY + 15, { width: colWidth, height: 30, ellipsis: true });
+    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(ticketType?.batchName || 'Lote Único', col2X, currentY + 32, { width: colWidth, ellipsis: true });
 
-    // Tipo de Ingresso
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('TIPO DE INGRESSO', col2X, yRight);
-    yRight += 12;
-    const tName = ticketType ? ticketType.name : 'Geral';
-    doc.font('Helvetica').fontSize(13).fillColor(C.TEXT_MED).text(tName, col2X, yRight, { width: colWidth });
-    yRight += doc.heightOfString(tName, { width: colWidth }) + 2;
-    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(ticketType?.batchName || 'Lote Único', col2X, yRight);
-    yRight += 35;
+    currentY += blockHeight; // Pula para próxima linha
 
-    // Valor
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('VALOR', col2X, yRight);
-    yRight += 12;
+    // --- LINHA 3: VALOR (Direita) ---
+    // (Opcional, se quiser valor na esquerda pode por status ou organizador)
     const valor = (!ticket.price || ticket.price === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(valor, col2X, yRight);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(C.PRIMARY).text('VALOR PAGO', col2X, currentY);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(valor, col2X, currentY + 15);
 
-
-    // --- QR CODE (ANCORADO NO RODAPÉ) ---
-    // Em vez de depender do Y do texto, vamos calcular de baixo para cima
-    // Isso garante que ele sempre fique na parte inferior do card, independente do tamanho do texto
+    // --- ÁREA DO QR CODE (Reposicionada de baixo para cima) ---
     
-    const qrSize = 170;
-    const qrBoxH = 240; // Altura da área reservada para o QR
-    const footerYStart = cardY + cardH - qrBoxH; // Começa a desenhar aqui
+    const qrBoxSize = 220;
+    const qrBoxX = (pageW - qrBoxSize) / 2;
 
-    // Linha pontilhada separando o conteúdo do QR Code
-    doc.moveTo(cardX + 20, footerYStart).lineTo(cardX + cardW - 20, footerYStart)
+    // Define o limite inferior seguro, deixando espaço para o rodapé "Vibz Eventos"
+    // cardY + cardH é o final do card branco. Subtraímos 70px para o rodapé e respiro.
+    const safeBottomY = cardY + cardH - 70; 
+
+    // Altura total necessária para o bloco QR (Box + Hash + margens)
+    const qrBlockTotalHeight = qrBoxSize + 40;
+
+    // Calcula onde o bloco deve começar (Y) para terminar no limite seguro
+    let qrAreaY = safeBottomY - qrBlockTotalHeight;
+
+    // Garante que não sobreponha o conteúdo do grid (currentY) se este tiver descido muito
+    // Adiciona 40px de respiro mínimo após o último conteúdo
+    qrAreaY = Math.max(qrAreaY, currentY + 40); 
+
+    
+    // Linha pontilhada separadora
+    doc.moveTo(cardX + 20, qrAreaY - 25).lineTo(cardX + cardW - 20, qrAreaY - 25)
        .lineWidth(1).dash(4, { space: 4 }).strokeColor(C.BORDER).stroke();
     doc.undash();
 
-    // Posição centralizada do QR
-    const qrX = (pageW - qrSize) / 2;
-    const qrY = footerYStart + 30; // 30px de margem da linha pontilhada
+    // Box Fundo QR
+    doc.roundedRect(qrBoxX, qrAreaY, qrBoxSize, qrBoxSize, 12).fill(C.ACCENT_BG);
+    
+    // Imagem QR Code centralizada no box
+    const qrImgSize = 180;
+    const qrImgX = (pageW - qrImgSize) / 2;
+    const qrImgY = qrAreaY + (qrBoxSize - qrImgSize) / 2;
+    
+    doc.image(qrCodeImage, qrImgX, qrImgY, { width: qrImgSize, height: qrImgSize });
 
-    // Desenha o QR Code
-    doc.image(qrCodeImage, qrX, qrY, { width: qrSize, height: qrSize });
-
-    // Código Hash abaixo do QR
+    // Código Hash abaixo do box
     doc.font('Courier').fontSize(10).fillColor(C.TEXT_LIGHT)
-       .text(uniqueCode, 0, qrY + qrSize + 10, { width: pageW, align: 'center' });
+        .text(uniqueCode, 0, qrAreaY + qrBoxSize + 15, { width: pageW, align: 'center' });
 
-    // Logo Vibz no fim absoluto
+    // Rodapé "Vibz Eventos" na borda inferior do card
     doc.font('Helvetica-Bold').fontSize(12).fillColor(C.PRIMARY).opacity(0.8)
-       .text('Vibz Eventos', 0, cardY + cardH - 25, { width: pageW, align: 'center' });
+        .text('Vibz Eventos', 0, cardY + cardH - 25, { width: pageW, align: 'center' });
 }
 
 const generateAndSendTickets = async (order, stripeEmail = null, stripeName = null) => {
@@ -333,6 +338,7 @@ const validateTicket = async (req, res) => {
 
         if (!ticket) return res.status(404).json({ valid: false, message: 'Ingresso não encontrado.' });
 
+        // --- NOVA TRAVA DE SEGURANÇA: Organizador ou Admin ---
         if (ticket.event.organizerId !== req.user.id && !req.user.isAdmin) {
             return res.status(403).json({ 
                 valid: false, 
