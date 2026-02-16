@@ -232,7 +232,6 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 const validateTicket = async (req, res) => {
     const { qrCode } = req.body;
     
-    // VERIFICAÇÃO DE SEGURANÇA (PRIORIDADE ALTA)
     if (!req.user || !req.user.id) {
         return res.status(401).json({ message: 'Não autorizado. Faça login.' });
     }
@@ -240,13 +239,11 @@ const validateTicket = async (req, res) => {
     try {
         console.log("🔍 Validando:", qrCode);
 
-        // 1. Busca o ticket
         let ticket = await prisma.ticket.findUnique({ 
             where: { qrCodeData: qrCode },
             include: { event: true, user: true, ticketType: true }
         });
 
-        // 2. Fallback para ID
         if (!ticket) {
             try {
                 ticket = await prisma.ticket.findUnique({
@@ -258,8 +255,8 @@ const validateTicket = async (req, res) => {
 
         if (!ticket) return res.status(404).json({ valid: false, message: 'Ingresso não encontrado.' });
 
-        // 3. TRAVA DE SEGURANÇA: Apenas o dono do evento pode validar
-        if (ticket.event.organizerId !== req.user.id) {
+        // --- NOVA TRAVA DE SEGURANÇA: Organizador ou Admin ---
+        if (ticket.event.organizerId !== req.user.id && !req.user.isAdmin) {
             return res.status(403).json({ 
                 valid: false, 
                 message: 'Permissão negada. Você não é o organizador deste evento.' 
