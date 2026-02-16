@@ -208,6 +208,7 @@ const approveEvent = async (req, res) => {
             data: { status: 'approved' },
             include: { organizer: true }
         });
+
         if (event.organizer && event.organizer.email) {
             await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id);
         }
@@ -227,6 +228,7 @@ const rejectEvent = async (req, res) => {
             data: { status: 'rejected' },
             include: { organizer: { select: { email: true, name: true } } }
         });
+
         if (event.organizer && event.organizer.email) {
             await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason);
         }
@@ -280,13 +282,14 @@ const getFeaturedEvents = async (req, res) => {
     } catch (e) { res.status(500).json({ message: "Erro" }); }
 };
 
+// CORREÇÃO CRUCIAL AQUI: Busca insensível e contains
 const getEventsByCategory = async (req, res) => {
     try {
         let { categoryName } = req.params;
         const decoded = decodeURIComponent(categoryName);
         const events = await prisma.event.findMany({
             where: { 
-                category: { equals: decoded, mode: 'insensitive' }, 
+                category: { contains: decoded, mode: 'insensitive' }, // AGORA USA CONTAINS
                 status: 'approved' 
             },
             include: { ticketTypes: true },
@@ -299,6 +302,7 @@ const getEventsByCategory = async (req, res) => {
 const searchEvents = async (req, res) => {
     const { query, city } = req.query;
     if (!query) return res.json([]);
+    
     try {
         const decodedQuery = decodeURIComponent(query);
         const events = await prisma.event.findMany({
@@ -315,7 +319,9 @@ const searchEvents = async (req, res) => {
             include: { ticketTypes: true }
         });
         res.json(events.map(mapEventToFrontend));
-    } catch (err) { res.status(500).json([]); }
+    } catch (err) {
+        res.status(500).json([]);
+    }
 };
 
 const toggleFavorite = async (req, res) => { res.status(200).json({ success: true }); };

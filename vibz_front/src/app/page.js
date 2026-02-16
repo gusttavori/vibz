@@ -14,10 +14,10 @@ import './Home.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Lista de categorias oficiais do sistema (Nomes Exatos do Banco)
+// Lista de categorias para sugestão no autocomplete
 const SYSTEM_CATEGORIES = [
     'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura', 
-    'Esportes e Lazer', 'Gastronomia', 'Cursos e Workshops'
+    'Esportes', 'Gastronomia', 'Cursos e Workshops'
 ];
 
 export default function Home() {
@@ -32,7 +32,7 @@ export default function Home() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState([]); 
-    const [matchedCategory, setMatchedCategory] = useState(null); 
+    const [matchedCategory, setMatchedCategory] = useState(null); // Nova categoria sugerida
     const [showSuggestions, setShowSuggestions] = useState(false); 
     
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -66,11 +66,13 @@ export default function Home() {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
                 try {
+                    // 1. Verifica se o termo bate com o nome de uma categoria
                     const catFound = SYSTEM_CATEGORIES.find(cat => 
                         cat.toLowerCase().includes(searchTerm.toLowerCase())
                     );
                     setMatchedCategory(catFound || null);
 
+                    // 2. Busca eventos no servidor
                     const params = new URLSearchParams();
                     params.append('query', searchTerm);
                     if (selectedCity) params.append('city', selectedCity);
@@ -140,6 +142,7 @@ export default function Home() {
 
     const getFilteredEvents = (events, filter) => {
         if (!events || events.length === 0) return [];
+
         let filteredByCity = events;
         if (selectedCity) {
             filteredByCity = events.filter(event => {
@@ -147,10 +150,12 @@ export default function Home() {
                 return eventCity.toLowerCase().includes(selectedCity.toLowerCase());
             });
         }
+
         if (filter === 'Todos') return filteredByCity;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        
         const endOfWeek = new Date(today);
         endOfWeek.setDate(today.getDate() + 7);
         endOfWeek.setHours(23, 59, 59, 999);
@@ -160,8 +165,12 @@ export default function Home() {
             const eventStartOfDay = new Date(eventDate);
             eventStartOfDay.setHours(0, 0, 0, 0);
 
-            if (filter === 'Hoje') return eventStartOfDay.getTime() === today.getTime();
-            if (filter === 'Esta semana') return eventStartOfDay >= today && eventDate <= endOfWeek;
+            if (filter === 'Hoje') {
+                return eventStartOfDay.getTime() === today.getTime();
+            }
+            if (filter === 'Esta semana') {
+                return eventStartOfDay >= today && eventDate <= endOfWeek;
+            }
             if (filter === 'Grátis') {
                 const hasFreeTicket = event.tickets && event.tickets.some(t => parseFloat(t.price) === 0);
                 return event.price === 0 || event.isFree === true || hasFreeTicket;
@@ -188,21 +197,22 @@ export default function Home() {
         }
     };
 
-    // CORREÇÃO AQUI: Os nomes devem ser os mesmos das SYSTEM_CATEGORIES
     useEffect(() => {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro e Cultura', 'teatro');
-        fetchCategory('Esportes e Lazer', 'esportes'); // Antes estava 'Esportes'
+        fetchCategory('Esportes', 'esportes'); 
         fetchCategory('Gastronomia', 'gastronomia');
         fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
 
+    // --- LOGIN & FAVORITOS ---
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
                 const userId = localStorage.getItem('userId');
                 const userToken = localStorage.getItem('userToken');
+
                 if (userId && userToken) {
                     setIsUserLoggedIn(true);
                     setCurrentUserId(userId);
@@ -226,18 +236,23 @@ export default function Home() {
             const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
             if (!currentUserId || !token) { setFavoritedEventIds([]); return; }
             try {
+                // Chama endpoint que retorna os IDs ou a lista completa
                 const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/favorites`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
                     const data = await response.json();
                     if (Array.isArray(data)) {
+                        // Garante que pegamos o ID correto, seja _id ou id
                         setFavoritedEventIds(data.map(event => event.id || event._id));
                     }
                 }
             } catch (error) { console.error("Erro favoritos:", error); }
         };
-        if (currentUserId) fetchFavoritedEvents();
+        
+        if (currentUserId) {
+            fetchFavoritedEvents();
+        }
     }, [currentUserId]);
     
     useEffect(() => {
@@ -261,6 +276,7 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
+    // --- FUNÇÃO FAVORITAR CORRIGIDA ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
         if (!currentUserId) { 
@@ -268,13 +284,25 @@ export default function Home() {
             router.push('/login'); 
             return; 
         }
-        setFavoritedEventIds(prev => isFavoriting ? [...prev, eventId] : prev.filter(id => id !== eventId));
+
+        // Atualização Otimista (Muda na tela antes de confirmar no servidor)
+        setFavoritedEventIds(prev => {
+            if (isFavoriting) {
+                return [...prev, eventId];
+            } else {
+                return prev.filter(id => id !== eventId);
+            }
+        });
+
         try {
+            // Tenta a rota de toggle (mais moderna)
             let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ eventId })
             });
+
+            // Se a rota toggle não existir (404), tenta a rota antiga
             if (response.status === 404) {
                  response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
@@ -282,12 +310,26 @@ export default function Home() {
                     body: JSON.stringify({ userId: currentUserId, isFavoriting })
                 });
             }
+
             if (!response.ok) {
-                setFavoritedEventIds(prev => isFavoriting ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+                // Se der erro, reverte a mudança visual
+                setFavoritedEventIds(prev => {
+                    if (isFavoriting) return prev.filter(id => id !== eventId);
+                    return [...prev, eventId];
+                });
                 toast.error("Erro ao atualizar favoritos.");
+            } else {
+                const data = await response.json();
+                toast.success(data.message || (isFavoriting ? "Adicionado aos favoritos!" : "Removido dos favoritos."));
             }
         } catch (error) { 
-            setFavoritedEventIds(prev => isFavoriting ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+            console.error('Erro favorito:', error);
+            // Reverte em caso de erro de rede
+            setFavoritedEventIds(prev => {
+                if (isFavoriting) return prev.filter(id => id !== eventId);
+                return [...prev, eventId];
+            });
+            toast.error("Erro de conexão.");
         }
     };
 
@@ -296,12 +338,12 @@ export default function Home() {
     };
 
     const categoriesConfig = [
-        { name: 'Acadêmico / Congresso', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
+        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
-        { name: 'Teatro e Cultura', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes e Lazer', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
+        { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
+        { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
         { name: 'Gastronomia', icon: '/img/kids.svg', ref: gastronomiaRef, key: 'gastronomia' },
-        { name: 'Cursos e Workshops', icon: '/img/theater.svg', ref: cursosRef, key: 'cursos' }
+        { name: 'Cursos', icon: '/img/theater.svg', ref: cursosRef, key: 'cursos' }
     ];
 
     const categoriesToShowInNavigation = categoriesConfig.filter(cat => 
@@ -312,8 +354,11 @@ export default function Home() {
         const events = categoryEvents[categoryKey];
         const loading = loadingCategories[categoryKey];
         const activeFilter = activeFilters[categoryKey];
+
         if (!loading && (!events || events.length === 0)) return null;
+
         const filteredEvents = getFilteredEvents(events, activeFilter);
+
         return (
             <section className="events-section" ref={ref}>
                 <h3 className="section-title">{title}</h3>
@@ -326,17 +371,20 @@ export default function Home() {
                     {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <EventCard 
-                                key={event._id || event.id} 
+                                key={event._id || event.id} // Garante chave única
                                 event={event} 
                                 isUserLoggedIn={isUserLoggedIn} 
                                 currentUserId={currentUserId} 
                                 onToggleFavorite={handleToggleFavorite} 
-                                isFavorited={favoritedEventIds.includes(event._id || event.id)} 
+                                isFavorited={favoritedEventIds.includes(event._id || event.id)} // Verifica ID corretamente
                             />
                         ))
                     ) : (
                         <div className="no-events-container" style={{ width: '100%', padding: '30px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '12px' }}>
-                            <p style={{ color: '#666', fontSize: '1rem', margin: 0 }}>Nenhum evento encontrado para <strong>"{activeFilter}"</strong>.</p>
+                            <p style={{ color: '#666', fontSize: '1rem', margin: 0 }}>
+                                Nenhum evento encontrado para <strong>"{activeFilter}"</strong> nesta categoria.
+                            </p>
+                            <button onClick={() => handleFilterChange(categoryKey, 'Todos')} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#4C01B5', cursor: 'pointer', textDecoration: 'underline', fontWeight: '600' }}>Ver todos os eventos</button>
                         </div>
                     )}
                 </div>
@@ -353,32 +401,47 @@ export default function Home() {
             <div className="search-bar-container">
                 <div className="search-outer-border-wrapper" ref={searchWrapperRef}>
                     <button className="location-button-styled" onClick={() => setShowCityMenu(!showCityMenu)}>
-                        <svg className="location-icon-styled" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z" /></svg>
+                        <svg className="location-icon-styled" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z" />
+                        </svg>
                         {selectedCity && <span className="selected-city-text">{selectedCity}</span>}
-                        {selectedCity && (<div className="clear-icon-wrapper" onClick={handleClearCity} title="Limpar localização"><FaTimes size={12} /></div>)}
+                        {selectedCity && (
+                            <div className="clear-icon-wrapper" onClick={handleClearCity} title="Limpar localização">
+                                <FaTimes size={12} />
+                            </div>
+                        )}
                     </button>
                     
                     <div className="input-wrapper-relative" style={{ flexGrow: 1, position: 'relative', height: '100%' }}>
                         <input 
                             type="text" 
-                            placeholder="Busque por nome, cidade ou categoria..." 
+                            placeholder="Busque por eventos ou categorias (ex: Teatro)" 
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
-                            onFocus={() => { if(suggestions.length > 0 || matchedCategory) setShowSuggestions(true); }}
+                            onFocus={() => { if(suggestions.length > 0) setShowSuggestions(true); }}
                             className="search-input-field" 
                         />
-                        {searchTerm && (<button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa"><FaTimes size={14} color="#999" /></button>)}
+                        {searchTerm && (
+                            <button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa">
+                                <FaTimes size={14} color="#999" />
+                            </button>
+                        )}
                     </div>
 
                     {showCityMenu && (
                         <div className="city-dropdown-menu">
-                            <div className="city-dropdown-item" onClick={() => { setSelectedCity(''); setShowCityMenu(false); }}><strong>Todas as cidades</strong></div>
-                            {cities.map((city, idx) => (<div key={idx} className="city-dropdown-item" onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}>{city}</div>))}
+                            <div className="city-dropdown-item" onClick={() => { setSelectedCity(''); setShowCityMenu(false); }}>
+                                <strong>Todas as cidades</strong>
+                            </div>
+                            {cities.length > 0 ? cities.map((city, idx) => (
+                                <div key={idx} className="city-dropdown-item" onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}>{city}</div>
+                            )) : <div className="city-dropdown-item">Carregando...</div>}
                         </div>
                     )}
 
                     {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
                         <div className="suggestions-dropdown">
+                            {/* Sugestão de Categoria */}
                             {matchedCategory && (
                                 <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
                                     <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
@@ -405,7 +468,9 @@ export default function Home() {
             </div>
 
             {featuredEvents.length > 0 && (
-                <div className="featured-carousel-container"><Carousel events={featuredEvents} /></div>
+                <div className="featured-carousel-container">
+                    <Carousel events={featuredEvents} />
+                </div>
             )}
 
             <div className="categories-section">
@@ -413,7 +478,9 @@ export default function Home() {
                     <div className="categories-list">
                         {categoriesToShowInNavigation.map((cat, index) => (
                             <div key={index} className="category-item" onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                                <div className="category-icon"><img src={cat.icon} alt={cat.name} /></div>
+                                <div className="category-icon">
+                                    <img src={cat.icon} alt={cat.name} />
+                                </div>
                                 <span className="category-name">{cat.name}</span>
                             </div>
                         ))}
@@ -432,7 +499,9 @@ export default function Home() {
                 <div className="mkt-content-modern">
                     <div className="mkt-text-modern">
                         <h2>Publique e venda seus eventos na Vibz</h2>
-                        <p className="mkt-subtitle">A plataforma completa para você gerenciar seus eventos, vender ingressos e acompanhar resultados em tempo real.</p>
+                        <p className="mkt-subtitle">
+                            A plataforma completa para você gerenciar seus eventos, vender ingressos e acompanhar resultados em tempo real.
+                        </p>
                         <div className="mkt-features-grid">
                             <div className="feature-card">
                                 <div className="feature-icon-wrapper"><FaMagic className="feature-icon" /></div>
@@ -448,11 +517,15 @@ export default function Home() {
                             </div>
                         </div>
                         <div className="mkt-cta-group">
-                            <button className="btn-primary-mkt" onClick={handleMktCreateEvent}>Criar meu evento <FaArrowRight /></button>
+                            <button className="btn-primary-mkt" onClick={handleMktCreateEvent}>
+                                Criar meu evento <FaArrowRight />
+                            </button>
                             <button className="btn-secondary-mkt" onClick={() => window.open("https://www.instagram.com/vibzeventos/", "_blank")}>Saiba mais</button>
                         </div>
                     </div>
-                    <div className="mkt-image-modern"><img src="/img/mockup.png" alt="Dashboard Vibz no celular" /></div>
+                    <div className="mkt-image-modern">
+                        <img src="/img/mockup.png" alt="Dashboard Vibz no celular" />
+                    </div>
                 </div>
             </div>
 
