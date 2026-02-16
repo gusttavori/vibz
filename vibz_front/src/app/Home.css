@@ -176,6 +176,15 @@
     flex-wrap: wrap;
 }
 
+.category-highlight {
+    background-color: #f3f0ff !important; /* Cor de fundo suave */
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 5px;
+}
+.category-highlight:hover {
+    background-color: #ede9fe !important;
+}
+
 .category-item {
     display: flex;
     flex-direction: column;

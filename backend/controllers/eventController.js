@@ -118,7 +118,6 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        // Notificações assíncronas
         sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
         sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("[Email] Erro admin:", err));
 
@@ -204,36 +203,15 @@ const getMyEvents = async (req, res) => {
 const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
-
-        // Atualiza o status e busca os dados do organizador pela relação definida no schema
         const event = await prisma.event.update({
             where: { id },
             data: { status: 'approved' },
-            include: { 
-                organizer: true // Certifique-se que o nome aqui coincide com o campo no seu modelo Event
-            }
+            include: { organizer: true }
         });
 
-        // LOG DE DIAGNÓSTICO: Verifique isso no terminal da Render
-        console.log("-----------------------------------------");
-        console.log("DADOS DO ORGANIZADOR ENCONTRADOS:");
-        console.log("E-mail:", event.organizer?.email);
-        console.log("Nome:", event.organizer?.name);
-        console.log("-----------------------------------------");
-
         if (event.organizer && event.organizer.email) {
-            // Usamos AWAIT aqui para garantir que o envio termine antes da resposta
-            await sendEventStatusEmail(
-                event.organizer.email, 
-                event.organizer.name, 
-                event.title, 
-                'approved', 
-                event.id
-            );
-        } else {
-            console.error("❌ Erro: O organizador deste evento não possui um e-mail válido no banco.");
+            await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id);
         }
-
         res.json({ success: true, message: "Evento aprovado!" });
     } catch (error) {
         console.error("Erro na aprovação:", error.message);
@@ -251,13 +229,9 @@ const rejectEvent = async (req, res) => {
             include: { organizer: { select: { email: true, name: true } } }
         });
 
-        console.log(`[MODERAÇÃO] Evento rejeitado: ${event.title}. Notificando: ${event.organizer?.email}`);
-
         if (event.organizer && event.organizer.email) {
             await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason);
-            console.log("[EMAIL] E-mail de rejeição enviado.");
         }
-
         res.json({ success: true, message: "Evento reprovado e organizador notificado." });
     } catch (error) {
         console.error("Erro ao reprovar evento:", error);
@@ -312,7 +286,10 @@ const getEventsByCategory = async (req, res) => {
     try {
         let { categoryName } = req.params;
         const events = await prisma.event.findMany({
-            where: { category: { equals: decodeURIComponent(categoryName), mode: 'insensitive' }, status: 'approved' },
+            where: { 
+                category: { equals: decodeURIComponent(categoryName), mode: 'insensitive' }, 
+                status: 'approved' 
+            },
             include: { ticketTypes: true },
             orderBy: { eventDate: 'asc' }
         });
@@ -321,13 +298,28 @@ const getEventsByCategory = async (req, res) => {
 };
 
 const searchEvents = async (req, res) => {
-    const { query } = req.query;
+    const { query, city } = req.query;
     if (!query) return res.json([]);
-    const events = await prisma.event.findMany({
-        where: { status: 'approved', OR: [{ title: { contains: query, mode: 'insensitive' } }, { city: { contains: query, mode: 'insensitive' } }] },
-        include: { ticketTypes: true }
-    });
-    res.json(events.map(mapEventToFrontend));
+    
+    try {
+        const decodedQuery = decodeURIComponent(query);
+        const events = await prisma.event.findMany({
+            where: { 
+                status: 'approved',
+                city: city ? { equals: city, mode: 'insensitive' } : undefined,
+                OR: [
+                    { title: { contains: decodedQuery, mode: 'insensitive' } },
+                    { category: { contains: decodedQuery, mode: 'insensitive' } },
+                    { location: { contains: decodedQuery, mode: 'insensitive' } },
+                    { city: { contains: decodedQuery, mode: 'insensitive' } }
+                ]
+            },
+            include: { ticketTypes: true }
+        });
+        res.json(events.map(mapEventToFrontend));
+    } catch (err) {
+        res.status(500).json([]);
+    }
 };
 
 const toggleFavorite = async (req, res) => { res.status(200).json({ success: true }); };
