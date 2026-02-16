@@ -58,20 +58,21 @@ function drawIcon(doc, type, x, y, size, color) {
 async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = null) {
     const C = { BG: '#F2F4F8', CARD: '#FFFFFF', TEXT_DARK: '#1a1a1a', TEXT_LIGHT: '#64748b', PRIMARY: '#4C01B5', BORDER: '#e2e8f0' };
     
-    // --- NOVAS DIMENSÕES (Card Ocupando a Página) ---
+    // --- DIMENSÕES AJUSTADAS (Card mais estreito) ---
     const pageW = doc.page.width;   // ~595
     const pageH = doc.page.height;  // ~841
-    const margin = 20;              // Margem pequena
+    // Aumentei a margem para 60 para deixar o card mais estreito
+    const margin = 60;
     
     const cardX = margin;
     const cardY = margin;
-    const cardW = pageW - (margin * 2);
+    const cardW = pageW - (margin * 2); // Largura reduzida
     const cardH = pageH - (margin * 2);
 
     const eventImageBuffer = await fetchImage(event.imageUrl);
     const uniqueCode = ticket.qrCodeData;
-    // QR Code maior para o layout maior
-    const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 400, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
+    // QR Code ligeiramente menor para proporção
+    const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 350, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
 
     // Fundo da Página
     doc.rect(0, 0, pageW, pageH).fill(C.BG);
@@ -83,7 +84,7 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fill();
 
     // --- IMAGEM DE CAPA (HERO) ---
-    const imgH = 240; // Altura da imagem aumentada
+    const imgH = 220; // Altura proporcional
     doc.save();
     // Clip apenas no topo arredondado
     doc.path(`M ${cardX} ${cardY + 12} Q ${cardX} ${cardY} ${cardX + 12} ${cardY} L ${cardX + cardW - 12} ${cardY} Q ${cardX + cardW} ${cardY} ${cardX + cardW} ${cardY + 12} L ${cardX + cardW} ${cardY + imgH} L ${cardX} ${cardY + imgH} Z`).clip();
@@ -98,15 +99,15 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     doc.restore();
 
     // --- CONTEÚDO ---
-    let y = cardY + imgH + 35;
-    const pad = 40; // Padding interno maior
+    let y = cardY + imgH + 30;
+    const pad = 30; // Padding interno ajustado
     const contentW = cardW - (pad * 2);
 
     // Título do Evento
-    doc.font('Helvetica-Bold').fontSize(24).fillColor(C.TEXT_DARK)
+    doc.font('Helvetica-Bold').fontSize(22).fillColor(C.TEXT_DARK)
         .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
     
-    y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 10;
+    y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 15;
 
     // Linha divisória
     doc.moveTo(cardX + pad, y).lineTo(cardX + cardW - pad, y).lineWidth(1).strokeColor(C.BORDER).stroke();
@@ -115,8 +116,11 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     // --- GRID DE INFORMAÇÕES ---
     // Coluna 1 (Data/Local) e Coluna 2 (Participante/Ingresso)
     const col1X = cardX + pad;
-    const col2X = cardX + (cardW / 2) + 10;
+    // Ajuste fino na posição da segunda coluna
+    const col2X = cardX + (cardW / 2) + 15; 
     const initialY = y;
+    // Largura segura para textos das colunas
+    const colTextWidth = (contentW / 2) - 20;
 
     // DATA
     let dateStr = "";
@@ -139,47 +143,48 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     }
 
     doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('DATA E HORÁRIO', col1X, y);
-    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_DARK).text(dateStr, col1X, y + 15, { width: (contentW/2) - 10 });
-    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_LIGHT).text(timeStr, col1X, y + 32);
+    doc.font('Helvetica').fontSize(13).fillColor(C.TEXT_DARK).text(dateStr, col1X, y + 15, { width: colTextWidth });
+    doc.font('Helvetica').fontSize(13).fillColor(C.TEXT_LIGHT).text(timeStr, col1X, y + 32);
     
-    // LOCALIZAÇÃO
-    y += 70;
+    // LOCALIZAÇÃO (Com correção de sobreposição)
+    y += 75;
     doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('LOCALIZAÇÃO', col1X, y);
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(event.location, col1X, y + 15, { width: (contentW/2) - 10 });
-    doc.font('Helvetica').fontSize(12).fillColor(C.TEXT_LIGHT).text(event.city || '', col1X, y + 30);
+    // Adicionado width e ellipsis para evitar sobreposição
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.TEXT_DARK).text(event.location, col1X, y + 15, { width: colTextWidth, ellipsis: true });
+    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(event.city || '', col1X, y + 30, { width: colTextWidth, ellipsis: true });
 
     // PARTICIPANTE (Coluna 2)
     let y2 = initialY;
     doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('PARTICIPANTE', col2X, y2);
-    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(customName || user.name, col2X, y2 + 15, { width: (contentW/2) - 10, ellipsis: true });
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(customName || user.name, col2X, y2 + 15, { width: colTextWidth, ellipsis: true });
     
     // INGRESSO (Coluna 2)
-    y2 += 70;
+    y2 += 75;
     doc.font('Helvetica-Bold').fontSize(10).fillColor(C.PRIMARY).text('TIPO DE INGRESSO', col2X, y2);
-    doc.font('Helvetica').fontSize(14).fillColor(C.TEXT_DARK).text(ticketType ? ticketType.name : 'Geral', col2X, y2 + 15);
-    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(ticketType?.batchName || 'Lote Único', col2X, y2 + 32);
+    doc.font('Helvetica').fontSize(13).fillColor(C.TEXT_DARK).text(ticketType ? ticketType.name : 'Geral', col2X, y2 + 15, { width: colTextWidth });
+    doc.font('Helvetica').fontSize(11).fillColor(C.TEXT_LIGHT).text(ticketType?.batchName || 'Lote Único', col2X, y2 + 32, { width: colTextWidth });
 
     // VALOR (Coluna 2)
-    y2 += 60;
+    y2 += 65;
     const valor = (!ticket.price || ticket.price === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
     doc.font('Helvetica-Bold').fontSize(10).fillColor(C.TEXT_LIGHT).text('VALOR PAGO', col2X, y2);
-    doc.font('Helvetica-Bold').fontSize(14).fillColor(C.TEXT_DARK).text(valor, col2X, y2 + 15);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor(C.TEXT_DARK).text(valor, col2X, y2 + 15);
 
     // --- QR CODE (Rodapé do Card) ---
-    // Calcula posição Y baseada no maior conteúdo ou posição fixa inferior
-    let qrY = Math.max(y + 80, y2 + 60) + 20;
+    // Calcula posição Y baseada no maior conteúdo
+    let qrY = Math.max(y + 60, y2 + 60) + 25;
     
     // Linha pontilhada antes do QR Code
     doc.moveTo(cardX + 20, qrY - 20).lineTo(cardX + cardW - 20, qrY - 20).lineWidth(1).dash(5, {space: 5}).strokeColor(C.BORDER).stroke();
     doc.undash();
 
-    const qrSize = 180; // QR Code maior
+    const qrSize = 160; // Tamanho ajustado
     const qrX = (pageW - qrSize) / 2; // Centralizado na página
 
     doc.image(qrCodeImage, qrX, qrY, { width: qrSize, height: qrSize });
     
     // Código numérico abaixo do QR
-    doc.font('Courier').fontSize(11).fillColor(C.TEXT_DARK)
+    doc.font('Courier').fontSize(10).fillColor(C.TEXT_DARK)
         .text(uniqueCode, cardX, qrY + qrSize + 10, { width: cardW, align: 'center' });
 
     // Logo Vibz
