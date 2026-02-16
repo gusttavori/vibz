@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const cloudinary = require('../config/cloudinary');
 
+// Retorna perfil do usuário logado + Seus Eventos (para validação)
 const getLoggedInUserProfile = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -15,10 +16,12 @@ const getLoggedInUserProfile = async (req, res) => {
 
         const { password, ...userWithoutPassword } = user;
 
+        // Busca os eventos criados por este usuário
         const myEvents = await prisma.event.findMany({
             where: { organizerId: userId }
         });
         
+        // Retorna tudo, permitindo que o frontend verifique myEvents.length
         res.status(200).json({ 
             user: userWithoutPassword, 
             myEvents, 
@@ -100,7 +103,6 @@ const getFavoritedEvents = async (req, res) => {
     }
 };
 
-// --- TOGGLE FAVORITE BLINDADO ---
 const toggleFavorite = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -108,11 +110,9 @@ const toggleFavorite = async (req, res) => {
 
         if (!eventId) return res.status(400).json({ message: "ID do evento obrigatório." });
 
-        // 1. Verifica se o evento existe para evitar erro de chave estrangeira
         const eventExists = await prisma.event.findUnique({ where: { id: eventId } });
         if (!eventExists) return res.status(404).json({ message: "Evento não encontrado." });
 
-        // 2. Verifica relação atual
         const userCheck = await prisma.user.findUnique({
             where: { id: userId },
             include: { 
@@ -125,14 +125,12 @@ const toggleFavorite = async (req, res) => {
         const isFavorited = userCheck.favoritedEvents.length > 0;
 
         if (isFavorited) {
-            // REMOVER
             await prisma.user.update({
                 where: { id: userId },
                 data: { favoritedEvents: { disconnect: { id: eventId } } }
             });
             return res.status(200).json({ message: "Removido.", isFavorited: false });
         } else {
-            // ADICIONAR
             await prisma.user.update({
                 where: { id: userId },
                 data: { favoritedEvents: { connect: { id: eventId } } }

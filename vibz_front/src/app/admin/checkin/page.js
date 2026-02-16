@@ -16,31 +16,43 @@ export default function ValidadorUniversal() {
     const [scanResult, setScanResult] = useState(null);
     const [status, setStatus] = useState('checking_permission'); 
     const [errorMessage, setErrorMessage] = useState('');
-    const [manualCode, setManualCode] = useState(''); // Estado para o código digitado
-    const [inputType, setInputType] = useState('camera'); // 'camera' ou 'manual'
+    const [manualCode, setManualCode] = useState(''); 
+    const [inputType, setInputType] = useState('camera'); 
     
     const html5QrCodeRef = useRef(null);
 
-    // 1. Verificação de Permissão (Mantida e melhorada a msg de erro)
+    // 1. VERIFICAÇÃO DE SEGURANÇA (PERFIL DE ORGANIZADOR)
     useEffect(() => {
         const checkPermission = async () => {
             try {
                 const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+                
                 if (!token) {
                     setStatus('unauthorized');
                     return;
                 }
+
+                // Busca dados do usuário para ver se ele tem eventos
                 const res = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
+                if (!res.ok) throw new Error('Falha ao buscar perfil');
+
                 const data = await res.json();
                 
-                if (data.myEvents?.length === 0 && !data.user.isAdmin) {
+                // LÓGICA DE BLOQUEIO:
+                // Se não tiver eventos criados (length === 0) E não for Admin -> Bloqueia
+                const hasEvents = data.myEvents && data.myEvents.length > 0;
+                const isAdmin = data.user && data.user.isAdmin;
+
+                if (!hasEvents && !isAdmin) {
                     setStatus('unauthorized');
                 } else {
                     setStatus('idle');
                 }
             } catch (err) {
+                console.error("Erro permissão:", err);
                 setStatus('unauthorized');
             }
         };
@@ -54,7 +66,7 @@ export default function ValidadorUniversal() {
         }
     };
 
-    // Função unificada para validar (seja por Câmera ou Digitação)
+    // Função unificada de validação
     const handleValidation = async (code) => {
         await stopScanner();
         setStatus('processing');
@@ -75,7 +87,7 @@ export default function ValidadorUniversal() {
             if (res.ok && data.valid) {
                 setStatus('success');
                 setScanResult(data.details); 
-                setManualCode(''); // Limpa o campo manual
+                setManualCode(''); 
                 toast.success("VALIDADO!");
             } else {
                 setStatus('error');
@@ -88,12 +100,10 @@ export default function ValidadorUniversal() {
         }
     };
 
-    // Handler da Câmera
     const onScanSuccess = (decodedText) => {
         handleValidation(decodedText);
     };
 
-    // Handler do Input Manual
     const onManualSubmit = (e) => {
         e.preventDefault();
         if (!manualCode || manualCode.length < 5) {
@@ -137,17 +147,20 @@ export default function ValidadorUniversal() {
 
     if (status === 'checking_permission') return <div className="loader-container"><div className="spinner"></div></div>;
 
-    // TELA DE NÃO AUTORIZADO (Requisito 1)
+    // TELA DE ACESSO NEGADO (SEM EVENTOS)
     if (status === 'unauthorized') return (
         <div className="state-card unauthorized">
             <div className="icon-wrapper-error">
                 <FaLock size={40} color="#fff" />
             </div>
             <h1>Acesso Restrito</h1>
-            <p>Para validar ingressos, você precisa estar logado com a conta da <strong>organização do evento</strong>.</p>
+            <p>Esta área é exclusiva para <strong>organizadores com eventos ativos</strong>.</p>
             
-            <button className="btn-primary-large" onClick={() => window.location.href = '/login'}>
-                <FaSignInAlt /> Fazer Login
+            <button className="btn-primary-large" onClick={() => {
+                localStorage.removeItem('userToken');
+                window.location.href = '/login';
+            }}>
+                <FaSignInAlt /> Trocar Conta
             </button>
             <button className="btn-text" onClick={() => window.location.href = '/'}>
                 Voltar ao Início
@@ -167,7 +180,7 @@ export default function ValidadorUniversal() {
             </header>
 
             <main className="validator-main">
-                {/* TELA INICIAL (IDLE) */}
+                {/* TELA INICIAL */}
                 {status === 'idle' && (
                     <div className="state-card idle">
                         <div className="pulse-ring">
@@ -205,14 +218,14 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* TELA DE INPUT MANUAL (Requisito 2) */}
+                {/* TELA MANUAL */}
                 {status === 'manual_entry' && (
                     <div className="state-card manual">
                         <div className="icon-header">
                             <FaKeyboard size={40} color="var(--primary)" />
                         </div>
                         <h2>Digitação Manual</h2>
-                        <p>Insira o código alfanumérico do ingresso.</p>
+                        <p>Insira o código do ingresso.</p>
                         
                         <form onSubmit={onManualSubmit} className="manual-form">
                             <input 
@@ -224,7 +237,7 @@ export default function ValidadorUniversal() {
                                 autoFocus
                             />
                             <button type="submit" className="btn-primary-large">
-                                Validar Ingresso
+                                Validar
                             </button>
                         </form>
                         <button className="btn-text" onClick={reset}>Voltar</button>
@@ -248,7 +261,7 @@ export default function ValidadorUniversal() {
                         
                         <div className="ticket-info-box">
                             <div className="info-row">
-                                <span className="label"><FaUser /> Nome do Cliente</span>
+                                <span className="label"><FaUser /> Cliente</span>
                                 <span className="value name">{scanResult?.user}</span>
                             </div>
                             <div className="info-row">
@@ -285,7 +298,6 @@ export default function ValidadorUniversal() {
                                 <FaRedo /> Tentar Novamente
                             </button>
                             
-                            {/* Se o erro foi na câmera, oferece opção manual */}
                             {inputType === 'camera' && (
                                 <button className="btn-primary-large" onClick={switchToManual} style={{marginTop: '10px'}}>
                                     <FaKeyboard /> Validar Manualmente
