@@ -36,65 +36,65 @@ async function fetchImage(src) {
     }
 }
 
-// Função auxiliar para desenhar pares de Título/Valor e retornar a altura usada
+// Função auxiliar para desenhar pares de Título/Valor de forma segura
 function drawField(doc, label, value, x, y, width, colorLabel, colorValue, isBoldValue = true) {
-    doc.font('Helvetica').fontSize(9).fillColor(colorLabel).text(label.toUpperCase(), x, y);
-    const labelHeight = doc.heightOfString(label.toUpperCase(), { width }) + 4;
+    // Garante que x, y, width sejam números
+    if (isNaN(x) || isNaN(y) || isNaN(width)) return 0;
+
+    doc.font('Helvetica').fontSize(9).fillColor(colorLabel).text((label || '').toUpperCase(), x, y);
+    const labelHeight = doc.heightOfString((label || '').toUpperCase(), { width }) + 4;
     
     doc.font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica').fontSize(11).fillColor(colorValue);
     
-    // Calcula a altura que o valor vai ocupar (pode ter várias linhas)
-    const valueHeight = doc.heightOfString(value, { width });
-    doc.text(value, x, y + labelHeight, { width });
+    // Calcula a altura que o valor vai ocupar
+    const safeValue = value || '-';
+    const valueHeight = doc.heightOfString(safeValue, { width });
+    doc.text(safeValue, x, y + labelHeight, { width });
     
     return labelHeight + valueHeight;
 }
 
 async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = null) {
     const C = { 
-        BG: '#F4F4F4',        // Fundo da página (Cinza claro para destacar o ingresso)
-        CARD: '#FFFFFF',      // Fundo do Ingresso (Branco)
-        TEXT_DARK: '#222222', // Preto Suave
-        TEXT_LIGHT: '#666666',// Cinza para Labels
-        PRIMARY: '#4C01B5',   // Roxo da Marca
-        DIVIDER: '#EEEEEE'
+        BG: '#F4F4F4', 
+        CARD: '#FFFFFF', 
+        TEXT_DARK: '#222222', 
+        TEXT_LIGHT: '#666666', 
+        PRIMARY: '#4C01B5', 
+        DIVIDER: '#EEEEEE' 
     };
 
-    const pageW = doc.page.width;   // ~595
-    const pageH = doc.page.height;  // ~841
+    // Garante valores numéricos para a página (Padrão A4 se falhar)
+    const pageW = doc.page ? doc.page.width : 595.28;
+    const pageH = doc.page ? doc.page.height : 841.89;
     
-    // --- CONFIGURAÇÃO DO CARD CENTRALIZADO ---
-    const cardW = 380; // Largura fixa estilo mobile/Sympla
-    const cardX = (pageW - cardW) / 2; // Centraliza horizontalmente
-    const cardY = 40;  // Margem superior
-    // Altura dinâmica baseada no conteúdo, mas definimos um mínimo para o background
-    // O PDFKit desenha o fundo antes, então faremos um card longo o suficiente.
+    // Configurações do Card
+    const cardW = 380;
+    const cardX = (pageW - cardW) / 2;
+    const cardY = 40; 
     const cardH = 700; 
 
-    // 1. Fundo da Página
+    // 1. Fundo
     doc.rect(0, 0, pageW, pageH).fill(C.BG);
 
-    // 2. Sombra Suave do Card
+    // 2. Sombra e Card
     doc.roundedRect(cardX + 3, cardY + 3, cardW, cardH, 12).fillColor('rgba(0,0,0,0.1)').fill();
-
-    // 3. Card Branco
     doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fill();
 
-    // --- IMAGEM DE CAPA (TOPO) ---
-    const imgH = 180; // Altura da imagem
+    // --- IMAGEM DE CAPA ---
+    const imgH = 180;
     const eventImageBuffer = await fetchImage(event.imageUrl);
 
     doc.save();
-    // Clip para arredondar apenas os cantos superiores do card
-    doc.path(`
-        M ${cardX} ${cardY + 12} 
-        Q ${cardX} ${cardY} ${cardX + 12} ${cardY} 
-        L ${cardX + cardW - 12} ${cardY} 
-        Q ${cardX + cardW} ${cardY} ${cardX + cardW} ${cardY + 12} 
-        L ${cardX + cardW} ${cardY + imgH} 
-        L ${cardX} ${cardY + imgH} 
-        Z
-    `).clip();
+    
+    // PATH CORRIGIDO: Removida a quebra de linha da template string que pode causar erro no parser do PDFKit em alguns ambientes
+    // E garantindo que todos os valores interpolados são números
+    doc.path('M ' + cardX + ' ' + (cardY + 12) + 
+             ' Q ' + cardX + ' ' + cardY + ' ' + (cardX + 12) + ' ' + cardY + 
+             ' L ' + (cardX + cardW - 12) + ' ' + cardY + 
+             ' Q ' + (cardX + cardW) + ' ' + cardY + ' ' + (cardX + cardW) + ' ' + (cardY + 12) + 
+             ' L ' + (cardX + cardW) + ' ' + (cardY + imgH) + 
+             ' L ' + cardX + ' ' + (cardY + imgH) + ' Z').clip();
 
     if (eventImageBuffer) {
         try {
@@ -106,74 +106,70 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     doc.restore();
 
     // --- CONTEÚDO ---
-    let y = cardY + imgH + 25; // Cursor Y inicial
-    const pad = 25; // Margem interna do card
-    const contentW = cardW - (pad * 2); // Largura útil do texto
+    let y = cardY + imgH + 25;
+    const pad = 25;
+    const contentW = cardW - (pad * 2);
 
-    // Título do Evento
+    // Título
     doc.font('Helvetica-Bold').fontSize(18).fillColor(C.TEXT_DARK)
-        .text(event.title.toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
+        .text((event.title || 'Evento').toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
     
-    y += doc.heightOfString(event.title.toUpperCase(), { width: contentW }) + 20;
+    y += doc.heightOfString((event.title || 'Evento').toUpperCase(), { width: contentW }) + 20;
 
-    // Linha Divisória
+    // Divisor
     doc.moveTo(cardX + pad, y).lineTo(cardX + cardW - pad, y).lineWidth(1).strokeColor(C.DIVIDER).stroke();
     y += 20;
 
-    // --- DADOS (GRID INTELIGENTE) ---
+    // --- DADOS ---
     const colGap = 20;
     const colW = (contentW - colGap) / 2;
     const col1X = cardX + pad;
     const col2X = cardX + pad + colW + colGap;
     const rowGap = 20;
 
-    // === LINHA 1: DATA e PARTICIPANTE ===
-    // Formata Data
+    // Linha 1: Data / Participante
     let dateStr = "";
     if (ticketType && ticketType.activityDate) {
-        dateStr = new Date(ticketType.activityDate).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-        if (ticketType.startTime) dateStr += `\n${ticketType.startTime}`;
+        try {
+            dateStr = new Date(ticketType.activityDate).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            if (ticketType.startTime) dateStr += `\n${ticketType.startTime}`;
+        } catch (e) { dateStr = "Data a confirmar"; }
     } else {
-        const d = new Date(event.eventDate || event.createdAt);
-        dateStr = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-        dateStr += `\n${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        try {
+            const d = new Date(event.eventDate || event.createdAt);
+            dateStr = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            dateStr += `\n${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        } catch (e) { dateStr = "Data a confirmar"; }
     }
 
-    // Desenha Colunas e pega alturas
     const h1 = drawField(doc, 'DATA E HORÁRIO', dateStr, col1X, y, colW, C.PRIMARY, C.TEXT_DARK);
-    const h2 = drawField(doc, 'PARTICIPANTE', customName || user.name, col2X, y, colW, C.PRIMARY, C.TEXT_DARK);
-    
-    // Atualiza Y pelo maior elemento para não encavalar
+    const h2 = drawField(doc, 'PARTICIPANTE', customName || user.name || 'Convidado', col2X, y, colW, C.PRIMARY, C.TEXT_DARK);
     y += Math.max(h1, h2) + rowGap;
 
-    // === LINHA 2: LOCAL e INGRESSO ===
-    // Local e Cidade
-    const locationFull = `${event.location}\n${event.city || ''}`;
+    // Linha 2: Local / Ingresso
+    const locationFull = `${event.location || 'Local a definir'}\n${event.city || ''}`;
     const ticketInfo = `${ticketType ? ticketType.name : 'Geral'}\n${ticketType?.batchName || 'Lote Único'}`;
 
     const h3 = drawField(doc, 'LOCALIZAÇÃO', locationFull, col1X, y, colW, C.PRIMARY, C.TEXT_DARK);
     const h4 = drawField(doc, 'TIPO DE INGRESSO', ticketInfo, col2X, y, colW, C.PRIMARY, C.TEXT_DARK);
-
     y += Math.max(h3, h4) + rowGap;
 
-    // === LINHA 3: VALOR (Esquerda) ===
-    const valor = (!ticket.price || ticket.price === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
-    const h5 = drawField(doc, 'VALOR PAGO', valor, col1X, y, colW, C.PRIMARY, C.TEXT_DARK);
-    
-    y += h5 + 25; // Espaço extra antes do divisor final
+    // Linha 3: Valor
+    const priceVal = (!ticket.price || Number(ticket.price) === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
+    const h5 = drawField(doc, 'VALOR PAGO', priceVal, col1X, y, colW, C.PRIMARY, C.TEXT_DARK);
+    y += h5 + 25;
 
-    // Divisor Pontilhado antes do QR
+    // Divisor Pontilhado
     doc.moveTo(cardX, y).lineTo(cardX + cardW, y).lineWidth(1).dash(4, { space: 4 }).strokeColor(C.DIVIDER).stroke();
     doc.undash();
     y += 30;
 
-    // --- QR CODE (CENTRALIZADO) ---
-    const uniqueCode = ticket.qrCodeData;
+    // --- QR CODE ---
+    const uniqueCode = ticket.qrCodeData || 'CODE-ERROR';
     const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 400, margin: 0, color: { dark: '#000000', light: '#ffffff' } });
     const qrSize = 160;
     const qrX = cardX + (cardW - qrSize) / 2;
 
-    // Verifica se cabe na página (se o conteúdo acima foi muito grande)
     if (y + qrSize + 50 > pageH) {
         doc.addPage();
         y = 50;
@@ -182,12 +178,10 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     doc.image(qrCodeImage, qrX, y, { width: qrSize, height: qrSize });
     y += qrSize + 10;
 
-    // Código Hash
     doc.font('Courier').fontSize(10).fillColor(C.TEXT_LIGHT)
        .text(uniqueCode, cardX, y, { width: cardW, align: 'center' });
     y += 20;
 
-    // Logo Vibz
     doc.font('Helvetica-Bold').fontSize(14).fillColor(C.PRIMARY)
        .text('Vibz', cardX, y, { width: cardW, align: 'center' });
 }
