@@ -5,7 +5,8 @@ import { Html5Qrcode } from 'html5-qrcode';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
     FaQrcode, FaCheckCircle, FaTimesCircle, FaUser, 
-    FaTicketAlt, FaCalendarDay, FaRedo, FaCamera, FaChevronLeft, FaLock, FaIdBadge
+    FaTicketAlt, FaCalendarDay, FaRedo, FaCamera, FaChevronLeft, 
+    FaLock, FaKeyboard, FaSignInAlt 
 } from 'react-icons/fa';
 import './Validador.css';
 
@@ -15,9 +16,12 @@ export default function ValidadorUniversal() {
     const [scanResult, setScanResult] = useState(null);
     const [status, setStatus] = useState('checking_permission'); 
     const [errorMessage, setErrorMessage] = useState('');
+    const [manualCode, setManualCode] = useState(''); // Estado para o código digitado
+    const [inputType, setInputType] = useState('camera'); // 'camera' ou 'manual'
+    
     const html5QrCodeRef = useRef(null);
 
-    // Efeito para verificar se o usuário é organizador
+    // 1. Verificação de Permissão (Mantida e melhorada a msg de erro)
     useEffect(() => {
         const checkPermission = async () => {
             try {
@@ -50,7 +54,8 @@ export default function ValidadorUniversal() {
         }
     };
 
-    const onScanSuccess = async (decodedText) => {
+    // Função unificada para validar (seja por Câmera ou Digitação)
+    const handleValidation = async (code) => {
         await stopScanner();
         setStatus('processing');
 
@@ -62,7 +67,7 @@ export default function ValidadorUniversal() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ qrCode: decodedText.trim() })
+                body: JSON.stringify({ qrCode: code.trim() })
             });
 
             const data = await res.json();
@@ -70,7 +75,7 @@ export default function ValidadorUniversal() {
             if (res.ok && data.valid) {
                 setStatus('success');
                 setScanResult(data.details); 
-                // Ex: data.details = { user: "João", type: "VIP", batch: "1º Lote", event: "Festa X" }
+                setManualCode(''); // Limpa o campo manual
                 toast.success("VALIDADO!");
             } else {
                 setStatus('error');
@@ -79,12 +84,28 @@ export default function ValidadorUniversal() {
             }
         } catch (error) {
             setStatus('error');
-            setErrorMessage("Erro de conexão.");
+            setErrorMessage("Erro de conexão com o servidor.");
         }
     };
 
+    // Handler da Câmera
+    const onScanSuccess = (decodedText) => {
+        handleValidation(decodedText);
+    };
+
+    // Handler do Input Manual
+    const onManualSubmit = (e) => {
+        e.preventDefault();
+        if (!manualCode || manualCode.length < 5) {
+            toast.error("Digite um código válido");
+            return;
+        }
+        handleValidation(manualCode);
+    };
+
     const startScanner = () => {
-        setScanResult(null); // Limpa resultado anterior
+        setScanResult(null);
+        setInputType('camera');
         setStatus('scanning');
         setTimeout(() => {
             if (!html5QrCodeRef.current) html5QrCodeRef.current = new Html5Qrcode("reader");
@@ -95,25 +116,42 @@ export default function ValidadorUniversal() {
                 () => {} 
             ).catch(() => {
                 setStatus('idle');
-                toast.error("Erro na câmera.");
+                toast.error("Erro na câmera. Tente digitar o código.");
             });
         }, 150);
+    };
+
+    const switchToManual = () => {
+        stopScanner();
+        setScanResult(null);
+        setInputType('manual');
+        setStatus('manual_entry');
     };
 
     const reset = () => {
         stopScanner();
         setStatus('idle');
         setScanResult(null);
+        setManualCode('');
     };
 
     if (status === 'checking_permission') return <div className="loader-container"><div className="spinner"></div></div>;
 
+    // TELA DE NÃO AUTORIZADO (Requisito 1)
     if (status === 'unauthorized') return (
         <div className="state-card unauthorized">
-            <FaLock size={50} color="#ff4d4d" />
+            <div className="icon-wrapper-error">
+                <FaLock size={40} color="#fff" />
+            </div>
             <h1>Acesso Restrito</h1>
-            <p>Apenas organizadores autorizados podem acessar o validador.</p>
-            <button className="btn-primary-large" onClick={() => window.location.href = '/'}>Voltar ao Site</button>
+            <p>Para validar ingressos, você precisa estar logado com a conta da <strong>organização do evento</strong>.</p>
+            
+            <button className="btn-primary-large" onClick={() => window.location.href = '/login'}>
+                <FaSignInAlt /> Fazer Login
+            </button>
+            <button className="btn-text" onClick={() => window.location.href = '/'}>
+                Voltar ao Início
+            </button>
         </div>
     );
 
@@ -129,28 +167,67 @@ export default function ValidadorUniversal() {
             </header>
 
             <main className="validator-main">
+                {/* TELA INICIAL (IDLE) */}
                 {status === 'idle' && (
                     <div className="state-card idle">
                         <div className="pulse-ring">
                             <FaQrcode size={50} />
                         </div>
                         <h1>Validador Oficial</h1>
-                        <p>Pronto para ler ingressos</p>
-                        <button className="btn-primary-large" onClick={startScanner}>
-                            <FaCamera /> Iniciar Leitura
-                        </button>
+                        <p>Escolha como deseja validar</p>
+                        
+                        <div className="action-buttons">
+                            <button className="btn-primary-large" onClick={startScanner}>
+                                <FaCamera /> Ler QR Code
+                            </button>
+                            <button className="btn-secondary-large" onClick={switchToManual}>
+                                <FaKeyboard /> Digitar Código
+                            </button>
+                        </div>
                     </div>
                 )}
 
+                {/* TELA DE SCANNER */}
                 {status === 'scanning' && (
                     <div className="state-fullscreen">
                         <div id="reader"></div>
                         <div className="scan-overlay">
                             <p>Enquadre o QR Code</p>
                         </div>
-                        <button className="btn-close-scan" onClick={reset}>
-                            <FaChevronLeft /> Cancelar
-                        </button>
+                        <div className="scan-controls">
+                            <button className="btn-manual-overlay" onClick={switchToManual}>
+                                <FaKeyboard /> Digitar
+                            </button>
+                            <button className="btn-close-scan" onClick={reset}>
+                                <FaChevronLeft /> Cancelar
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* TELA DE INPUT MANUAL (Requisito 2) */}
+                {status === 'manual_entry' && (
+                    <div className="state-card manual">
+                        <div className="icon-header">
+                            <FaKeyboard size={40} color="var(--primary)" />
+                        </div>
+                        <h2>Digitação Manual</h2>
+                        <p>Insira o código alfanumérico do ingresso.</p>
+                        
+                        <form onSubmit={onManualSubmit} className="manual-form">
+                            <input 
+                                type="text" 
+                                className="input-code"
+                                placeholder="Ex: abcd-1234-xyz"
+                                value={manualCode}
+                                onChange={(e) => setManualCode(e.target.value)}
+                                autoFocus
+                            />
+                            <button type="submit" className="btn-primary-large">
+                                Validar Ingresso
+                            </button>
+                        </form>
+                        <button className="btn-text" onClick={reset}>Voltar</button>
                     </div>
                 )}
 
@@ -161,7 +238,7 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* --- TELA DE SUCESSO MELHORADA --- */}
+                {/* TELA DE SUCESSO */}
                 {status === 'success' && (
                     <div className="state-card result success">
                         <div className="result-header">
@@ -174,27 +251,25 @@ export default function ValidadorUniversal() {
                                 <span className="label"><FaUser /> Nome do Cliente</span>
                                 <span className="value name">{scanResult?.user}</span>
                             </div>
-                            
                             <div className="info-row">
-                                <span className="label"><FaTicketAlt /> Tipo de Ingresso</span>
+                                <span className="label"><FaTicketAlt /> Tipo</span>
                                 <span className="value type">{scanResult?.type}</span>
                                 {scanResult?.batch && <span className="value batch">({scanResult.batch})</span>}
                             </div>
-
                             <div className="info-row">
                                 <span className="label"><FaCalendarDay /> Evento</span>
                                 <span className="value event">{scanResult?.event}</span>
                             </div>
                         </div>
 
-                        <button className="btn-primary-large" onClick={startScanner}>
-                            <FaRedo /> Ler Próximo
+                        <button className="btn-primary-large" onClick={inputType === 'manual' ? switchToManual : startScanner}>
+                            <FaRedo /> Próxima Validação
                         </button>
                         <button className="btn-text" onClick={reset}>Voltar ao Início</button>
                     </div>
                 )}
 
-                {/* --- TELA DE ERRO --- */}
+                {/* TELA DE ERRO */}
                 {status === 'error' && (
                     <div className="state-card result error">
                         <div className="result-header">
@@ -204,9 +279,20 @@ export default function ValidadorUniversal() {
                         <div className="error-box">
                             <p className="error-msg">{errorMessage}</p>
                         </div>
-                        <button className="btn-secondary-large" onClick={startScanner}>
-                            <FaRedo /> Tentar Novamente
-                        </button>
+                        
+                        <div className="error-actions">
+                            <button className="btn-secondary-large" onClick={inputType === 'manual' ? switchToManual : startScanner}>
+                                <FaRedo /> Tentar Novamente
+                            </button>
+                            
+                            {/* Se o erro foi na câmera, oferece opção manual */}
+                            {inputType === 'camera' && (
+                                <button className="btn-primary-large" onClick={switchToManual} style={{marginTop: '10px'}}>
+                                    <FaKeyboard /> Validar Manualmente
+                                </button>
+                            )}
+                        </div>
+                        
                         <button className="btn-text" onClick={reset}>Voltar</button>
                     </div>
                 )}
