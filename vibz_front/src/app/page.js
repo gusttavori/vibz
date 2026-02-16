@@ -14,7 +14,7 @@ import './Home.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Lista de categorias para sugestão no autocomplete
+// Lista de categorias oficiais do sistema (Nomes Exatos do Banco)
 const SYSTEM_CATEGORIES = [
     'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura', 
     'Esportes e Lazer', 'Gastronomia', 'Cursos e Workshops'
@@ -32,7 +32,7 @@ export default function Home() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState([]); 
-    const [matchedCategory, setMatchedCategory] = useState(null); // Nova categoria sugerida
+    const [matchedCategory, setMatchedCategory] = useState(null); 
     const [showSuggestions, setShowSuggestions] = useState(false); 
     
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -66,13 +66,11 @@ export default function Home() {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
                 try {
-                    // 1. Verifica se o termo bate com o nome de uma categoria
                     const catFound = SYSTEM_CATEGORIES.find(cat => 
                         cat.toLowerCase().includes(searchTerm.toLowerCase())
                     );
                     setMatchedCategory(catFound || null);
 
-                    // 2. Busca eventos no servidor
                     const params = new URLSearchParams();
                     params.append('query', searchTerm);
                     if (selectedCity) params.append('city', selectedCity);
@@ -142,7 +140,6 @@ export default function Home() {
 
     const getFilteredEvents = (events, filter) => {
         if (!events || events.length === 0) return [];
-
         let filteredByCity = events;
         if (selectedCity) {
             filteredByCity = events.filter(event => {
@@ -150,12 +147,10 @@ export default function Home() {
                 return eventCity.toLowerCase().includes(selectedCity.toLowerCase());
             });
         }
-
         if (filter === 'Todos') return filteredByCity;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
         const endOfWeek = new Date(today);
         endOfWeek.setDate(today.getDate() + 7);
         endOfWeek.setHours(23, 59, 59, 999);
@@ -165,12 +160,8 @@ export default function Home() {
             const eventStartOfDay = new Date(eventDate);
             eventStartOfDay.setHours(0, 0, 0, 0);
 
-            if (filter === 'Hoje') {
-                return eventStartOfDay.getTime() === today.getTime();
-            }
-            if (filter === 'Esta semana') {
-                return eventStartOfDay >= today && eventDate <= endOfWeek;
-            }
+            if (filter === 'Hoje') return eventStartOfDay.getTime() === today.getTime();
+            if (filter === 'Esta semana') return eventStartOfDay >= today && eventDate <= endOfWeek;
             if (filter === 'Grátis') {
                 const hasFreeTicket = event.tickets && event.tickets.some(t => parseFloat(t.price) === 0);
                 return event.price === 0 || event.isFree === true || hasFreeTicket;
@@ -197,11 +188,12 @@ export default function Home() {
         }
     };
 
+    // CORREÇÃO AQUI: Os nomes devem ser os mesmos das SYSTEM_CATEGORIES
     useEffect(() => {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro e Cultura', 'teatro');
-        fetchCategory('Esportes e Lazer', 'esportes'); 
+        fetchCategory('Esportes e Lazer', 'esportes'); // Antes estava 'Esportes'
         fetchCategory('Gastronomia', 'gastronomia');
         fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
@@ -245,7 +237,6 @@ export default function Home() {
                 }
             } catch (error) { console.error("Erro favoritos:", error); }
         };
-        
         if (currentUserId) fetchFavoritedEvents();
     }, [currentUserId]);
     
@@ -277,16 +268,13 @@ export default function Home() {
             router.push('/login'); 
             return; 
         }
-
         setFavoritedEventIds(prev => isFavoriting ? [...prev, eventId] : prev.filter(id => id !== eventId));
-
         try {
             let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ eventId })
             });
-
             if (response.status === 404) {
                  response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
@@ -294,7 +282,6 @@ export default function Home() {
                     body: JSON.stringify({ userId: currentUserId, isFavoriting })
                 });
             }
-
             if (!response.ok) {
                 setFavoritedEventIds(prev => isFavoriting ? prev.filter(id => id !== eventId) : [...prev, eventId]);
                 toast.error("Erro ao atualizar favoritos.");
@@ -325,11 +312,8 @@ export default function Home() {
         const events = categoryEvents[categoryKey];
         const loading = loadingCategories[categoryKey];
         const activeFilter = activeFilters[categoryKey];
-
         if (!loading && (!events || events.length === 0)) return null;
-
         const filteredEvents = getFilteredEvents(events, activeFilter);
-
         return (
             <section className="events-section" ref={ref}>
                 <h3 className="section-title">{title}</h3>
@@ -393,10 +377,8 @@ export default function Home() {
                         </div>
                     )}
 
-                    {/* DROP DOWN DE SUGESTÕES COM CATEGORIA */}
                     {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
                         <div className="suggestions-dropdown">
-                            {/* Recomendação de Categoria */}
                             {matchedCategory && (
                                 <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
                                     <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
@@ -408,7 +390,6 @@ export default function Home() {
                                 </div>
                             )}
 
-                            {/* Recomendação de Eventos */}
                             {suggestions.map((event) => (
                                 <div key={event._id || event.id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id || event.id)}>
                                     <img src={event.imageUrl || 'https://placehold.co/40x40'} alt="" className="suggestion-image" />
