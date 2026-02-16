@@ -17,7 +17,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 // Lista de categorias para sugestão no autocomplete
 const SYSTEM_CATEGORIES = [
     'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura', 
-    'Esportes e Lazer', 'Gastronomia', 'Cursos e Workshops'
+    'Esportes', 'Gastronomia', 'Cursos e Workshops'
 ];
 
 export default function Home() {
@@ -32,7 +32,7 @@ export default function Home() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState([]); 
-    const [matchedCategory, setMatchedCategory] = useState(null); 
+    const [matchedCategory, setMatchedCategory] = useState(null); // Nova categoria sugerida
     const [showSuggestions, setShowSuggestions] = useState(false); 
     
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -61,16 +61,18 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE ---
+    // --- AUTOCOMPLETE COM LOGICA DE CATEGORIA ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
                 try {
+                    // 1. Verifica se o termo bate com o nome de uma categoria
                     const catFound = SYSTEM_CATEGORIES.find(cat => 
                         cat.toLowerCase().includes(searchTerm.toLowerCase())
                     );
                     setMatchedCategory(catFound || null);
 
+                    // 2. Busca eventos no servidor
                     const params = new URLSearchParams();
                     params.append('query', searchTerm);
                     if (selectedCity) params.append('city', selectedCity);
@@ -199,11 +201,12 @@ export default function Home() {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro e Cultura', 'teatro');
-        fetchCategory('Esportes e Lazer', 'esportes'); 
+        fetchCategory('Esportes', 'esportes'); 
         fetchCategory('Gastronomia', 'gastronomia');
         fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
 
+    // --- LOGIN & FAVORITOS ---
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
@@ -233,18 +236,23 @@ export default function Home() {
             const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
             if (!currentUserId || !token) { setFavoritedEventIds([]); return; }
             try {
+                // Chama endpoint que retorna os IDs ou a lista completa
                 const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/favorites`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
                     const data = await response.json();
                     if (Array.isArray(data)) {
+                        // Garante que pegamos o ID correto, seja _id ou id
                         setFavoritedEventIds(data.map(event => event.id || event._id));
                     }
                 }
             } catch (error) { console.error("Erro favoritos:", error); }
         };
-        if (currentUserId) fetchFavoritedEvents();
+        
+        if (currentUserId) {
+            fetchFavoritedEvents();
+        }
     }, [currentUserId]);
     
     useEffect(() => {
@@ -268,6 +276,7 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
+    // --- FUNÇÃO FAVORITAR CORRIGIDA ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
         if (!currentUserId) { 
@@ -276,15 +285,24 @@ export default function Home() {
             return; 
         }
 
-        setFavoritedEventIds(prev => isFavoriting ? [...prev, eventId] : prev.filter(id => id !== eventId));
+        // Atualização Otimista (Muda na tela antes de confirmar no servidor)
+        setFavoritedEventIds(prev => {
+            if (isFavoriting) {
+                return [...prev, eventId];
+            } else {
+                return prev.filter(id => id !== eventId);
+            }
+        });
 
         try {
+            // Tenta a rota de toggle (mais moderna)
             let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ eventId })
             });
 
+            // Se a rota toggle não existir (404), tenta a rota antiga
             if (response.status === 404) {
                  response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
@@ -294,11 +312,24 @@ export default function Home() {
             }
 
             if (!response.ok) {
-                setFavoritedEventIds(prev => isFavoriting ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+                // Se der erro, reverte a mudança visual
+                setFavoritedEventIds(prev => {
+                    if (isFavoriting) return prev.filter(id => id !== eventId);
+                    return [...prev, eventId];
+                });
                 toast.error("Erro ao atualizar favoritos.");
+            } else {
+                const data = await response.json();
+                toast.success(data.message || (isFavoriting ? "Adicionado aos favoritos!" : "Removido dos favoritos."));
             }
         } catch (error) { 
-            setFavoritedEventIds(prev => isFavoriting ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+            console.error('Erro favorito:', error);
+            // Reverte em caso de erro de rede
+            setFavoritedEventIds(prev => {
+                if (isFavoriting) return prev.filter(id => id !== eventId);
+                return [...prev, eventId];
+            });
+            toast.error("Erro de conexão.");
         }
     };
 
@@ -307,12 +338,12 @@ export default function Home() {
     };
 
     const categoriesConfig = [
-        { name: 'Acadêmico / Congresso', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
+        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes e Lazer', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
+        { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
         { name: 'Gastronomia', icon: '/img/kids.svg', ref: gastronomiaRef, key: 'gastronomia' },
-        { name: 'Cursos e Workshops', icon: '/img/theater.svg', ref: cursosRef, key: 'cursos' }
+        { name: 'Cursos', icon: '/img/theater.svg', ref: cursosRef, key: 'cursos' }
     ];
 
     const categoriesToShowInNavigation = categoriesConfig.filter(cat => 
@@ -340,12 +371,12 @@ export default function Home() {
                     {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <EventCard 
-                                key={event._id || event.id} 
+                                key={event._id || event.id} // Garante chave única
                                 event={event} 
                                 isUserLoggedIn={isUserLoggedIn} 
                                 currentUserId={currentUserId} 
                                 onToggleFavorite={handleToggleFavorite} 
-                                isFavorited={favoritedEventIds.includes(event._id || event.id)} 
+                                isFavorited={favoritedEventIds.includes(event._id || event.id)} // Verifica ID corretamente
                             />
                         ))
                     ) : (
@@ -384,16 +415,15 @@ export default function Home() {
                     <div className="input-wrapper-relative" style={{ flexGrow: 1, position: 'relative', height: '100%' }}>
                         <input 
                             type="text" 
-                            placeholder="Busque por nome, cidade ou categoria..." 
+                            placeholder="Busque por eventos ou categorias (ex: Teatro)" 
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
-                            onFocus={() => { if(suggestions.length > 0 || matchedCategory) setShowSuggestions(true); }}
+                            onFocus={() => { if(suggestions.length > 0) setShowSuggestions(true); }}
                             className="search-input-field" 
                         />
-                        {/* BOTÃO X ESTILIZADO AQUI */}
                         {searchTerm && (
                             <button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa">
-                                <FaTimes size={14} />
+                                <FaTimes size={14} color="#999" />
                             </button>
                         )}
                     </div>
@@ -411,6 +441,7 @@ export default function Home() {
 
                     {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
                         <div className="suggestions-dropdown">
+                            {/* Sugestão de Categoria */}
                             {matchedCategory && (
                                 <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
                                     <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
