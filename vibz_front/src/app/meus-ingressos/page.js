@@ -12,7 +12,7 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// --- COMPONENTE SKELETON (NOVO) ---
+// --- COMPONENTE SKELETON (Corrigido para 3 colunas) ---
 const TicketsSkeleton = () => (
     <div className="wallet-page">
         <Header />
@@ -29,16 +29,20 @@ const TicketsSkeleton = () => (
             <div className="tickets-grid">
                 {[1, 2, 3].map((i) => (
                     <div key={i} className="ticket-card skeleton-card">
-                        {/* Imagem Skeleton */}
-                        <div className="ticket-left">
-                            <div className="skeleton-box skeleton-pulse" style={{width: '140px', height: '140px', borderRadius: '16px'}}></div>
+                        {/* Imagem */}
+                        <div className="ticket-left" style={{width: '100%', maxWidth: '130px'}}>
+                            <div className="skeleton-box skeleton-pulse" style={{width: '100%', height: '130px', borderRadius: '16px'}}></div>
                         </div>
-                        {/* Conteúdo Skeleton */}
-                        <div className="ticket-center" style={{width: '100%'}}>
-                            <div className="skeleton-text skeleton-pulse" style={{width: '80%', height: '24px', marginBottom: '8px'}}></div>
-                            <div className="skeleton-text skeleton-pulse" style={{width: '30%', height: '20px', marginBottom: '12px', borderRadius: '6px'}}></div>
-                            <div className="skeleton-text skeleton-pulse" style={{width: '60%', height: '16px', marginBottom: '6px'}}></div>
-                            <div className="skeleton-text skeleton-pulse" style={{width: '50%', height: '16px'}}></div>
+                        {/* Texto */}
+                        <div className="ticket-center" style={{flex: 1}}>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '80%', height: '22px', marginBottom: '8px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '30%', height: '18px', marginBottom: '12px', borderRadius: '6px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '60%', height: '14px', marginBottom: '6px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '50%', height: '14px'}}></div>
+                        </div>
+                        {/* Botão */}
+                        <div className="ticket-right">
+                             <div className="skeleton-box skeleton-pulse" style={{width: '50px', height: '50px', borderRadius: '14px'}}></div>
                         </div>
                     </div>
                 ))}
