@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { FaCamera, FaLock, FaChevronDown, FaChevronUp } from 'react-icons/fa'; 
+import { FaCamera, FaLock, FaChevronDown, FaChevronUp, FaSave, FaTimes } from 'react-icons/fa'; 
+import toast, { Toaster } from 'react-hot-toast';
 import './EditProfile.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -11,63 +12,67 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 const EditProfile = () => {
     const router = useRouter();
 
-    const [userData, setUserData] = useState({ name: '', bio: '', profilePicture: '', coverPicture: '' });
+    const [userData, setUserData] = useState({ 
+        name: '', 
+        bio: '', 
+        profilePicture: '', 
+        coverPicture: '' 
+    });
     
-    // Estados de Senha
+    // Estados para lógica de Senha
     const [showPasswordSection, setShowPasswordSection] = useState(false);
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwords, setPasswords] = useState({ new: '', confirm: '' });
     
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-    const [successMessage, setSuccessMessage] = useState(null);
 
-    const [profilePictureFile, setProfilePictureFile] = useState(null);
-    const [coverPictureFile, setCoverPictureFile] = useState(null);
+    // Armazena os arquivos reais para envio
+    const [files, setFiles] = useState({ profile: null, cover: null });
 
     // --- CARREGAR DADOS ---
-    const fetchUserData = async () => {
-        if (typeof window === 'undefined') return;
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (typeof window === 'undefined') return;
 
-        const token = localStorage.getItem('userToken');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/users/me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    localStorage.removeItem('userToken');
-                    router.push('/login');
-                    throw new Error('Sessão expirada.');
-                }
-                throw new Error('Falha ao carregar perfil.');
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                router.push('/login');
+                return;
             }
 
-            const data = await response.json();
-            // Garante que userData tenha valores padrão para evitar erros de uncontrolled input
-            setUserData({
-                name: data.user.name || '',
-                bio: data.user.bio || '',
-                profilePicture: data.user.profilePicture || '',
-                coverPicture: data.user.coverPicture || ''
-            });
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-    useEffect(() => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('userToken');
+                        router.push('/login');
+                        return;
+                    }
+                    throw new Error('Falha ao carregar perfil.');
+                }
+
+                const data = await response.json();
+                const user = data.user || data;
+
+                setUserData({
+                    name: user.name || '',
+                    bio: user.bio || '',
+                    profilePicture: user.profilePicture || '',
+                    coverPicture: user.coverPicture || ''
+                });
+            } catch (err) {
+                toast.error("Erro ao carregar dados do usuário.");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchUserData();
-    }, []);
+    }, [router]);
 
     // --- HANDLERS ---
     const handleChange = (e) => {
@@ -75,63 +80,61 @@ const EditProfile = () => {
         setUserData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFileChange = (e) => {
+    const handlePasswordChange = (e) => {
+        const { name, value } = e.target;
+        setPasswords(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e, type) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Preview imediato
         const reader = new FileReader();
         reader.onload = (event) => {
-            if (e.target.name === 'profilePictureFile') {
-                setProfilePictureFile(file);
+            if (type === 'profile') {
+                setFiles(prev => ({ ...prev, profile: file }));
                 setUserData(prev => ({ ...prev, profilePicture: event.target.result }));
             } else {
-                setCoverPictureFile(file);
+                setFiles(prev => ({ ...prev, cover: file }));
                 setUserData(prev => ({ ...prev, coverPicture: event.target.result }));
             }
         };
         reader.readAsDataURL(file);
     };
 
-    const handlePasswordChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'newPassword') setNewPassword(value);
-        if (name === 'confirmPassword') setConfirmPassword(value);
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setError(null);
-        setSuccessMessage(null);
 
         const token = localStorage.getItem('userToken');
         const formData = new FormData();
 
         formData.append('name', userData.name);
-        formData.append('bio', userData.bio); // Envia mesmo que vazio
+        formData.append('bio', userData.bio);
         
-        if (profilePictureFile) formData.append('profilePicture', profilePictureFile);
-        if (coverPictureFile) formData.append('coverPicture', coverPictureFile);
+        if (files.profile) formData.append('profilePicture', files.profile);
+        if (files.cover) formData.append('coverPicture', files.cover);
 
-        // Só valida e envia senha se a seção estiver aberta e o campo preenchido
-        if (showPasswordSection && newPassword) {
-            if (newPassword.length < 6) {
-                setError('A senha deve ter no mínimo 6 caracteres.');
+        // Validação de Senha
+        if (showPasswordSection && passwords.new) {
+            if (passwords.new.length < 6) {
+                toast.error('A nova senha deve ter no mínimo 6 caracteres.');
                 setIsSubmitting(false);
                 return;
             }
-            if (newPassword !== confirmPassword) {
-                setError('As novas senhas não coincidem.');
+            if (passwords.new !== passwords.confirm) {
+                toast.error('As senhas não coincidem.');
                 setIsSubmitting(false);
                 return;
             }
-            formData.append('password', newPassword);
+            formData.append('password', passwords.new);
         }
 
         try {
             const response = await fetch(`${API_BASE_URL}/users/me`, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': `Bearer ${token}` }, // Não setar Content-Type com FormData
                 body: formData
             });
 
@@ -140,89 +143,84 @@ const EditProfile = () => {
                 throw new Error(errorData.message || 'Falha ao atualizar.');
             }
 
-            const updatedData = await response.json();
-            // Atualiza o estado com a resposta do servidor para garantir sincronia
-            if (updatedData.user) {
-                setUserData({
-                    name: updatedData.user.name,
-                    bio: updatedData.user.bio,
-                    profilePicture: updatedData.user.profilePicture,
-                    coverPicture: updatedData.user.coverPicture
-                });
-            }
+            toast.success('Perfil atualizado com sucesso!');
             
-            setSuccessMessage('Perfil atualizado com sucesso!');
-            
-            // Limpa campos de senha e fecha seção
-            setNewPassword('');
-            setConfirmPassword('');
+            // Limpa form de senha
+            setPasswords({ new: '', confirm: '' });
             setShowPasswordSection(false);
+            
+            // Opcional: Redirecionar após sucesso
+            // setTimeout(() => router.push('/perfil'), 1500);
 
         } catch (err) {
-            setError(err.message);
+            toast.error(err.message);
         } finally {
             setIsSubmitting(false);
         }
     };
     
-    if (loading) return <div className="loading-screen">Carregando...</div>;
+    if (loading) return <div className="loading-screen-centered"><div className="spinner"></div></div>;
     
     return (
-        <>
+        <div className="page-wrapper">
+            <Toaster position="top-center" />
             <Header/>
             
-            <div className="edit-profile-page">
-                <div className="edit-profile-container">
-                    <h1 className="title">Editar Perfil</h1>
+            <div className="edit-profile-content">
+                <div className="edit-card">
+                    <div className="edit-header">
+                        <h1>Editar Perfil</h1>
+                        <p>Atualize suas informações e personalize sua conta.</p>
+                    </div>
                     
-                    <form onSubmit={handleSubmit} className="edit-profile-form">
+                    <form onSubmit={handleSubmit} className="edit-form">
                         
-                        {/* SEÇÃO DE FOTOS */}
-                        <div className="photo-section">
-                            <div className="cover-photo-container">
+                        {/* ÁREA DE IMAGENS */}
+                        <div className="images-section">
+                            {/* Capa */}
+                            <div className="cover-wrapper">
                                 {userData.coverPicture ? (
-                                    <img src={userData.coverPicture} alt="Capa" className="cover-photo-preview" />
+                                    <img src={userData.coverPicture} alt="Capa" className="cover-img" />
                                 ) : (
-                                    <div className="default-cover-preview"></div>
+                                    <div className="default-cover"></div>
                                 )}
-                                <label htmlFor="cover-upload" className="photo-upload-label cover">
-                                    <FaCamera /> <span>Alterar Capa</span>
-                                    <input type="file" id="cover-upload" name="coverPictureFile" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                                <label className="upload-btn cover-btn">
+                                    <FaCamera /> <span>Editar Capa</span>
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'cover')} hidden />
                                 </label>
                             </div>
                             
-                            <div className="profile-photo-container">
+                            {/* Avatar */}
+                            <div className="avatar-wrapper">
                                 <img 
-                                    src={userData.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=random&color=fff`} 
+                                    src={userData.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`} 
                                     alt="Perfil" 
-                                    className="profile-photo-preview" 
+                                    className="avatar-img" 
                                 />
-                                <label htmlFor="profile-upload" className="photo-upload-label profile">
+                                <label className="upload-btn avatar-btn">
                                     <FaCamera />
-                                    <input type="file" id="profile-upload" name="profilePictureFile" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'profile')} hidden />
                                 </label>
                             </div>
                         </div>
 
-                        {/* SEÇÃO DE CAMPOS */}
-                        <div className="form-content">
-                            <div className="form-group">
-                                <label htmlFor="name">Nome Completo</label>
+                        {/* CAMPOS DE TEXTO */}
+                        <div className="fields-container">
+                            <div className="input-group">
+                                <label>Nome Completo</label>
                                 <input 
                                     type="text" 
-                                    id="name" 
                                     name="name" 
                                     value={userData.name} 
                                     onChange={handleChange} 
                                     required 
-                                    placeholder="Seu nome exibido no perfil"
+                                    placeholder="Ex: Gustavo Ricardo"
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label htmlFor="bio">Biografia</label>
+                            <div className="input-group">
+                                <label>Biografia</label>
                                 <textarea 
-                                    id="bio" 
                                     name="bio" 
                                     value={userData.bio} 
                                     onChange={handleChange} 
@@ -231,68 +229,61 @@ const EditProfile = () => {
                                 ></textarea>
                             </div>
 
-                            {/* --- OPÇÃO DISCRETA DE SENHA --- */}
-                            <div className="password-toggle-wrapper">
+                            {/* SEÇÃO DE SENHA (ACCORDION) */}
+                            <div className="password-section">
                                 <button 
                                     type="button" 
-                                    className="toggle-password-btn"
+                                    className={`toggle-password ${showPasswordSection ? 'active' : ''}`}
                                     onClick={() => setShowPasswordSection(!showPasswordSection)}
                                 >
-                                    <FaLock size={12} /> 
-                                    {showPasswordSection ? "Cancelar alteração de senha" : "Alterar minha senha"}
-                                    {showPasswordSection ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
+                                    <div className="toggle-left">
+                                        <div className="icon-box"><FaLock /></div>
+                                        <span>Alterar Senha</span>
+                                    </div>
+                                    {showPasswordSection ? <FaChevronUp /> : <FaChevronDown />}
                                 </button>
 
-                                {showPasswordSection && (
-                                    <div className="password-fields-container fade-in">
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label htmlFor="newPassword">Nova Senha</label>
-                                                <input 
-                                                    type="password" 
-                                                    id="newPassword" 
-                                                    name="newPassword" 
-                                                    value={newPassword} 
-                                                    onChange={handlePasswordChange} 
-                                                    placeholder="Mínimo 6 caracteres"
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <label htmlFor="confirmPassword">Confirmar</label>
-                                                <input 
-                                                    type="password" 
-                                                    id="confirmPassword" 
-                                                    name="confirmPassword" 
-                                                    value={confirmPassword} 
-                                                    onChange={handlePasswordChange} 
-                                                    placeholder="Repita a nova senha"
-                                                />
-                                            </div>
+                                <div className={`password-fields ${showPasswordSection ? 'open' : ''}`}>
+                                    <div className="password-grid">
+                                        <div className="input-group">
+                                            <label>Nova Senha</label>
+                                            <input 
+                                                type="password" 
+                                                name="new" 
+                                                value={passwords.new} 
+                                                onChange={handlePasswordChange} 
+                                                placeholder="Mínimo 6 caracteres"
+                                            />
+                                        </div>
+                                        <div className="input-group">
+                                            <label>Confirmar Senha</label>
+                                            <input 
+                                                type="password" 
+                                                name="confirm" 
+                                                value={passwords.confirm} 
+                                                onChange={handlePasswordChange} 
+                                                placeholder="Repita a nova senha"
+                                            />
                                         </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
-                        
-                        {/* MENSAGENS E BOTÕES */}
-                        <div className="form-footer">
-                            {error && <div className="message error">{error}</div>}
-                            {successMessage && <div className="message success">{successMessage}</div>}
 
-                            <div className="button-group">
-                                <button type="button" className="cancel-btn" onClick={() => router.back()}>
-                                    Cancelar
-                                </button>
-                                <button type="submit" className="save-btn" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
-                                </button>
-                            </div>
+                        {/* ACTIONS */}
+                        <div className="form-actions">
+                            <button type="button" className="btn-cancel" onClick={() => router.back()}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn-save" disabled={isSubmitting}>
+                                {isSubmitting ? 'Salvando...' : <><FaSave /> Salvar Alterações</>}
+                            </button>
                         </div>
 
                     </form>
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

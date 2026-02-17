@@ -10,31 +10,35 @@ import toast, { Toaster } from 'react-hot-toast';
 import { FaEdit, FaTicketAlt, FaChartLine, FaSearch, FaChevronRight } from 'react-icons/fa';
 import './UserProfile.css'; 
 
-const getApiBaseUrl = () => {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// --- SKELETON LOADER (NOVO) ---
+// --- SKELETON REUTILIZÁVEL E LIMPO ---
 const ProfileSkeleton = () => (
     <div className="user-profile-container">
         <Header />
         <div className="profile-header-wrapper">
-            <div className="profile-cover skeleton-box"></div>
+            <div className="skeleton-cover skeleton-pulse"></div>
             <div className="profile-details-container">
-                <div className="profile-avatar skeleton-box" style={{border: '5px solid white'}}></div>
-                <div className="profile-texts" style={{paddingTop: '20px'}}>
-                    <div className="skeleton-line" style={{width: '200px', height: '30px', marginBottom: '10px'}}></div>
-                    <div className="skeleton-line" style={{width: '150px', height: '20px'}}></div>
+                <div className="skeleton-avatar skeleton-pulse"></div>
+                <div className="profile-texts" style={{width: '100%', maxWidth: '300px'}}>
+                    <div className="skeleton-text skeleton-pulse" style={{height: '32px', width: '70%'}}></div>
+                    <div className="skeleton-text skeleton-pulse" style={{height: '20px', width: '50%'}}></div>
+                </div>
+                <div className="profile-buttons">
+                    <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '40px'}}></div>
+                    <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '40px'}}></div>
                 </div>
             </div>
         </div>
         <div className="profile-body">
-            <div className="skeleton-line" style={{width: '100%', height: '100px', marginBottom: '30px', borderRadius: '12px'}}></div>
-            <div className="skeleton-line" style={{width: '150px', height: '30px', marginBottom: '20px'}}></div>
+            <div className="skeleton-text skeleton-pulse" style={{width: '200px', height: '28px', marginBottom: '20px'}}></div>
+            <div className="skeleton-box skeleton-pulse" style={{width: '100%', height: '80px', borderRadius: '16px', marginBottom: '40px'}}></div>
+            
+            <div className="skeleton-text skeleton-pulse" style={{width: '150px', height: '28px', marginBottom: '20px'}}></div>
             <div className="favorites-grid">
-                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box" style={{height: '280px', borderRadius: '16px'}}></div>
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="skeleton-box skeleton-pulse" style={{height: '320px', borderRadius: '16px'}}></div>
+                ))}
             </div>
         </div>
         <Footer />
@@ -47,17 +51,15 @@ const UserProfile = () => {
     const [favoritedEvents, setFavoritedEvents] = useState([]);
     const [tickets, setTickets] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const [profileImage, setProfileImage] = useState('https://ui-avatars.com/api/?name=User&background=random');
-
-    const API_BASE_URL = getApiBaseUrl();
+    const [profileImage, setProfileImage] = useState('');
 
     useEffect(() => {
         const fetchAllData = async () => {
-            const token = localStorage.getItem('userToken');
+            const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
             if (!token) return router.push('/login');
 
             try {
-                // 1. Perfil e Favoritos
+                // 1. Fetch User Data
                 const profileRes = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -68,22 +70,19 @@ const UserProfile = () => {
                 const userObj = profileData.user || profileData;
                 setUserData(userObj);
                 
-                if (userObj.profilePicture) {
-                    setProfileImage(userObj.profilePicture);
-                } else {
-                    setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name)}&background=random&color=fff`);
-                }
+                // Set Image Fallback
+                setProfileImage(userObj.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name || 'User')}&background=random&color=fff`);
 
-                // Carrega favoritos
+                // 2. Set Favorites
                 setFavoritedEvents(profileData.favoritedEvents || userObj.favoritedEvents || []);
 
-                // 2. Ingressos
+                // 3. Fetch Tickets
                 const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (ticketsRes.ok) {
                     const ticketsData = await ticketsRes.json();
-                    setTickets(ticketsData.slice(0, 3)); 
+                    setTickets(ticketsData.slice(0, 3)); // Pega apenas os 3 mais recentes
                 }
             } catch (err) {
                 console.error(err);
@@ -93,28 +92,27 @@ const UserProfile = () => {
             }
         };
         fetchAllData();
-    }, [router, API_BASE_URL]);
+    }, [router]);
 
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
         if (!token) return router.push('/login');
 
-        // OPTIMISTIC UI: Remove imediatamente da tela se for desfavoritar
-        // Se for favoritar (o que não deve acontecer nessa tela, pois só mostra os já favoritados), adicionaria
+        // Optimistic UI
         if (!isFavoriting) {
             setFavoritedEvents(prev => prev.filter(e => (e.id || e._id) !== eventId));
             toast.success("Removido dos favoritos.");
         }
 
         try {
-            // Tenta rota padrão
+            // Tenta rota Toggle
             let res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                 body: JSON.stringify({ eventId }) 
             });
 
-            // Fallback para rota antiga se a nova não existir
+            // Tenta rota legada se 404
             if (!res.ok && res.status === 404) {
                  const userId = localStorage.getItem('userId');
                  res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
@@ -124,23 +122,27 @@ const UserProfile = () => {
                 });
             }
 
-            if (!res.ok) {
-                // Se der erro no servidor, reverte a mudança visual (adiciona de volta)
-                if (!isFavoriting) {
-                    toast.error("Erro ao sincronizar. Recarregando...");
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    toast.error("Erro ao adicionar.");
-                }
-            } else {
-                if (isFavoriting) toast.success("Evento favoritado!");
-            }
+            if (!res.ok) throw new Error("Falha na API");
+            
+            // Se for favoritar, recarrega a lista para garantir dados atualizados (opcional)
+            if (isFavoriting) toast.success("Evento favoritado!");
 
         } catch(e) { 
             console.error(e);
-            toast.error("Erro de conexão."); 
+            toast.error("Erro ao sincronizar."); 
+            // Reverte em caso de erro
             if (!isFavoriting) setTimeout(() => window.location.reload(), 1000);
         }
+    };
+
+    // Helper para extrair dia e mês da data do evento
+    const getDateInfo = (dateString) => {
+        if (!dateString) return { day: '--', month: '---' };
+        const date = new Date(dateString);
+        return {
+            day: date.getDate(),
+            month: date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')
+        };
     };
 
     if (loading) return <ProfileSkeleton />;
@@ -162,7 +164,11 @@ const UserProfile = () => {
                         </div>
                         <div className="profile-details-container">
                             <div className="profile-avatar">
-                                <img src={profileImage} alt="Perfil" onError={() => setProfileImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`)} />
+                                <img 
+                                    src={profileImage} 
+                                    alt="Perfil" 
+                                    onError={(e) => e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`} 
+                                />
                             </div>
                             <div className="profile-texts">
                                 <h1>{userData.name}</h1>
@@ -176,28 +182,52 @@ const UserProfile = () => {
                     </div>
 
                     <div className="profile-body">
+                        {/* SEÇÃO DE INGRESSOS COMPACTA */}
                         <div className="mini-tickets-section">
                             <div className="section-header-row">
-                                <div className="section-title"><FaTicketAlt className="icon-purple" /><h2>Ingressos Recentes</h2></div>
-                                <Link href="/meus-ingressos" className="link-view-all">Ver Todos <FaChevronRight /></Link>
+                                <div className="section-title">
+                                    <FaTicketAlt className="icon-purple" />
+                                    <h2>Ingressos Recentes</h2>
+                                </div>
+                                <Link href="/meus-ingressos" className="link-view-all">Ver Todos <FaChevronRight size={12}/></Link>
                             </div>
+                            
                             {tickets.length === 0 ? (
-                                <div className="empty-box-small"><p>Nenhum ingresso ativo.</p><Link href="/" className="link-explore">Explorar</Link></div>
+                                <div className="empty-box-small">
+                                    <p>Você ainda não tem ingressos ativos.</p>
+                                    <Link href="/" className="link-explore">Explorar Eventos</Link>
+                                </div>
                             ) : (
                                 <div className="mini-tickets-list">
-                                    {tickets.map((t) => (
-                                        <div key={t.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
-                                            <div className="mini-info"><h4>{t.event?.title}</h4></div>
-                                            <FaChevronRight className="mini-arrow"/>
-                                        </div>
-                                    ))}
+                                    {tickets.map((t) => {
+                                        const { day, month } = getDateInfo(t.event?.date);
+                                        return (
+                                            <div key={t.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
+                                                <div className="mini-date">
+                                                    <span className="day">{day}</span>
+                                                    <span className="month">{month}</span>
+                                                </div>
+                                                <div className="mini-info">
+                                                    <h4>{t.event?.title || 'Evento Indisponível'}</h4>
+                                                    <div className="mini-meta">
+                                                        <span>{t.ticketType || 'Ingresso'}</span>
+                                                        {t.event?.city && <span>• {t.event.city}</span>}
+                                                    </div>
+                                                </div>
+                                                <FaChevronRight className="mini-arrow"/>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
 
                         <div className="divider"></div>
 
-                        <div className="section-title"><h2>Meus Favoritos</h2></div>
+                        {/* SEÇÃO DE FAVORITOS */}
+                        <div className="section-title" style={{marginBottom: '20px'}}>
+                            <h2>Meus Favoritos</h2>
+                        </div>
 
                         {favoritedEvents.length > 0 ? (
                             <div className="favorites-grid">
@@ -213,7 +243,7 @@ const UserProfile = () => {
                             </div>
                         ) : (
                             <div className="empty-simple">
-                                <p>Nenhum evento favoritado.</p>
+                                <p>Nenhum evento favoritado ainda.</p>
                                 <Link href="/" className="btn-explore-purple"><FaSearch /> Explorar Eventos</Link>
                             </div>
                         )}
