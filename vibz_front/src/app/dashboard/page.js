@@ -31,15 +31,14 @@ const DashboardSkeleton = () => (
                 </div>
                 <div className="dash-header-actions">
                     <div className="skeleton-box skeleton-pulse" style={{width: '160px', height: '45px'}}></div>
-                    <div className="skeleton-box skeleton-pulse" style={{width: '90px', height: '30px', borderRadius: '20px'}}></div>
                 </div>
             </div>
 
-            {/* Stats Grid Skeleton (NOVO) */}
+            {/* Stats Grid Skeleton */}
             <div className="stats-grid" style={{marginBottom: '30px'}}>
-                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
             </div>
 
             {/* Wallet Skeleton */}
@@ -48,22 +47,14 @@ const DashboardSkeleton = () => (
             </div>
 
             {/* Events List Skeleton */}
-            <div className="section-header">
-                <div className="skeleton-text skeleton-pulse" style={{width: '200px', height: '28px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{width: '130px', height: '40px'}}></div>
-            </div>
-
-            <div className="events-list">
+            <div className="events-list" style={{marginTop: '30px'}}>
+                <div className="skeleton-text skeleton-pulse" style={{width: '200px', height: '28px', marginBottom: '20px'}}></div>
                 {[1, 2].map(i => (
-                    <div key={i} className="event-card-dash" style={{gap: '20px'}}>
+                    <div key={i} className="event-card-dash" style={{gap: '20px', marginBottom: '15px'}}>
                         <div className="skeleton-box skeleton-pulse" style={{width: '60px', height: '60px', borderRadius: '10px', flexShrink: 0}}></div>
                         <div style={{flex: 1, minWidth: 0}}>
                             <div className="skeleton-text skeleton-pulse" style={{width: '70%', height: '20px', marginBottom: '8px'}}></div>
                             <div className="skeleton-text skeleton-pulse" style={{width: '40%', height: '16px'}}></div>
-                        </div>
-                        <div className="skeleton-actions-group">
-                             <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '35px'}}></div>
-                             <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '35px'}}></div>
                         </div>
                     </div>
                 ))}
@@ -145,12 +136,10 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                                                 {t.sold || 0} / {t.quantity} vendidos • {t.batch || t.batchName}
                                             </span>
                                         </div>
-                                        
                                         <div className="switch-wrapper">
                                             <span className={`status-label ${isActive ? 'active' : 'paused'}`}>
                                                 {isLoading ? '...' : (isActive ? 'ON' : 'OFF')}
                                             </span>
-                                            
                                             <label className="switch">
                                                 <input 
                                                     type="checkbox" 
@@ -169,7 +158,6 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                         )}
                     </div>
                 </div>
-                
                 <div className="modal-footer">
                     <button className="btn-modal-close" onClick={onClose}>Concluir</button>
                 </div>
@@ -237,29 +225,36 @@ const DashboardContent = () => {
 
     useEffect(() => { fetchAllData(); }, []);
 
-    // --- CÁLCULO DE MÉTRICAS FINANCEIRAS (NOVO) ---
+    // --- CÁLCULO DE MÉTRICAS FINANCEIRAS ---
     const financialMetrics = useMemo(() => {
         let totalRevenue = 0;
         let totalTicketsSold = 0;
         let activeEventsCount = 0;
 
-        myEvents.forEach(event => {
-            // Contagem de eventos ativos/aprovados
-            if (event.status === 'approved' || event.status === 'active') {
-                activeEventsCount++;
-            }
+        if (Array.isArray(myEvents)) {
+            myEvents.forEach(event => {
+                if (event.status === 'approved' || event.status === 'active') {
+                    activeEventsCount++;
+                }
 
-            // Soma de ingressos e faturamento
-            if (event.tickets && Array.isArray(event.tickets)) {
-                event.tickets.forEach(ticket => {
-                    const sold = Number(ticket.sold || 0);
-                    const price = Number(ticket.price || 0);
-                    
-                    totalTicketsSold += sold;
-                    totalRevenue += (sold * price);
-                });
-            }
-        });
+                if (event.tickets && Array.isArray(event.tickets)) {
+                    event.tickets.forEach(ticket => {
+                        const sold = parseInt(ticket.sold) || 0;
+                        let price = ticket.price;
+                        
+                        // Garante que o preço seja um número válido
+                        if (typeof price === 'string') {
+                            price = parseFloat(price.replace(',', '.'));
+                        }
+                        price = Number(price);
+                        if (isNaN(price)) price = 0;
+                        
+                        totalTicketsSold += sold;
+                        totalRevenue += (sold * price);
+                    });
+                }
+            });
+        }
 
         return {
             totalRevenue,
@@ -268,8 +263,14 @@ const DashboardContent = () => {
         };
     }, [myEvents]);
 
-    // Helpers
-    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    const formatCurrency = (value) => {
+        try {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        } catch (e) {
+            return 'R$ 0,00';
+        }
+    };
+
     const formatText = (text) => text?.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª') || '';
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '';
     const getStatusLabel = (s) => ({ approved: 'Aprovado', pending: 'Em Análise', rejected: 'Rejeitado' }[s?.toLowerCase()] || s);
@@ -312,7 +313,7 @@ const DashboardContent = () => {
                     </div>
                 </div>
 
-                {/* --- STATS GRID (NOVO) --- */}
+                {/* --- STATS GRID (ESTATÍSTICAS) --- */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon revenue"><FaMoneyBillWave /></div>
