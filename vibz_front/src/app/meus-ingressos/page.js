@@ -5,12 +5,48 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
-import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes, FaDownload, FaClock } from 'react-icons/fa';
+import { FaTicketAlt, FaCalendarDay, FaMapMarkerAlt, FaQrcode, FaHistory, FaTimes, FaDownload } from 'react-icons/fa';
 import './MeusIngressos.css';
 
 const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
+
+// --- COMPONENTE SKELETON (NOVO) ---
+const TicketsSkeleton = () => (
+    <div className="wallet-page">
+        <Header />
+        <main className="wallet-content">
+            <div className="wallet-header">
+                <div className="skeleton-text skeleton-pulse" style={{width: '60%', height: '40px', margin: '0 auto 10px'}}></div>
+                <div className="skeleton-text skeleton-pulse" style={{width: '40%', height: '20px', margin: '0 auto'}}></div>
+            </div>
+
+            <div className="wallet-tabs" style={{background: 'transparent', boxShadow: 'none'}}>
+                <div className="skeleton-box skeleton-pulse" style={{width: '280px', height: '45px', borderRadius: '12px', margin: '0 auto'}}></div>
+            </div>
+
+            <div className="tickets-grid">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="ticket-card skeleton-card">
+                        {/* Imagem Skeleton */}
+                        <div className="ticket-left">
+                            <div className="skeleton-box skeleton-pulse" style={{width: '140px', height: '140px', borderRadius: '16px'}}></div>
+                        </div>
+                        {/* Conteúdo Skeleton */}
+                        <div className="ticket-center" style={{width: '100%'}}>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '80%', height: '24px', marginBottom: '8px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '30%', height: '20px', marginBottom: '12px', borderRadius: '6px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '60%', height: '16px', marginBottom: '6px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '50%', height: '16px'}}></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </main>
+        <Footer />
+    </div>
+);
 
 export default function MeusIngressos() {
     const router = useRouter();
@@ -23,7 +59,7 @@ export default function MeusIngressos() {
 
     useEffect(() => {
         const fetchTickets = async () => {
-            const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+            const token = typeof window !== 'undefined' ? localStorage.getItem('userToken')?.replace(/"/g, '') : null;
             if (!token) return router.push('/login');
 
             try {
@@ -101,16 +137,8 @@ export default function MeusIngressos() {
     const openTicket = (ticket) => setSelectedTicket(ticket);
     const closeTicket = () => setSelectedTicket(null);
 
-    if (loading) return (
-        <div className="wallet-page">
-            <Header />
-            <div className="loading-container">
-                <div className="spinner"></div>
-                <p className="loading-text">Carregando carteira...</p>
-            </div>
-            <Footer />
-        </div>
-    );
+    // USANDO SKELETON AQUI
+    if (loading) return <TicketsSkeleton />;
 
     return (
         <div className="wallet-page">
