@@ -202,7 +202,7 @@
 
 .modal-header {
     display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-light);
+    padding-bottom: 15px; border-bottom: 1px solid var(--border-light);
 }
 .close-modal-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-medium); cursor: pointer; }
 
