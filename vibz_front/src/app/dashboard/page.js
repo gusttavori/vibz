@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -8,7 +8,8 @@ import toast, { Toaster } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { 
     FaCheckCircle, FaExclamationCircle, FaCalendarAlt, FaEdit, 
-    FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine
+    FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine,
+    FaMoneyBillWave, FaTicketAlt
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -32,6 +33,13 @@ const DashboardSkeleton = () => (
                     <div className="skeleton-box skeleton-pulse" style={{width: '160px', height: '45px'}}></div>
                     <div className="skeleton-box skeleton-pulse" style={{width: '90px', height: '30px', borderRadius: '20px'}}></div>
                 </div>
+            </div>
+
+            {/* Stats Grid Skeleton (NOVO) */}
+            <div className="stats-grid" style={{marginBottom: '30px'}}>
+                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px'}}></div>
             </div>
 
             {/* Wallet Skeleton */}
@@ -229,7 +237,39 @@ const DashboardContent = () => {
 
     useEffect(() => { fetchAllData(); }, []);
 
+    // --- CÁLCULO DE MÉTRICAS FINANCEIRAS (NOVO) ---
+    const financialMetrics = useMemo(() => {
+        let totalRevenue = 0;
+        let totalTicketsSold = 0;
+        let activeEventsCount = 0;
+
+        myEvents.forEach(event => {
+            // Contagem de eventos ativos/aprovados
+            if (event.status === 'approved' || event.status === 'active') {
+                activeEventsCount++;
+            }
+
+            // Soma de ingressos e faturamento
+            if (event.tickets && Array.isArray(event.tickets)) {
+                event.tickets.forEach(ticket => {
+                    const sold = Number(ticket.sold || 0);
+                    const price = Number(ticket.price || 0);
+                    
+                    totalTicketsSold += sold;
+                    totalRevenue += (sold * price);
+                });
+            }
+        });
+
+        return {
+            totalRevenue,
+            totalTicketsSold,
+            activeEventsCount
+        };
+    }, [myEvents]);
+
     // Helpers
+    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     const formatText = (text) => text?.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª') || '';
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '';
     const getStatusLabel = (s) => ({ approved: 'Aprovado', pending: 'Em Análise', rejected: 'Rejeitado' }[s?.toLowerCase()] || s);
@@ -258,7 +298,7 @@ const DashboardContent = () => {
             <Header />
 
             <main className="dashboard-content">
-                {/* HEADER COM CLASSES RENOMEADAS */}
+                {/* HEADER */}
                 <div className="dashboard-header">
                     <div className="dash-header-text">
                         <h1>Painel do Organizador</h1>
@@ -269,6 +309,31 @@ const DashboardContent = () => {
                             <FaQrcode /> Validar Ingressos
                         </button>
                         <div className="live-badge"><span className="dot"></span> Online</div>
+                    </div>
+                </div>
+
+                {/* --- STATS GRID (NOVO) --- */}
+                <div className="stats-grid">
+                    <div className="stat-card">
+                        <div className="stat-icon revenue"><FaMoneyBillWave /></div>
+                        <div className="stat-info">
+                            <span className="stat-label">Faturamento Bruto</span>
+                            <strong className="stat-value">{formatCurrency(financialMetrics.totalRevenue)}</strong>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon tickets"><FaTicketAlt /></div>
+                        <div className="stat-info">
+                            <span className="stat-label">Ingressos Vendidos</span>
+                            <strong className="stat-value">{financialMetrics.totalTicketsSold}</strong>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-icon events"><FaCalendarAlt /></div>
+                        <div className="stat-info">
+                            <span className="stat-label">Eventos Ativos</span>
+                            <strong className="stat-value">{financialMetrics.activeEventsCount}</strong>
+                        </div>
                     </div>
                 </div>
 
