@@ -1,9 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+
 :root {
     --header-bg: #4C01B5;
     --header-height: 72px;
     --text-white: #ffffff;
     --hover-bg: rgba(255, 255, 255, 0.1);
     --dropdown-shadow: 0 10px 40px -10px rgba(0,0,0,0.2);
+}
+
+/* Garante que o Header use border-box para evitar conflitos */
+.global-header, .global-header * {
+    box-sizing: border-box;
 }
 
 .global-header {
@@ -33,9 +40,9 @@
 }
 
 .header-logo {
-    height: 32px; /* Altura controlada */
+    height: 32px;
     width: auto;
-    filter: brightness(0) invert(1); /* Torna o logo branco se for imagem escura */
+    filter: brightness(0) invert(1);
     transition: transform 0.2s ease;
 }
 
@@ -54,6 +61,7 @@
 .btn-create-event {
     display: flex;
     align-items: center;
+    justify-content: center; /* Garante centralização */
     gap: 8px;
     background-color: rgba(255, 255, 255, 0.15);
     color: var(--text-white);
@@ -64,6 +72,7 @@
     text-decoration: none;
     transition: all 0.2s ease;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    white-space: nowrap; /* Evita quebra de texto */
 }
 
 .btn-create-event:hover {
@@ -116,6 +125,7 @@
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.8);
+    flex-shrink: 0; /* Impede achatamento */
 }
 
 .user-name {
@@ -164,7 +174,7 @@
 }
 
 .dropdown-header-mobile {
-    display: none; /* Apenas desktop por enquanto */
+    display: none;
     padding: 12px 16px;
     border-bottom: 1px solid #f1f5f9;
     color: #1e293b;
@@ -219,16 +229,23 @@
         padding: 0 16px;
     }
 
-    /* Ajuste do botão Criar Evento */
+    /* Correção do botão + no mobile */
     .btn-create-event {
         padding: 0;
-        width: 40px;
-        height: 40px;
+        width: 36px !important; /* Força largura fixa */
+        height: 36px !important; /* Força altura fixa */
+        min-width: 36px; /* Impede encolhimento */
         border-radius: 50%;
-        justify-content: center;
-        background-color: var(--text-white); /* Fundo branco no mobile */
-        color: var(--header-bg); /* Ícone roxo */
+        background-color: var(--text-white);
+        color: var(--header-bg);
         border: none;
+        display: flex; /* Garante flexbox */
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-create-event:hover {
+        background-color: #f0f0f0;
     }
 
     .btn-create-event .btn-text, 
@@ -239,6 +256,7 @@
     .btn-create-event .icon-mobile {
         display: block;
         font-size: 1rem;
+        margin: 0; /* Remove margens que possam atrapalhar */
     }
 
     /* Ajuste do Menu Usuário */
@@ -251,18 +269,17 @@
     }
 
     .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-width: 0; /* Remove borda no mobile */
+        width: 36px;
+        height: 36px;
+        border-width: 0;
     }
 
-    /* Dropdown no Mobile */
     .dropdown-menu {
-        right: -10px; /* Alinha melhor na borda da tela */
+        right: -10px;
         width: 260px;
     }
 
     .dropdown-header-mobile {
-        display: block; /* Mostra o nome do usuário dentro do menu */
+        display: block;
     }
 }
