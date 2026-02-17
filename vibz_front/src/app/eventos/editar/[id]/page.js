@@ -8,7 +8,7 @@ import {
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
     FaAlignLeft, FaLayerGroup, FaArrowLeft, FaSave, FaStar,
-    FaClipboardList, FaClock
+    FaClipboardList, FaClock, FaUserLock
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -16,7 +16,59 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// FUNÇÃO AUXILIAR PARA CORREÇÃO DE DATA (ISO -> INPUT)
+// --- COMPONENTE DE SKELETON DO FORMULÁRIO ---
+const FormSkeleton = () => (
+    <div className={styles.pageWrapper}>
+        <Header />
+        <main className={styles.mainContent}>
+            <div className={styles.pageHeader}>
+                <div className={`${styles.skSubtitle} ${styles.skeletonPulse}`} style={{marginBottom: '20px', width: '100px', marginLeft: '0'}}></div>
+                <div className={`${styles.skTitle} ${styles.skeletonPulse}`}></div>
+                <div className={`${styles.skSubtitle} ${styles.skeletonPulse}`}></div>
+            </div>
+            
+            <div className={styles.formContainer}>
+                {/* Card 1: Principal */}
+                <div className={styles.skCard}>
+                    <div className={`${styles.skLabel} ${styles.skeletonPulse}`} style={{width: '200px', height: '24px', marginBottom: '20px'}}></div>
+                    <div className={`${styles.skImage} ${styles.skeletonPulse}`}></div>
+                    <div className={styles.gridTwo}>
+                        <div style={{gridColumn: 'span 2'}}>
+                            <div className={`${styles.skLabel} ${styles.skeletonPulse}`}></div>
+                            <div className={`${styles.skInput} ${styles.skeletonPulse}`}></div>
+                        </div>
+                        <div style={{gridColumn: 'span 2'}}>
+                            <div className={`${styles.skLabel} ${styles.skeletonPulse}`}></div>
+                            <div className={`${styles.skInput} ${styles.skeletonPulse}`} style={{height: '100px'}}></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Card 2: Data/Local */}
+                <div className={styles.skCard}>
+                    <div className={`${styles.skLabel} ${styles.skeletonPulse}`} style={{width: '150px', height: '24px', marginBottom: '20px'}}></div>
+                    <div className={styles.gridTwo}>
+                        <div>
+                            <div className={`${styles.skLabel} ${styles.skeletonPulse}`}></div>
+                            <div className={`${styles.skInput} ${styles.skeletonPulse}`}></div>
+                        </div>
+                        <div>
+                            <div className={`${styles.skLabel} ${styles.skeletonPulse}`}></div>
+                            <div className={`${styles.skInput} ${styles.skeletonPulse}`}></div>
+                        </div>
+                    </div>
+                    <div className={`${styles.skLabel} ${styles.skeletonPulse}`}></div>
+                    <div className={`${styles.skInput} ${styles.skeletonPulse}`}></div>
+                </div>
+
+                {/* Submit Button Skeleton */}
+                <div className={`${styles.skButton} ${styles.skeletonPulse}`}></div>
+            </div>
+        </main>
+    </div>
+);
+
+// FUNÇÃO AUXILIAR PARA DATA
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -63,12 +115,9 @@ const EditarEvento = () => {
     const [isInformational, setIsInformational] = useState(false); 
     const [customQuestions, setCustomQuestions] = useState([]);    
 
-    // MÁSCARA DE CEP
     const handleZipCodeChange = (value) => {
         const cleanValue = value.replace(/\D/g, "");
-        const maskedValue = cleanValue
-            .replace(/^(\d{5})(\d)/, "$1-$2")
-            .substring(0, 9);
+        const maskedValue = cleanValue.replace(/^(\d{5})(\d)/, "$1-$2").substring(0, 9);
         setAddressZipCode(maskedValue);
     };
 
@@ -80,7 +129,6 @@ const EditarEvento = () => {
                 if (!res.ok) throw new Error("Erro ao buscar evento");
                 const data = await res.json();
 
-                // Fallbacks para evitar campos undefined que limpam o input
                 setTitle(data.title || '');
                 setDescription(data.description || '');
                 setCategory(data.category || '');
@@ -129,7 +177,6 @@ const EditarEvento = () => {
                     setAddressNumber(addr.number || '');
                     setAddressDistrict(addr.district || '');
                     setAddressState(addr.state || '');
-                    // Tenta zipCode ou cep
                     const rawCep = addr.zipCode || addr.cep || '';
                     handleZipCodeChange(rawCep);
                 }
@@ -153,6 +200,8 @@ const EditarEvento = () => {
                             name: t.name || '',
                             category: t.category || 'Inteira',
                             isHalfPrice: t.isHalfPrice || false,
+                            maxPerUser: t.maxPerUser || 4,
+                            hasSchedule: !!(t.activityDate || t.startTime),
                             activityDate: formatDateForInput(t.activityDate),
                             startTime: t.startTime || '',
                             endTime: t.endTime || '',
@@ -168,7 +217,7 @@ const EditarEvento = () => {
                 });
                 
                 if (Object.keys(groupedTickets).length === 0) {
-                    setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, activityDate: '', startTime: '', endTime: '', batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
+                    setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '', batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
                 } else {
                     setTicketTypes(Object.values(groupedTickets));
                 }
@@ -206,6 +255,7 @@ const EditarEvento = () => {
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
+            hasSchedule: false, maxPerUser: 4,
             activityDate: '', startTime: '', endTime: '',
             batches: [{ name: '1º Lote', price: '', quantity: '' }]
         }]);
@@ -217,6 +267,11 @@ const EditarEvento = () => {
     const handleChangeTicketType = (index, field, value) => {
         const updated = [...ticketTypes];
         updated[index][field] = value;
+        if (field === 'hasSchedule' && value === false) {
+            updated[index].activityDate = '';
+            updated[index].startTime = '';
+            updated[index].endTime = '';
+        }
         setTicketTypes(updated);
     };
     const handleAddBatch = (typeIndex) => {
@@ -258,6 +313,10 @@ const EditarEvento = () => {
         if (!isInformational) {
             for (const type of ticketTypes) {
                 if (!type.name) { setSaving(false); return toast.error("Nome do ingresso é obrigatório."); }
+                if (type.hasSchedule && (!type.activityDate || !type.startTime || !type.endTime)) {
+                    setSaving(false);
+                    return toast.error(`Preencha a programação para o ingresso "${type.name}"`);
+                }
                 for (const batch of type.batches) {
                     if (!batch.price && batch.price !== 0 && batch.price !== '0') { setSaving(false); return toast.error(`Preço obrigatório em ${type.name}`); }
                     if (!batch.quantity) { setSaving(false); return toast.error(`Quantidade obrigatória em ${type.name}`); }
@@ -304,9 +363,10 @@ const EditarEvento = () => {
                         name: type.name,
                         category: type.category,
                         isHalfPrice: type.isHalfPrice,
-                        activityDate: type.activityDate || null,
-                        startTime: type.startTime || null,
-                        endTime: type.endTime || null,
+                        maxPerUser: parseInt(type.maxPerUser),
+                        activityDate: type.hasSchedule ? type.activityDate : null,
+                        startTime: type.hasSchedule ? type.startTime : null,
+                        endTime: type.hasSchedule ? type.endTime : null,
                         batch: batch.name,
                         price: parseFloat(batch.price),
                         quantity: parseInt(batch.quantity),
@@ -340,7 +400,8 @@ const EditarEvento = () => {
         }
     };
 
-    if (loadingData) return <div style={{height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', color:'#666'}}>Carregando editor...</div>;
+    // SUBSTITUÍDO O TEXTO SIMPLES PELO COMPONENTE FORM SKELETON
+    if (loadingData) return <FormSkeleton />;
 
     return (
         <div className={styles.pageWrapper}>
@@ -466,23 +527,30 @@ const EditarEvento = () => {
                                             {ticketTypes.length > 1 && <button type="button" onClick={() => handleRemoveTicketType(typeIdx)} className={styles.trashBtn}><FaTrashAlt /></button>}
                                         </div>
 
-                                        <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0'}}>
-                                            <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade (Opcional)</h4>
-                                            <div className={styles.gridTwo}>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Data da Atividade</label>
-                                                    <input type="date" className={styles.inputSmall} value={type.activityDate || ''} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} />
-                                                </div>
-                                                <div className={styles.inputGroup}>
-                                                    <label className={styles.label}>Horário (Início - Fim)</label>
-                                                    <div style={{display:'flex', gap:'5px'}}>
-                                                        <input type="time" className={styles.inputSmall} value={type.startTime || ''} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} placeholder="Início" />
-                                                        <input type="time" className={styles.inputSmall} value={type.endTime || ''} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} placeholder="Fim" />
+                                        <div style={{display:'flex', gap:'20px', marginBottom: '15px', flexWrap:'wrap'}}>
+                                            <div className={styles.inputGroup} style={{flex: '0 0 180px'}}><label className={styles.label}><FaUserLock/> Máx. por pessoa</label><input className={styles.inputSmall} type="number" min="1" value={type.maxPerUser || 4} onChange={e => handleChangeTicketType(typeIdx, 'maxPerUser', e.target.value)} required /></div>
+                                            <div style={{display:'flex', alignItems:'center', paddingTop:'20px'}}><label className={styles.checkboxLabel}><input className={styles.checkbox} type="checkbox" checked={type.hasSchedule} onChange={e => handleChangeTicketType(typeIdx, 'hasSchedule', e.target.checked)} /> Data/horário específico</label></div>
+                                        </div>
+
+                                        {type.hasSchedule && (
+                                            <div style={{backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0'}}>
+                                                <h4 style={{fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px', display:'flex', alignItems:'center', gap:'6px'}}><FaClock /> Horário da Atividade (Opcional)</h4>
+                                                <div className={styles.gridTwo}>
+                                                    <div className={styles.inputGroup}>
+                                                        <label className={styles.label}>Data da Atividade</label>
+                                                        <input type="date" className={styles.inputSmall} value={type.activityDate || ''} onChange={e => handleChangeTicketType(typeIdx, 'activityDate', e.target.value)} />
+                                                    </div>
+                                                    <div className={styles.inputGroup}>
+                                                        <label className={styles.label}>Horário (Início - Fim)</label>
+                                                        <div style={{display:'flex', gap:'5px'}}>
+                                                            <input type="time" className={styles.inputSmall} value={type.startTime || ''} onChange={e => handleChangeTicketType(typeIdx, 'startTime', e.target.value)} placeholder="Início" />
+                                                            <input type="time" className={styles.inputSmall} value={type.endTime || ''} onChange={e => handleChangeTicketType(typeIdx, 'endTime', e.target.value)} placeholder="Fim" />
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <p style={{fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px'}}>* Preencha se este ingresso for para uma palestra ou oficina específica.</p>
                                             </div>
-                                            <p style={{fontSize: '0.75rem', color: '#94a3b8', marginTop: '5px'}}>* Preencha se este ingresso for para uma palestra ou oficina específica.</p>
-                                        </div>
+                                        )}
 
                                         <div className={styles.batchesContainer}>
                                             <h4 className={styles.batchTitle}>Lotes deste ingresso:</h4>

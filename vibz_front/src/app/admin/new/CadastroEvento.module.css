@@ -595,8 +595,7 @@
     box-shadow: none;
 }
 
-/* --- FORMULÁRIO DO PARTICIPANTE (ESTILO NOVO) --- */
-
+/* --- FORMULÁRIO DO PARTICIPANTE --- */
 .questionList {
     display: flex;
     flex-direction: column;
@@ -620,7 +619,7 @@
 
 .questionRow {
     display: grid;
-    grid-template-columns: 3fr 1.5fr; /* Pergunta ocupa mais espaço */
+    grid-template-columns: 3fr 1.5fr; 
     gap: 16px;
     align-items: start;
     margin-bottom: 12px;
@@ -701,6 +700,26 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* --- SKELETON STYLES --- */
+@keyframes skeletonPulse {
+    0% { background-color: #e2e8f0; }
+    50% { background-color: #f8fafc; }
+    100% { background-color: #e2e8f0; }
+}
+
+.skeletonPulse {
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+    background-color: #e2e8f0;
+}
+
+.skTitle { height: 40px; width: 60%; border-radius: 8px; margin: 0 auto 10px; }
+.skSubtitle { height: 20px; width: 40%; border-radius: 4px; margin: 0 auto 40px; }
+.skCard { background: white; border-radius: 20px; padding: 32px; border: 1px solid #e2e8f0; margin-bottom: 32px; display: flex; flex-direction: column; gap: 24px; }
+.skInput { height: 52px; width: 100%; border-radius: 12px; }
+.skLabel { height: 16px; width: 100px; border-radius: 4px; margin-bottom: 8px; }
+.skImage { height: 250px; width: 100%; border-radius: 16px; margin-bottom: 10px; }
+.skButton { height: 56px; width: 100%; border-radius: 14px; margin-top: 20px; }
+
 /* RESPONSIVIDADE */
 @media (max-width: 768px) {
     .gridTwo, .gridDateTime, .gridAddressTop, .gridAddressStreet {
@@ -719,7 +738,6 @@
         gap: 12px;
     }
     
-    /* No mobile, o nome do lote ocupa a linha inteira */
     .batchRow > *:first-child {
         grid-column: span 2;
     }
@@ -737,7 +755,6 @@
     
     .inputIcon { left: 12px; }
 
-    /* Responsividade Perguntas */
     .questionRow {
         grid-template-columns: 1fr;
         gap: 12px;
