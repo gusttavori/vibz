@@ -415,7 +415,7 @@ export default function Home() {
                     <div className="input-wrapper-relative" style={{ flexGrow: 1, position: 'relative', height: '100%' }}>
                         <input 
                             type="text" 
-                            placeholder="Busque por eventos ou categorias (ex: Teatro)" 
+                            placeholder="Busque por eventos ou categorias" 
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
                             onFocus={() => { if(suggestions.length > 0) setShowSuggestions(true); }}
