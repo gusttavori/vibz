@@ -65,11 +65,20 @@
   border: 2px solid transparent;
   border-radius: 8px;
   font-family: 'Urbanist', sans-serif;
-  font-size: 0.9rem;
+  font-size: 0.9rem; /* Desktop */
   background-color: var(--gray-input);
   color: var(--text-dark);
   transition: all 0.25s ease;
   outline: none;
+}
+
+/* --- CORREÇÃO DO ZOOM NO MOBILE --- */
+@media (max-width: 768px) {
+  .auth-form input[type="email"],
+  .auth-form input[type="password"],
+  .auth-form input[type="text"] {
+    font-size: 16px; /* Tamanho mínimo para evitar zoom no iOS */
+  }
 }
 
 .auth-form input::placeholder {
@@ -258,7 +267,8 @@
 @media (max-width: 480px) {
   .auth-form {
     padding: 25px 20px;
-    max-width: 80%;
+    width: 90%; /* Ajuste: Largura controlada para não colar na borda */
+    margin: 0 auto; /* Centraliza */
     border-radius: 20px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
   }
