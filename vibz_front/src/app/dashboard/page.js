@@ -7,9 +7,8 @@ import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { 
-    FaMoneyBillWave, FaTicketAlt, FaUserCheck, FaChartLine, 
-    FaRegClock, FaCheckCircle, FaExclamationCircle,
-    FaCalendarAlt, FaEdit, FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes
+    FaCheckCircle, FaExclamationCircle, FaCalendarAlt, FaEdit, 
+    FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -18,9 +17,8 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// --- COMPONENTE DO MODAL (POP-UP) ---
+// --- MODAL DE GERENCIAMENTO ---
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
-    // Inicializa o estado com os tickets passados pelo evento
     const [tickets, setTickets] = useState(event.tickets || []);
     const [loadingId, setLoadingId] = useState(null);
     const API_BASE_URL = getApiBaseUrl();
@@ -29,7 +27,6 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
         const ticketId = ticket.id || ticket._id;
         setLoadingId(ticketId);
         
-        // Lógica: Se está 'active', muda para 'paused'. Se não, muda para 'active'.
         const newStatus = ticket.status === 'active' ? 'paused' : 'active';
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
 
@@ -43,29 +40,23 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                 body: JSON.stringify({ status: newStatus })
             });
 
-            const data = await res.json();
-
             if (res.ok) {
-                // Atualiza o estado local do modal imediatamente
                 const updatedTickets = tickets.map(t => 
                     (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t
                 );
                 setTickets(updatedTickets);
                 
                 if (newStatus === 'active') {
-                    toast.success('Vendas Ativadas! 🟢', { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+                    toast.success('Vendas Ativadas!', { icon: '🟢' });
                 } else {
-                    toast.success('Vendas Pausadas 🔴', { style: { borderRadius: '10px', background: '#333', color: '#fff' } });
+                    toast.success('Vendas Pausadas', { icon: '🔴' });
                 }
                 
-                // Atualiza o painel principal
                 if (onUpdate) onUpdate(); 
             } else {
-                console.error("Erro API:", data);
-                toast.error(data.message || 'Erro ao atualizar status.');
+                toast.error('Erro ao atualizar status.');
             }
         } catch (error) {
-            console.error("Erro Conexão:", error);
             toast.error('Erro de conexão.');
         } finally {
             setLoadingId(null);
@@ -74,15 +65,14 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
 
     return (
         <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) onClose(); }}>
-            <div className="modal-content">
+            <div className="modal-box">
                 <div className="modal-header">
-                    <h3>Gerenciar Vendas: {event.title}</h3>
+                    <h3>Gerenciar Vendas</h3>
                     <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
                 </div>
+                
                 <div className="modal-body">
-                    <p style={{marginBottom:'20px', color:'#64748b', fontSize:'0.9rem'}}>
-                        Controle a disponibilidade dos ingressos em tempo real.
-                    </p>
+                    <p className="modal-subtitle">Controle a disponibilidade dos ingressos de <strong>{event.title}</strong> em tempo real.</p>
                     
                     <div className="ticket-manage-list">
                         {tickets.length > 0 ? (
@@ -92,18 +82,17 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                                 const isLoading = loadingId === tId;
 
                                 return (
-                                    <div key={tId} className="ticket-manage-item" style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'#f8fafc', borderRadius:'12px', marginBottom:'12px', border:'1px solid #e2e8f0'}}>
-                                        <div style={{flex: 1}}>
-                                            <strong style={{display:'block', color:'#1e293b', fontSize:'1rem'}}>{t.name}</strong>
-                                            <span style={{fontSize:'0.8rem', color:'#64748b'}}>
+                                    <div key={tId} className="ticket-manage-item">
+                                        <div className="ticket-info">
+                                            <strong>{t.name}</strong>
+                                            <span>
                                                 {t.sold || 0} / {t.quantity} vendidos • {t.batch || t.batchName}
                                             </span>
                                         </div>
                                         
-                                        {/* INTERRUPTOR (SWITCH) */}
-                                        <div className="switch-container">
-                                            <span className={`status-label ${isActive ? 'status-active' : 'status-paused'}`}>
-                                                {isLoading ? '...' : (isActive ? 'VENDENDO' : 'PAUSADO')}
+                                        <div className="switch-wrapper">
+                                            <span className={`status-label ${isActive ? 'active' : 'paused'}`}>
+                                                {isLoading ? '...' : (isActive ? 'ON' : 'OFF')}
                                             </span>
                                             
                                             <label className="switch">
@@ -120,14 +109,13 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                                 );
                             })
                         ) : (
-                            <div style={{textAlign:'center', padding:'20px', color:'#94a3b8', fontStyle: 'italic'}}>
-                                Nenhum ingresso encontrado para este evento.<br/>
-                            </div>
+                            <div className="empty-modal-state">Nenhum ingresso encontrado.</div>
                         )}
                     </div>
                 </div>
-                <div className="modal-footer" style={{marginTop: '20px'}}>
-                    <button className="cancel-btn" onClick={onClose} style={{width:'100%', padding:'12px', borderRadius:'8px', border:'none', background:'#e2e8f0', color:'#475569', fontWeight:'bold', cursor:'pointer'}}>Concluir</button>
+                
+                <div className="modal-footer">
+                    <button className="btn-modal-close" onClick={onClose}>Concluir</button>
                 </div>
             </div>
         </div>
@@ -143,19 +131,13 @@ const DashboardContent = () => {
     const [userData, setUserData] = useState(null);
     const [myEvents, setMyEvents] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const [loadingStripe, setLoadingStripe] = useState(false);
     const [connectionError, setConnectionError] = useState(false);
-    
-    // Estado para controlar qual evento está aberto no modal
     const [selectedEventForManage, setSelectedEventForManage] = useState(null);
 
     useEffect(() => {
         const stripeStatus = searchParams.get('stripe');
         if (stripeStatus === 'success') {
-            toast.success("CONTA BANCÁRIA CONECTADA! 🚀", {
-                duration: 5000,
-                style: { background: '#10b981', color: '#fff', fontWeight: 'bold' }
-            });
+            toast.success("CONTA BANCÁRIA CONECTADA! 🚀");
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             router.replace('/dashboard'); 
         }
@@ -164,15 +146,14 @@ const DashboardContent = () => {
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setConnectionError(false);
-
         const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+
         if (!token) {
             router.push('/login');
             return;
         }
 
         try {
-            console.log("Buscando dados do dashboard...");
             const [userRes, statsRes, eventsRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/users/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${API_BASE_URL}/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -180,78 +161,40 @@ const DashboardContent = () => {
             ]);
 
             if (userRes.ok) {
-                const userDataResponse = await userRes.json();
-                setUserData(userDataResponse.user || userDataResponse);
+                const data = await userRes.json();
+                setUserData(data.user || data);
             }
-
-            if (statsRes.ok) {
-                const data = await statsRes.json();
-                setStats(data);
-            }
-
+            if (statsRes.ok) setStats(await statsRes.json());
             if (eventsRes.ok) {
                 const data = await eventsRes.json();
-                const eventsList = Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []);
-                setMyEvents(eventsList);
-                
-                // Se o modal estiver aberto, atualiza os dados dele também
-                if (selectedEventForManage) {
-                    const updatedEvent = eventsList.find(e => e.id === selectedEventForManage.id);
-                    if (updatedEvent) setSelectedEventForManage(updatedEvent);
-                }
-            } else {
-                toast.error("Erro ao carregar eventos.");
+                const list = Array.isArray(data.myEvents) ? data.myEvents : (Array.isArray(data) ? data : []);
+                setMyEvents(list);
             }
 
         } catch (error) {
-            console.error("Erro Dashboard:", error);
+            console.error(error);
             setConnectionError(true);
-            toast.error("Erro de conexão.");
         } finally {
             setLoading(false);
         }
-    }, [API_BASE_URL, router, selectedEventForManage]);
+    }, [API_BASE_URL, router]);
 
-    useEffect(() => {
-        fetchAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Executa apenas na montagem
+    useEffect(() => { fetchAllData(); }, []);
 
-    const openManageModal = (event) => {
-        setSelectedEventForManage(event);
-    };
+    // Helpers
+    const formatText = (text) => text?.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª') || '';
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '';
+    const getStatusLabel = (s) => ({ approved: 'Aprovado', pending: 'Em Análise', rejected: 'Rejeitado' }[s?.toLowerCase()] || s);
 
-    const formatText = (text) => {
-        if (!text) return '';
-        return text.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª');
-    };
-
-    const getStatusLabel = (status) => {
-        if (!status) return '';
-        const s = status.toLowerCase();
-        if (s === 'approved') return 'Aprovado';
-        if (s === 'pending') return 'Em Análise';
-        if (s === 'rejected') return 'Rejeitado';
-        return status;
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        try { return new Date(dateString).toLocaleDateString('pt-BR'); } catch (e) { return ''; }
-    };
-
-    const handleConnectStripe = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
-    const handleAccessStripeDashboard = async () => { setLoadingStripe(true); setTimeout(() => setLoadingStripe(false), 2000); };
-
-    if (loading && !stats) return <div className="loading-screen">Carregando Painel...</div>;
+    if (loading && !stats) return <div className="loading-screen-centered"><div className="spinner"></div></div>;
 
     if (connectionError) {
         return (
             <div className="dashboard-container">
                 <Header />
                 <div className="error-state-container">
-                    <FaWifi className="error-icon-large" />
-                    <h2>Sem conexão com o servidor</h2>
+                    <FaWifi size={50} color="#cbd5e1" />
+                    <h2>Sem conexão</h2>
                     <button className="btn-retry" onClick={fetchAllData}><FaSync /> Tentar Novamente</button>
                 </div>
                 <Footer />
@@ -259,7 +202,6 @@ const DashboardContent = () => {
         );
     }
 
-    const chartData = stats?.chartData?.length > 0 ? stats.chartData : [];
     const isStripeReady = userData?.stripeAccountId && userData?.stripeOnboardingComplete;
 
     return (
@@ -268,115 +210,94 @@ const DashboardContent = () => {
             <Header />
 
             <main className="dashboard-content">
+                {/* HEADER */}
                 <div className="dashboard-header">
-                    <div>
+                    <div className="header-text">
                         <h1>Painel do Organizador</h1>
-                        <p>Bem-vindo, {userData?.name}</p>
+                        <p>Olá, {userData?.name?.split(' ')[0]}</p>
                     </div>
-                    <div className="header-actions-dash">
-                        <button className="btn-checkin" onClick={() => router.push('/admin/checkin')}>
+                    <div className="header-actions">
+                        <button className="btn-action checkin" onClick={() => router.push('/admin/checkin')}>
                             <FaQrcode /> Validar Ingressos
                         </button>
-                        <div className="live-indicator"><span className="dot"></span> Online</div>
+                        <div className="live-badge"><span className="dot"></span> Online</div>
                     </div>
                 </div>
 
-                <div className="wallet-section-dashboard">
-                    {isStripeReady ? (
-                        <div className="wallet-card success">
-                            <div className="wallet-icon"><FaCheckCircle /></div>
-                            <div className="wallet-info">
-                                <h3>Conta Pronta</h3>
-                                <p>Tudo pronto para receber pagamentos.</p>
-                            </div>
-                            <button className="wallet-btn outline" onClick={handleAccessStripeDashboard} disabled={loadingStripe}>
-                                {loadingStripe ? 'Carregando...' : 'Ver Saldo e Extrato'}
-                            </button>
+                {/* STATUS FINANCEIRO */}
+                <div className="wallet-section">
+                    <div className={`wallet-card ${isStripeReady ? 'success' : 'warning'}`}>
+                        <div className="wallet-icon">
+                            {isStripeReady ? <FaCheckCircle /> : <FaExclamationCircle />}
                         </div>
+                        <div className="wallet-info">
+                            <h3>{isStripeReady ? 'Conta Conectada' : 'Ativar Recebimentos'}</h3>
+                            <p>{isStripeReady ? 'Pronto para receber vendas.' : 'Conecte sua conta bancária.'}</p>
+                        </div>
+                        <button className={`btn-wallet ${isStripeReady ? 'outline' : 'primary'}`}>
+                            {isStripeReady ? 'Ver Extrato' : 'Conectar'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* LISTA DE EVENTOS */}
+                <div className="section-header">
+                    <h2><FaCalendarAlt /> Meus Eventos</h2>
+                    <button className="btn-new" onClick={() => router.push('/admin/new')}>+ Criar Novo</button>
+                </div>
+
+                <div className="events-list">
+                    {myEvents.length === 0 ? (
+                        <div className="empty-state">Você ainda não criou nenhum evento.</div>
                     ) : (
-                        <div className="wallet-card warning">
-                            <div className="wallet-icon"><FaExclamationCircle /></div>
-                            <div className="wallet-info">
-                                <h3>Ativar Recebimentos</h3>
-                                <p>Conecte sua conta bancária para receber.</p>
+                        myEvents.map((event) => (
+                            <div key={event.id || event._id} className="event-card-dash">
+                                <div className="event-info">
+                                    <img src={event.imageUrl} alt="" className="event-thumb" />
+                                    <div className="event-meta">
+                                        <strong>{formatText(event.title)}</strong>
+                                        <span>{formatDate(event.date)} • {event.city}</span>
+                                        <span className={`badge ${event.status}`}>{getStatusLabel(event.status)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="event-actions">
+                                    {!event.isInformational && (
+                                        <button className="btn-icon" onClick={() => setSelectedEventForManage(event)} title="Gerenciar Vendas">
+                                            <FaCog /> Gerenciar
+                                        </button>
+                                    )}
+                                    <button className="btn-icon" onClick={() => router.push(`/eventos/${event.id}/participantes`)}>
+                                        <FaList /> Lista
+                                    </button>
+                                    <button className="btn-icon" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
+                                        <FaEdit /> Editar
+                                    </button>
+                                </div>
                             </div>
-                            <button className="wallet-btn primary" onClick={handleConnectStripe}>Conectar</button>
-                        </div>
+                        ))
                     )}
                 </div>
 
-                {stats && (
-                    <div className="dashboard-sections">
-                        <div className="events-management-section">
-                            <div className="section-header-dash">
-                                <h2><FaCalendarAlt /> Meus Eventos</h2>
-                                <button className="btn-new-event" onClick={() => router.push('/admin/new')}>Criar Novo</button>
-                            </div>
-                            
-                            <div className="events-list-dash">
-                                {myEvents.length === 0 ? (
-                                    <div className="empty-state-sales"><p>Nenhum evento criado.</p></div>
-                                ) : (
-                                    myEvents.map((event) => (
-                                        <div key={event.id || event._id} className="event-row-dash">
-                                            <div className="event-main-info">
-                                                <img src={event.imageUrl} alt={event.title} className="event-thumb" />
-                                                <div className="event-details-text">
-                                                    <strong>{formatText(event.title)}</strong>
-                                                    <span>{formatDate(event.date)} • {event.city}</span>
-                                                    <span className={`status-badge ${event.status}`}>
-                                                        {getStatusLabel(event.status)}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div className="event-card-actions">
-                                                {/* BOTÃO GERENCIAR (Voltou!) */}
-                                                {!event.isInformational && (
-                                                    <button 
-                                                        className="btn-edit-dash" 
-                                                        onClick={() => openManageModal(event)}
-                                                        title="Gerenciar Vendas"
-                                                        style={{border: '1px solid #cbd5e1', marginRight: '5px'}}
-                                                    >
-                                                        <FaCog style={{color: '#475569'}} /> Gerenciar
-                                                    </button>
-                                                )}
-
-                                                <button 
-                                                    className="btn-participants-dash" 
-                                                    onClick={() => router.push(`/eventos/${event.id}/participantes`)}
-                                                >
-                                                    <FaList /> Participantes
-                                                </button>
-                                                <button className="btn-edit-dash" onClick={() => router.push(`/eventos/editar/${event.id}`)}>
-                                                    <FaEdit /> Editar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="chart-section">
-                            <h2><FaChartLine /> Vendas (7 dias)</h2>
-                            <div className="chart-wrapper">
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <LineChart data={chartData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                                        <Tooltip />
-                                        <Line type="monotone" dataKey="vendas" stroke="#4C01B5" strokeWidth={3} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
+                {/* GRÁFICO (Se houver dados) */}
+                {stats?.chartData?.length > 0 && (
+                    <div className="chart-section">
+                        <h2><FaChartLine /> Vendas (7 dias)</h2>
+                        <div className="chart-wrapper">
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={stats.chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                                    <Tooltip contentStyle={{borderRadius: '8px', border:'none', boxShadow:'0 4px 12px rgba(0,0,0,0.1)'}} />
+                                    <Line type="monotone" dataKey="vendas" stroke="#4C01B5" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                                </LineChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
                 )}
 
-                {/* MODAL DE GESTÃO DE VENDAS (Voltou!) */}
+                {/* MODAL */}
                 {selectedEventForManage && (
                     <ManageSalesModal 
                         event={selectedEventForManage} 
@@ -384,7 +305,6 @@ const DashboardContent = () => {
                         onUpdate={fetchAllData}
                     />
                 )}
-
             </main>
             <Footer />
         </div>
@@ -393,7 +313,7 @@ const DashboardContent = () => {
 
 export default function Dashboard() {
     return (
-        <Suspense fallback={<div className="loading-screen">Carregando painel...</div>}>
+        <Suspense fallback={<div className="loading-screen-centered">Carregando...</div>}>
             <DashboardContent />
         </Suspense>
     );
