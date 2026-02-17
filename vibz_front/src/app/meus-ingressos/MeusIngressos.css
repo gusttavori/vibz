@@ -117,12 +117,12 @@
 /* 3. Botão (Direita) */
 .ticket-right { flex-shrink: 0; align-self: center; }
 
-.btn-qr {
+.btn-qrTicket {
     background: #1e293b; color: white; width: 50px; height: 50px;
     border-radius: 14px; display: flex; align-items: center; justify-content: center;
     border: none; font-size: 1.5rem; transition: 0.2s; cursor: pointer;
 }
-.btn-qr:hover { background: var(--primary-purple); transform: scale(1.05); }
+.btn-qrTicket:hover { background: var(--primary-purple); color: white; transform: scale(1.05); }
 
 /* --- ESTADO VAZIO --- */
 .empty-wallet {
@@ -239,7 +239,7 @@
         align-self: center;
     }
     
-    .btn-qr {
+    .btn-qrTicket {
         width: 48px; height: 48px;
         font-size: 1.4rem;
         background-color: #f1f5f9; /* Fundo sutil para destacar */

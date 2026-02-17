@@ -208,7 +208,7 @@ export default function MeusIngressos() {
                                     </div>
                                     
                                     <div className="ticket-right">
-                                        <button className="btn-qr">
+                                        <button className="btn-qrTicket">
                                             <FaQrcode />
                                         </button>
                                     </div>
