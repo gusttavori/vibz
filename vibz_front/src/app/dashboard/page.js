@@ -17,6 +17,60 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
+// --- COMPONENTE SKELETON (NOVO) ---
+const DashboardSkeleton = () => (
+    <div className="dashboard-container">
+        <Header />
+        <main className="dashboard-content">
+            {/* Header Skeleton */}
+            <div className="dashboard-header">
+                <div className="header-text" style={{width: '100%', maxWidth: '250px'}}>
+                    <div className="skeleton-text skeleton-pulse" style={{height: '32px', marginBottom: '10px'}}></div>
+                    <div className="skeleton-text skeleton-pulse" style={{height: '20px', width: '60%'}}></div>
+                </div>
+                <div className="header-actions">
+                    <div className="skeleton-box skeleton-pulse" style={{width: '160px', height: '45px'}}></div>
+                    <div className="skeleton-box skeleton-pulse" style={{width: '90px', height: '30px', borderRadius: '20px'}}></div>
+                </div>
+            </div>
+
+            {/* Wallet Skeleton */}
+            <div className="wallet-section">
+                <div className="skeleton-box skeleton-pulse" style={{height: '140px', borderRadius: '16px', width: '100%'}}></div>
+            </div>
+
+            {/* Events List Skeleton */}
+            <div className="section-header">
+                <div className="skeleton-text skeleton-pulse" style={{width: '200px', height: '28px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{width: '130px', height: '40px'}}></div>
+            </div>
+
+            <div className="events-list">
+                {[1, 2].map(i => (
+                    <div key={i} className="event-card-dash" style={{gap: '20px'}}>
+                        <div className="skeleton-box skeleton-pulse" style={{width: '60px', height: '60px', borderRadius: '10px', flexShrink: 0}}></div>
+                        <div style={{flex: 1, minWidth: 0}}>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '70%', height: '20px', marginBottom: '8px'}}></div>
+                            <div className="skeleton-text skeleton-pulse" style={{width: '40%', height: '16px'}}></div>
+                        </div>
+                        <div className="skeleton-actions-group">
+                             <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '35px'}}></div>
+                             <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '35px'}}></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Chart Skeleton */}
+             <div className="chart-section" style={{marginTop: '40px'}}>
+                <div className="skeleton-text skeleton-pulse" style={{width: '220px', height: '28px', marginBottom: '20px'}}></div>
+                <div className="skeleton-box skeleton-pulse" style={{height: '300px', borderRadius: '16px', width: '100%'}}></div>
+             </div>
+        </main>
+        <Footer />
+    </div>
+);
+
 // --- MODAL DE GERENCIAMENTO ---
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     const [tickets, setTickets] = useState(event.tickets || []);
@@ -186,7 +240,8 @@ const DashboardContent = () => {
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '';
     const getStatusLabel = (s) => ({ approved: 'Aprovado', pending: 'Em Análise', rejected: 'Rejeitado' }[s?.toLowerCase()] || s);
 
-    if (loading && !stats) return <div className="loading-screen-centered"><div className="spinner"></div></div>;
+    // USANDO SKELETON AQUI
+    if (loading && !stats) return <DashboardSkeleton />;
 
     if (connectionError) {
         return (
@@ -313,7 +368,7 @@ const DashboardContent = () => {
 
 export default function Dashboard() {
     return (
-        <Suspense fallback={<div className="loading-screen-centered">Carregando...</div>}>
+        <Suspense fallback={<DashboardSkeleton />}>
             <DashboardContent />
         </Suspense>
     );

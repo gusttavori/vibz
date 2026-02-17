@@ -7,6 +7,10 @@
     --bg-page: #f8fafc;
     --white: #ffffff;
     --border-light: #e2e8f0;
+    
+    /* Tokens Skeleton */
+    --skeleton-base: #e2e8f0;
+    --skeleton-highlight: #f8fafc;
 }
 
 * { box-sizing: border-box; }
@@ -21,8 +25,28 @@
     overflow-x: hidden;
 }
 
-/* Loading & Error */
-.loading-screen-centered, .error-state-container {
+/* --- SKELETON ANIMATIONS --- */
+@keyframes skeleton-pulse {
+    0% { background-color: var(--skeleton-base); }
+    50% { background-color: var(--skeleton-highlight); }
+    100% { background-color: var(--skeleton-base); }
+}
+
+.skeleton-pulse {
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text { border-radius: 4px; background: var(--skeleton-base); }
+.skeleton-box { border-radius: 8px; background: var(--skeleton-base); }
+
+/* Ajuste específico para os botões do skeleton no mobile */
+.skeleton-actions-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Loading de Erro */
+.error-state-container {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -31,13 +55,6 @@
     gap: 15px;
     color: var(--text-medium);
 }
-
-.spinner {
-    width: 40px; height: 40px;
-    border: 4px solid #e2e8f0; border-top-color: var(--primary-purple);
-    border-radius: 50%; animation: spin 1s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 
 .btn-retry {
     padding: 10px 20px;
@@ -238,4 +255,8 @@ input:checked + .slider:before { transform: translateX(20px); }
     .event-info { width: 100%; }
     .event-actions { width: 100%; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-light); }
     .btn-icon { flex: 1; justify-content: center; }
+
+    /* Skeleton Mobile */
+    .skeleton-actions-group { width: 100%; flex-direction: row; justify-content: space-between; margin-top: 15px; }
+    .skeleton-actions-group .skeleton-box { flex: 1; }
 }
