@@ -6,9 +6,14 @@
     --text-medium: #64748b;
     --border-light: #e2e8f0;
     
-    /* Skeleton Tokens (Mesmo da Home) */
+    /* Skeleton Tokens */
     --skeleton-base: #e2e8f0;
     --skeleton-highlight: #f8fafc;
+}
+
+/* --- RESET GLOBAL PARA ESTA TELA --- */
+* {
+    box-sizing: border-box; /* Essencial para evitar que padding estoure a largura */
 }
 
 .user-profile-container {
@@ -17,9 +22,11 @@
     font-family: 'Urbanist', sans-serif;
     display: flex;
     flex-direction: column;
+    max-width: 100vw; /* Garante que não ultrapasse a janela */
+    overflow-x: hidden; /* Corta qualquer excesso lateral */
 }
 
-/* --- SKELETON ANIMATION (Consistência com Home) --- */
+/* --- SKELETON ANIMATION --- */
 @keyframes skeleton-pulse {
     0% { background-color: var(--skeleton-base); }
     50% { background-color: var(--skeleton-highlight); }
@@ -30,7 +37,6 @@
     animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
-/* Estrutura do Skeleton */
 .skeleton-cover { width: 100%; height: 220px; background: var(--skeleton-base); }
 .skeleton-avatar { width: 140px; height: 140px; border-radius: 50%; border: 5px solid white; background: var(--skeleton-base); margin-bottom: 10px; }
 .skeleton-text { height: 20px; border-radius: 4px; background: var(--skeleton-base); margin-bottom: 8px; }
@@ -40,13 +46,14 @@
 .profile-header-wrapper {
     background: white;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-bottom: 40px;
+    margin-bottom: 30px;
     padding-bottom: 20px;
     position: relative;
+    width: 100%;
 }
 
 .profile-cover {
-    height: 220px;
+    height: 200px; /* Levemente reduzido para telas menores */
     width: 100%;
     overflow: hidden;
     position: relative;
@@ -66,20 +73,21 @@
 }
 
 .profile-details-container {
-    max-width: 1200px;
+    max-width: 1000px; /* Limite seguro para desktop */
+    width: 100%;
     margin: 0 auto;
     padding: 0 20px;
     display: flex;
     align-items: flex-end;
-    margin-top: -70px; /* Avatar sobe na capa */
+    margin-top: -70px;
     position: relative;
     gap: 25px;
     z-index: 10;
 }
 
 .profile-avatar {
-    width: 150px;
-    height: 150px;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
     border: 5px solid white;
     background: white;
@@ -98,20 +106,24 @@
 .profile-texts {
     flex: 1;
     padding-bottom: 15px;
+    min-width: 0; /* Permite que o texto trunque se necessário */
 }
 
 .profile-texts h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 800;
     color: var(--text-dark);
     margin: 0;
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .profile-texts p {
     color: var(--text-medium);
     margin: 5px 0 0 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
 }
 
@@ -125,6 +137,7 @@
 .btn-outline {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 10px 20px;
     background: white;
@@ -137,6 +150,7 @@
     transition: all 0.2s;
     font-size: 0.95rem;
     box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    white-space: nowrap;
 }
 
 .btn-outline:hover {
@@ -147,7 +161,7 @@
 
 /* --- BODY SECTION --- */
 .profile-body {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
     width: 100%;
     padding: 0 20px 60px 20px;
@@ -158,6 +172,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    flex-wrap: wrap; /* Permite quebrar linha se tela for muito pequena */
+    gap: 10px;
 }
 
 .section-title {
@@ -167,16 +183,16 @@
 }
 
 .section-title h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--text-dark);
     margin: 0;
 }
 
-.icon-purple { color: var(--primary-purple); font-size: 1.4rem; }
+.icon-purple { color: var(--primary-purple); font-size: 1.3rem; }
 
 .link-view-all {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--primary-purple);
     font-weight: 600;
     display: flex;
@@ -188,22 +204,21 @@
     transition: background 0.2s;
 }
 
-.link-view-all:hover { background: #f3e8ff; }
-
 /* --- MINI TICKETS LIST --- */
 .mini-tickets-section { margin-bottom: 40px; }
 
 .mini-tickets-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 15px;
+    width: 100%;
 }
 
 .mini-ticket-card {
     background: white;
     border: 1px solid var(--border-light);
     border-radius: 16px;
-    padding: 15px;
+    padding: 12px; /* Reduzi levemente o padding */
     display: flex;
     align-items: center;
     gap: 15px;
@@ -211,6 +226,7 @@
     transition: all 0.2s;
     position: relative;
     overflow: hidden;
+    width: 100%; /* Ocupa 100% do container pai */
 }
 
 .mini-ticket-card::before {
@@ -223,44 +239,52 @@
     background: var(--primary-purple);
 }
 
-.mini-ticket-card:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-}
-
 .mini-date {
     background: #f3e8ff;
     color: var(--primary-purple);
     border-radius: 12px;
-    width: 55px;
-    height: 55px;
+    width: 50px; /* Fixo e menor */
+    height: 50px; /* Fixo e menor */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    flex-shrink: 0; /* Impede que a data esmague */
     border: 1px solid rgba(76, 1, 181, 0.1);
 }
 
-.mini-date .day { font-weight: 800; font-size: 1.3rem; line-height: 1; }
-.mini-date .month { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+.mini-date .day { font-weight: 800; font-size: 1.2rem; line-height: 1; }
+.mini-date .month { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
 
-.mini-info { flex: 1; overflow: hidden; }
+.mini-info { 
+    flex: 1; /* Ocupa o espaço restante */
+    min-width: 0; /* CRUCIAL: Permite que o flex item encolha para o texto truncar */
+    overflow: hidden; 
+}
 
 .mini-info h4 {
     margin: 0 0 4px 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Três pontinhos se for longo */
+}
+
+.mini-meta { 
+    font-size: 0.8rem; 
+    color: var(--text-medium); 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.mini-meta { font-size: 0.85rem; color: var(--text-medium); display: flex; gap: 10px; }
-
-.mini-arrow { color: #cbd5e1; font-size: 1rem; }
+.mini-arrow { 
+    color: #cbd5e1; 
+    font-size: 1rem; 
+    flex-shrink: 0; 
+}
 
 .empty-box-small {
     background: white;
@@ -269,20 +293,23 @@
     border: 1px dashed var(--border-light);
     text-align: center;
     color: var(--text-medium);
+    width: 100%;
 }
 
 .link-explore { color: var(--primary-purple); font-weight: 700; margin-left: 5px; cursor: pointer;}
-
-.divider { height: 1px; background: var(--border-light); margin: 40px 0; }
+.divider { height: 1px; background: var(--border-light); margin: 30px 0; }
 
 /* --- FAVORITOS GRID --- */
 .favorites-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)); /* 1 por linha no mobile */
+    gap: 15px;
+}
+@media (min-width: 600px) {
+    .favorites-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 }
 
-.empty-simple { text-align: center; padding: 40px; color: var(--text-medium); }
+.empty-simple { text-align: center; padding: 40px 20px; color: var(--text-medium); }
 
 .btn-explore-purple {
     margin-top: 15px;
@@ -297,15 +324,10 @@
     gap: 8px;
     transition: all 0.2s;
     box-shadow: 0 4px 15px rgba(76, 1, 181, 0.3);
+    max-width: 100%;
 }
 
-.btn-explore-purple:hover {
-    background-color: #3a008b;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(76, 1, 181, 0.4);
-}
-
-/* --- RESPONSIVO --- */
+/* --- RESPONSIVO MOBILE OTIMIZADO --- */
 @media (max-width: 768px) {
     .profile-details-container {
         flex-direction: column;
@@ -313,23 +335,48 @@
         text-align: center;
         margin-top: -75px;
         gap: 15px;
+        padding: 0 15px; /* Padding seguro lateral */
+        width: 100%;
     }
 
-    .profile-texts { padding-bottom: 0; width: 100%; }
-    .profile-texts h1 { font-size: 1.6rem; }
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+    }
 
+    .profile-texts { 
+        padding-bottom: 0; 
+        width: 100%;
+    }
+    .profile-texts h1 { font-size: 1.5rem; }
+
+    /* Ajuste dos botões para caberem lado a lado sem estourar */
     .profile-buttons {
         width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
         padding-bottom: 0;
     }
 
-    .btn-outline { flex: 1; justify-content: center; min-width: 120px; }
+    .btn-outline { 
+        flex: 1; /* Crescem igualmente */
+        justify-content: center; 
+        padding: 10px 5px; /* Reduz padding lateral interno se necessário */
+        font-size: 0.9rem;
+        min-width: 0; /* Permite encolher se tela for minúscula */
+    }
 
-    .mini-tickets-list { grid-template-columns: 1fr; }
+    /* Ajustes no corpo */
+    .profile-body {
+        padding: 0 15px 40px 15px;
+    }
+
+    /* Cards */
+    .mini-ticket-card {
+        padding: 10px;
+    }
     
-    .section-header-row { flex-direction: row; align-items: center; } /* Mantém alinhado */
-    
-    .profile-avatar { width: 130px; height: 130px; }
+    .mini-info h4 {
+        font-size: 0.9rem;
+    }
 }
