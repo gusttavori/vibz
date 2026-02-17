@@ -17,18 +17,18 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// --- COMPONENTE SKELETON (NOVO) ---
+// --- COMPONENTE SKELETON ---
 const DashboardSkeleton = () => (
     <div className="dashboard-container">
         <Header />
         <main className="dashboard-content">
             {/* Header Skeleton */}
             <div className="dashboard-header">
-                <div className="header-text" style={{width: '100%', maxWidth: '250px'}}>
+                <div className="dash-header-text" style={{width: '100%', maxWidth: '250px'}}>
                     <div className="skeleton-text skeleton-pulse" style={{height: '32px', marginBottom: '10px'}}></div>
                     <div className="skeleton-text skeleton-pulse" style={{height: '20px', width: '60%'}}></div>
                 </div>
-                <div className="header-actions">
+                <div className="dash-header-actions">
                     <div className="skeleton-box skeleton-pulse" style={{width: '160px', height: '45px'}}></div>
                     <div className="skeleton-box skeleton-pulse" style={{width: '90px', height: '30px', borderRadius: '20px'}}></div>
                 </div>
@@ -60,12 +60,6 @@ const DashboardSkeleton = () => (
                     </div>
                 ))}
             </div>
-
-            {/* Chart Skeleton */}
-             <div className="chart-section" style={{marginTop: '40px'}}>
-                <div className="skeleton-text skeleton-pulse" style={{width: '220px', height: '28px', marginBottom: '20px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{height: '300px', borderRadius: '16px', width: '100%'}}></div>
-             </div>
         </main>
         <Footer />
     </div>
@@ -240,7 +234,6 @@ const DashboardContent = () => {
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '';
     const getStatusLabel = (s) => ({ approved: 'Aprovado', pending: 'Em Análise', rejected: 'Rejeitado' }[s?.toLowerCase()] || s);
 
-    // USANDO SKELETON AQUI
     if (loading && !stats) return <DashboardSkeleton />;
 
     if (connectionError) {
@@ -265,13 +258,13 @@ const DashboardContent = () => {
             <Header />
 
             <main className="dashboard-content">
-                {/* HEADER */}
+                {/* HEADER COM CLASSES RENOMEADAS */}
                 <div className="dashboard-header">
-                    <div className="header-text">
+                    <div className="dash-header-text">
                         <h1>Painel do Organizador</h1>
                         <p>Olá, {userData?.name?.split(' ')[0]}</p>
                     </div>
-                    <div className="header-actions">
+                    <div className="dash-header-actions">
                         <button className="btn-action checkin" onClick={() => router.push('/admin/checkin')}>
                             <FaQrcode /> Validar Ingressos
                         </button>
@@ -334,7 +327,7 @@ const DashboardContent = () => {
                     )}
                 </div>
 
-                {/* GRÁFICO (Se houver dados) */}
+                {/* GRÁFICO */}
                 {stats?.chartData?.length > 0 && (
                     <div className="chart-section">
                         <h2><FaChartLine /> Vendas (7 dias)</h2>

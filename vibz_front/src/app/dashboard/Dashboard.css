@@ -39,13 +39,12 @@
 .skeleton-text { border-radius: 4px; background: var(--skeleton-base); }
 .skeleton-box { border-radius: 8px; background: var(--skeleton-base); }
 
-/* Ajuste específico para os botões do skeleton no mobile */
 .skeleton-actions-group {
     display: flex;
     gap: 10px;
 }
 
-/* Loading de Erro */
+/* Error State */
 .error-state-container {
     display: flex;
     flex-direction: column;
@@ -74,7 +73,7 @@
     flex: 1;
 }
 
-/* Header */
+/* Header (Nomes corrigidos para evitar conflito com Header global) */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -84,10 +83,10 @@
     gap: 20px;
 }
 
-.header-text h1 { font-size: 1.8rem; margin: 0; color: var(--text-dark); }
-.header-text p { margin: 5px 0 0; color: var(--text-medium); }
+.dash-header-text h1 { font-size: 1.8rem; margin: 0; color: var(--text-dark); }
+.dash-header-text p { margin: 5px 0 0; color: var(--text-medium); }
 
-.header-actions { display: flex; align-items: center; gap: 15px; }
+.dash-header-actions { display: flex; align-items: center; gap: 15px; }
 
 .live-badge {
     background: #dcfce7; color: #166534;
@@ -249,7 +248,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* RESPONSIVE */
 @media (max-width: 768px) {
     .dashboard-header { flex-direction: column; align-items: flex-start; }
-    .header-actions { width: 100%; justify-content: space-between; }
+    .dash-header-actions { width: 100%; justify-content: space-between; }
     
     .event-card-dash { flex-direction: column; align-items: flex-start; }
     .event-info { width: 100%; }
