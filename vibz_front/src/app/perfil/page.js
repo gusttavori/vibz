@@ -201,6 +201,12 @@ const UserProfile = () => {
                                 <div className="mini-tickets-list">
                                     {tickets.map((t) => {
                                         const { day, month } = getDateInfo(t.event?.date);
+                                        
+                                        // CORREÇÃO: Extrai o nome se ticketType for um objeto
+                                        const ticketTypeName = typeof t.ticketType === 'object' && t.ticketType !== null
+                                            ? t.ticketType.name
+                                            : t.ticketType;
+
                                         return (
                                             <div key={t.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
                                                 <div className="mini-date">
@@ -210,7 +216,7 @@ const UserProfile = () => {
                                                 <div className="mini-info">
                                                     <h4>{t.event?.title || 'Evento Indisponível'}</h4>
                                                     <div className="mini-meta">
-                                                        <span>{t.ticketType || 'Ingresso'}</span>
+                                                        <span>{ticketTypeName || 'Ingresso'}</span>
                                                         {t.event?.city && <span>• {t.event.city}</span>}
                                                     </div>
                                                 </div>
