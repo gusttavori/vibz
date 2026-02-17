@@ -258,7 +258,7 @@
 @media (max-width: 480px) {
   .auth-form {
     padding: 25px 20px;
-    max-width: 90%;
+    max-width: 80%;
     border-radius: 20px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
   }
