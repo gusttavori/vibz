@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
     FaChartPie, FaList, FaCheck, FaTimes, FaCog, 
-    FaMoneyBillWave, FaUsers, FaStar, FaEye, FaSignOutAlt 
+    FaMoneyBillWave, FaUsers, FaStar, FaEye, FaSignOutAlt,
+    FaTicketAlt, FaTrash, FaPlus 
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import './AdminDashboard.css';
@@ -25,9 +26,20 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState(null);
     const [pendingEvents, setPendingEvents] = useState([]);
     const [pendingHighlights, setPendingHighlights] = useState([]);
+    const [coupons, setCoupons] = useState([]); // Lista de cupons
     const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 50 });
     
     const [selectedEvent, setSelectedEvent] = useState(null);
+
+    // Estado para novo cupom
+    const [newCoupon, setNewCoupon] = useState({
+        code: '',
+        discountType: 'percentage', // ou 'fixed'
+        value: '',
+        partner: '',
+        maxUses: '',
+        expiresAt: ''
+    });
 
     useEffect(() => {
         checkAdminAndFetch();
@@ -63,6 +75,10 @@ export default function AdminDashboard() {
                 const res = await fetch(`${API_BASE_URL}/admin/events?highlightStatus=pending`, { headers });
                 if (res.ok) setPendingHighlights(await res.json());
             }
+            else if (activeTab === 'coupons') {
+                const res = await fetch(`${API_BASE_URL}/admin/coupons`, { headers });
+                if (res.ok) setCoupons(await res.json());
+            }
             else if (activeTab === 'settings') {
                 const res = await fetch(`${API_BASE_URL}/admin/settings`, { headers });
                 if (res.ok) setConfig(await res.json());
@@ -89,6 +105,56 @@ export default function AdminDashboard() {
                 setSelectedEvent(null);
             } else { toast.error("Erro ao atualizar."); }
         } catch (e) { toast.error("Erro de conexão."); }
+    };
+
+    // --- LÓGICA DE CUPONS ---
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('userToken');
+        
+        if (!newCoupon.code || !newCoupon.value || !newCoupon.partner) {
+            return toast.error("Preencha os campos obrigatórios.");
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/coupons`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(newCoupon)
+            });
+
+            if (res.ok) {
+                toast.success("Cupom criado!");
+                setNewCoupon({ code: '', discountType: 'percentage', value: '', partner: '', maxUses: '', expiresAt: '' });
+                checkAdminAndFetch(); // Recarrega lista
+            } else {
+                const err = await res.json();
+                toast.error(err.message || "Erro ao criar cupom.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    const handleDeleteCoupon = async (id) => {
+        if (!confirm("Tem certeza que deseja excluir este cupom?")) return;
+        
+        const token = localStorage.getItem('userToken');
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/coupons/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success("Cupom excluído.");
+                setCoupons(coupons.filter(c => (c.id || c._id) !== id));
+            } else {
+                toast.error("Erro ao excluir.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        }
     };
 
     const handleSaveSettings = async () => {
@@ -132,6 +198,9 @@ export default function AdminDashboard() {
                         <FaStar /> Pedidos Destaque
                         {pendingHighlights.length > 0 && <span className="badge">{pendingHighlights.length}</span>}
                     </button>
+                    <button className={activeTab === 'coupons' ? 'active' : ''} onClick={() => setActiveTab('coupons')}>
+                        <FaTicketAlt /> Cupons
+                    </button>
                     <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
                         <FaCog /> Configurações
                     </button>
@@ -146,7 +215,7 @@ export default function AdminDashboard() {
 
             <main className="admin-main">
                 <header className="admin-header">
-                    <h3>{activeTab === 'overview' ? 'Visão Geral' : activeTab === 'events' ? 'Moderação' : activeTab === 'highlights' ? 'Destaques' : 'Configurações'}</h3>
+                    <h3>{activeTab === 'overview' ? 'Visão Geral' : activeTab === 'coupons' ? 'Gerenciar Cupons' : activeTab === 'events' ? 'Moderação' : 'Configurações'}</h3>
                     <div className="admin-badge">SUPER ADMIN</div>
                 </header>
 
@@ -170,7 +239,6 @@ export default function AdminDashboard() {
                             </div>
                             <div className="chart-section-admin">
                                 <h4>Crescimento de Receita (7 dias)</h4>
-                                {/* Altura reduzida aqui para 280px */}
                                 <div style={{ height: 280, width: '100%' }}>
                                     <ResponsiveContainer>
                                         <LineChart data={chartData}>
@@ -260,6 +328,123 @@ export default function AdminDashboard() {
                                     </tbody>
                                 </table>
                             )}
+                        </div>
+                    )}
+
+                    {/* CUPONS (NOVO) */}
+                    {activeTab === 'coupons' && (
+                        <div className="coupons-section">
+                            {/* FORMULÁRIO DE CRIAÇÃO */}
+                            <div className="settings-card" style={{marginBottom: '30px'}}>
+                                <h4>Adicionar Novo Cupom</h4>
+                                <form onSubmit={handleCreateCoupon} className="coupon-form">
+                                    <div className="form-group">
+                                        <label>Código do Cupom</label>
+                                        <input 
+                                            type="text" 
+                                            value={newCoupon.code} 
+                                            onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} 
+                                            placeholder="Ex: PARCEIRO10" 
+                                            required 
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Parceiro / Influencer</label>
+                                        <input 
+                                            type="text" 
+                                            value={newCoupon.partner} 
+                                            onChange={e => setNewCoupon({...newCoupon, partner: e.target.value})} 
+                                            placeholder="Nome do parceiro" 
+                                            required 
+                                        />
+                                    </div>
+                                    <div className="form-row-2">
+                                        <div className="form-group">
+                                            <label>Tipo de Desconto</label>
+                                            <select 
+                                                value={newCoupon.discountType} 
+                                                onChange={e => setNewCoupon({...newCoupon, discountType: e.target.value})}
+                                            >
+                                                <option value="percentage">Porcentagem (%)</option>
+                                                <option value="fixed">Valor Fixo (R$)</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Valor</label>
+                                            <input 
+                                                type="number" 
+                                                value={newCoupon.value} 
+                                                onChange={e => setNewCoupon({...newCoupon, value: e.target.value})} 
+                                                placeholder={newCoupon.discountType === 'percentage' ? '10' : '50.00'} 
+                                                required 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-row-2">
+                                        <div className="form-group">
+                                            <label>Limite de Usos (Opcional)</label>
+                                            <input 
+                                                type="number" 
+                                                value={newCoupon.maxUses} 
+                                                onChange={e => setNewCoupon({...newCoupon, maxUses: e.target.value})} 
+                                                placeholder="Ilimitado" 
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Validade (Opcional)</label>
+                                            <input 
+                                                type="date" 
+                                                value={newCoupon.expiresAt} 
+                                                onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})} 
+                                            />
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="btn-save" style={{marginTop:'10px'}}><FaPlus /> Criar Cupom</button>
+                                </form>
+                            </div>
+
+                            {/* LISTA DE CUPONS */}
+                            <div className="table-wrapper">
+                                <h3>Cupons Ativos</h3>
+                                {coupons.length === 0 ? (
+                                    <div className="empty-admin"><p>Nenhum cupom cadastrado.</p></div>
+                                ) : (
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Código</th>
+                                                <th>Parceiro</th>
+                                                <th>Desconto</th>
+                                                <th>Usos</th>
+                                                <th>Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {coupons.map(coupon => (
+                                                <tr key={coupon.id || coupon._id}>
+                                                    <td><strong>{coupon.code}</strong></td>
+                                                    <td>{coupon.partner}</td>
+                                                    <td>
+                                                        {coupon.discountType === 'percentage' 
+                                                            ? `${coupon.value}%` 
+                                                            : `R$ ${coupon.value}`}
+                                                    </td>
+                                                    <td>{coupon.usedCount || 0} / {coupon.maxUses || '∞'}</td>
+                                                    <td className="actions-cell">
+                                                        <button 
+                                                            className="btn-reject" 
+                                                            title="Excluir" 
+                                                            onClick={() => handleDeleteCoupon(coupon.id || coupon._id)}
+                                                        >
+                                                            <FaTrash />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
                         </div>
                     )}
 

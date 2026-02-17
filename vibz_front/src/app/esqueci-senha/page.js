@@ -49,7 +49,7 @@ export default function ForgotPasswordStep1() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-          <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo" style={{width:'120px', margin:'0 auto 20px', display:'block', filter:'invert(1)'}} />
+          <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo" style={{width:'120px', margin:'0 auto 20px', display:'block'}} />
 
           <form className="auth-form" onSubmit={handleSendCode}>
             <h2 className="auth-title">Recuperar Senha</h2>
