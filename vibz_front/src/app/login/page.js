@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../Auth.css';
@@ -12,21 +12,41 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Novo estado para evitar "piscada"
   
   const router = useRouter();
 
+  // --- 1. REDE DE SEGURANÇA (A Mágica para o PWA) ---
+  // Assim que a tela de login abre, verifica se já existe um token válido.
+  // Se existir, empurra para o dashboard imediatamente.
+  useEffect(() => {
+    const checkExistingAuth = () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+        if (token) {
+            // Se já tem token, nem mostra o login, vai pro dashboard
+            router.replace('/dashboard');
+        } else {
+            setIsCheckingAuth(false); // Libera para mostrar o form
+        }
+    };
+    checkExistingAuth();
+  }, [router]);
+
   const realizarLoginNoNavegador = (data) => {
-    setMessage(data.msg || 'Login realizado!');
+    setMessage(data.msg || 'Login realizado! Entrando...');
+    
     if (typeof window !== 'undefined') {
+        // Salva os dados
         localStorage.setItem('userToken', data.token);
         if (data.user) {
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.name);
         }
         
-        setTimeout(() => {
-             window.location.replace('/');
-        }, 200);
+        // --- 2. CORREÇÃO DE NAVEGAÇÃO PWA ---
+        // Usamos router.push primeiro (mais suave/rápido no App)
+        // O useEffect acima garante que se a página recarregar, ele redireciona de novo.
+        router.push('/dashboard');
     }
   };
 
@@ -48,7 +68,7 @@ export default function Login() {
         realizarLoginNoNavegador(data);
       } else {
         setMessage(data.msg || 'Erro ao fazer login.');
-        setIsLoading(false);
+        setIsLoading(false); 
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
@@ -60,6 +80,9 @@ export default function Login() {
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setMessage('Processando login com Google...');
+      // setIsLoading(true) aqui ajuda a evitar cliques duplos no PWA
+      setIsLoading(true); 
+      
       try {
         const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
             method: 'POST',
@@ -73,14 +96,17 @@ export default function Login() {
             realizarLoginNoNavegador(data);
         } else {
             setMessage(data.msg || 'Erro ao logar com Google no servidor.');
+            setIsLoading(false);
         }
       } catch (error) {
         console.error("Erro ao enviar token Google para API:", error);
         setMessage("Falha ao comunicar com o servidor.");
+        setIsLoading(false);
       }
     },
     onError: () => {
       setMessage('Falha ao abrir janela do Google.');
+      setIsLoading(false);
     }
   });
 
@@ -91,6 +117,16 @@ export default function Login() {
   const handleForgotPassword = () => {
     router.push('/esqueci-senha');
   };
+
+  // Se estiver verificando se já está logado, mostra um loading simples ou nada
+  // Isso evita que o usuário veja o form de login por 1 segundo e depois a tela mude.
+  if (isCheckingAuth) {
+      return (
+        <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+            <div className="skeleton-pulse" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#e2e8f0' }}></div>
+        </div>
+      );
+  }
 
   return (
     <div className="auth-container">
