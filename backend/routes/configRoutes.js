@@ -1,28 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const configController = require('../controllers/configController');
 
-// Rota para buscar preços (Pública)
-router.get('/prices', async (req, res) => {
-    try {
-        let config = await prisma.systemConfig.findFirst({
-            select: {
-                premiumPrice: true,
-                standardPrice: true
-            }
-        });
-
-        // Valores padrão caso o banco esteja vazio
-        if (!config) {
-            config = { premiumPrice: 100.00, standardPrice: 2.00 };
-        }
-
-        res.json(config);
-    } catch (error) {
-        console.error("Erro ao buscar configs:", error);
-        res.status(500).json({ message: 'Erro interno.' });
-    }
-});
+// Rota GET /api/config/prices
+// Pública: Não exige autenticação pois o formulário de cadastro precisa saber os preços antes do login/cadastro completo em alguns casos, ou apenas para exibição.
+router.get('/prices', configController.getPublicConfig);
 
 module.exports = router;
