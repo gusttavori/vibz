@@ -111,7 +111,7 @@ const updateEventStatus = async (req, res) => {
     }
 };
 
-// --- APROVAÇÃO COM COBRANÇA (ATUALIZADO) ---
+// --- APROVAÇÃO COM COBRANÇA (LÓGICA DIÁRIA AJUSTADA) ---
 const updateHighlightStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -135,14 +135,24 @@ const updateHighlightStatus = async (req, res) => {
 
         // APROVAÇÃO -> GERA COBRANÇA
         if (highlightStatus === 'approved') {
-            // 1. Pega preço atual
+            // 1. Pega configurações atuais
             const config = await prisma.systemConfig.findFirst();
-            // Se não tiver config, usa fallback
-            const priceConfig = config || { premiumPrice: 100.00, standardPrice: 50.00 };
+            // Fallback: Standard = R$ 10.00 (diária), Premium = R$ 100.00 (fixo)
+            const standardDailyRate = config?.standardPrice || 10.00;
+            const premiumFixedPrice = config?.premiumPrice || 100.00;
             
-            const price = event.highlightTier === 'PREMIUM' 
-                ? priceConfig.premiumPrice 
-                : priceConfig.standardPrice;
+            let finalPrice = 0;
+            let description = '';
+
+            if (event.highlightTier === 'PREMIUM') {
+                finalPrice = premiumFixedPrice;
+                description = `Destaque Premium (Fixo até a data do evento) - ${event.title}`;
+            } else {
+                // STANDARD: Calcula preço por dia
+                const days = event.highlightDuration || 7; // Padrão 7 dias se não estiver definido
+                finalPrice = days * standardDailyRate;
+                description = `Destaque Standard (${days} diárias a R$ ${standardDailyRate}/dia) - ${event.title}`;
+            }
 
             // 2. Cria sessão na Stripe
             const session = await stripe.checkout.sessions.create({
@@ -151,10 +161,10 @@ const updateHighlightStatus = async (req, res) => {
                     price_data: {
                         currency: 'brl',
                         product_data: {
-                            name: `Destaque ${event.highlightTier || 'Padrão'} - ${event.title}`,
-                            description: 'Aprovação de destaque na plataforma Vibz',
+                            name: `Destaque ${event.highlightTier || 'Standard'} - Vibz`,
+                            description: description,
                         },
-                        unit_amount: Math.round(price * 100), // Em centavos
+                        unit_amount: Math.round(finalPrice * 100), // Em centavos
                     },
                     quantity: 1,
                 }],
@@ -162,26 +172,27 @@ const updateHighlightStatus = async (req, res) => {
                 success_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?success=highlight&eventId=${event.id}`,
                 cancel_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?canceled=true`,
                 metadata: {
-                    type: 'EVENT_HIGHLIGHT', // Importante para o Webhook identificar
+                    type: 'EVENT_HIGHLIGHT',
                     eventId: event.id,
-                    tier: event.highlightTier
+                    tier: event.highlightTier,
+                    duration: event.highlightDuration || 7 // Passa duração para o webhook calcular validade
                 }
             });
 
-            // 3. Atualiza evento com link e status de espera
+            // 3. Atualiza evento com link e preço congelado
             const updated = await prisma.event.update({
                 where: { id },
                 data: {
                     highlightStatus: 'approved_waiting_payment',
                     highlightPaymentLink: session.url,
-                    highlightFee: price
+                    highlightFee: finalPrice
                 }
             });
 
             return res.json({ 
                 message: "Aprovado! Link de pagamento gerado.", 
                 event: updated,
-                paymentLink: session.url // Retorna o link pro frontend mostrar alert
+                paymentLink: session.url 
             });
         }
 

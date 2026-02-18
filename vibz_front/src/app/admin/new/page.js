@@ -54,8 +54,12 @@ const CadastroEvento = () => {
     const [customQuestions, setCustomQuestions] = useState([]);
     const [refundPolicy, setRefundPolicy] = useState('O cancelamento pode ser solicitado em até 7 dias após a compra.');
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
+    
+    // --- LÓGICA DE DESTAQUE ATUALIZADA ---
     const [highlightTier, setHighlightTier] = useState(null); // 'STANDARD' ou 'PREMIUM'
-    const [prices, setPrices] = useState({ standardPrice: 50, premiumPrice: 100 });
+    const [highlightDays, setHighlightDays] = useState(7); // Padrão 7 dias para Standard
+    const [prices, setPrices] = useState({ standardPrice: 10, premiumPrice: 100 }); // Valores padrão iniciais (Standard = diária)
+    
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -72,13 +76,16 @@ const CadastroEvento = () => {
         const token = localStorage.getItem('userToken');
         if (!token) router.push('/login');
         
-        // Buscar Preços de Destaque
+        // Buscar Preços do Backend
         const fetchPrices = async () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/config/prices`);
                 if (res.ok) {
                     const data = await res.json();
-                    setPrices(data);
+                    setPrices({
+                        standardPrice: data.standardPrice || 10, // R$ 10 por dia
+                        premiumPrice: data.premiumPrice || 100
+                    });
                 }
             } catch (e) { console.error("Erro preços:", e); }
         };
@@ -231,9 +238,13 @@ const CadastroEvento = () => {
         formData.append('tickets', JSON.stringify(flatTickets));
         formData.append('organizer', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
         
+        // --- ENVIA DADOS DO DESTAQUE ---
         if (highlightTier) {
             formData.append('isFeaturedRequested', 'true');
             formData.append('highlightTier', highlightTier);
+            if (highlightTier === 'STANDARD') {
+                formData.append('highlightDuration', highlightDays); // Quantidade de dias
+            }
         } else {
             formData.append('isFeaturedRequested', 'false');
         }
@@ -418,55 +429,88 @@ const CadastroEvento = () => {
                     {/* --- DESTAQUE (ATUALIZADO) --- */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaStar /></div><h3>Destacar Evento (Opcional)</h3></div>
-                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', padding: '20px'}}>
-                            {/* GRÁTIS */}
-                            <div 
-                                onClick={() => setHighlightTier(null)}
-                                style={{
-                                    border: highlightTier === null ? '2px solid #666' : '1px solid #e2e8f0',
-                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
-                                    background: highlightTier === null ? '#f8fafc' : '#fff'
-                                }}
-                            >
-                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                    <strong>Padrão</strong>
-                                    {highlightTier === null ? <FaCheckCircle color="#666"/> : <FaRegCircle color="#ccc"/>}
+                        <div style={{padding: '20px'}}>
+                            <p style={{marginBottom: '20px', color: '#64748b'}}>Escolha como você quer destacar seu evento na plataforma.</p>
+                            
+                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px'}}>
+                                
+                                {/* GRÁTIS */}
+                                <div 
+                                    onClick={() => setHighlightTier(null)}
+                                    style={{
+                                        border: highlightTier === null ? '2px solid #64748b' : '1px solid #e2e8f0',
+                                        borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                        background: highlightTier === null ? '#f8fafc' : '#fff',
+                                        transition: '0.2s'
+                                    }}
+                                >
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                        <strong>Básico</strong>
+                                        {highlightTier === null ? <FaCheckCircle color="#64748b"/> : <FaRegCircle color="#cbd5e1"/>}
+                                    </div>
+                                    <p style={{fontSize:'0.85rem', color:'#64748b', marginTop:'10px'}}>Publicação padrão na lista. Sem custo.</p>
                                 </div>
-                                <p style={{fontSize:'0.85rem', color:'#666', marginTop:'10px'}}>Sem destaque na home.</p>
-                            </div>
 
-                            {/* STANDARD */}
-                            <div 
-                                onClick={() => setHighlightTier('STANDARD')}
-                                style={{
-                                    border: highlightTier === 'STANDARD' ? '2px solid #4C01B5' : '1px solid #e2e8f0',
-                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
-                                    background: highlightTier === 'STANDARD' ? '#F3E8FF' : '#fff'
-                                }}
-                            >
-                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                    <strong style={{color: '#4C01B5'}}>Destaque Standard</strong>
-                                    {highlightTier === 'STANDARD' ? <FaCheckCircle color="#4C01B5"/> : <FaRegCircle color="#ccc"/>}
+                                {/* STANDARD (DIÁRIA) */}
+                                <div 
+                                    onClick={() => setHighlightTier('STANDARD')}
+                                    style={{
+                                        border: highlightTier === 'STANDARD' ? '2px solid #4C01B5' : '1px solid #e2e8f0',
+                                        borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                        background: highlightTier === 'STANDARD' ? '#F3E8FF' : '#fff',
+                                        transition: '0.2s'
+                                    }}
+                                >
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                        <strong style={{color: '#4C01B5'}}>Destaque Standard</strong>
+                                        {highlightTier === 'STANDARD' ? <FaCheckCircle color="#4C01B5"/> : <FaRegCircle color="#cbd5e1"/>}
+                                    </div>
+                                    <div style={{marginTop: '15px'}}>
+                                        <label style={{fontSize: '0.8rem', fontWeight: '600', color: '#4C01B5'}}>Quantos dias?</label>
+                                        <input 
+                                            type="range" min="1" max="30" 
+                                            value={highlightDays} 
+                                            onChange={(e) => setHighlightDays(parseInt(e.target.value))}
+                                            onClick={(e) => e.stopPropagation()} // Evita re-clique no card
+                                            style={{width: '100%', accentColor: '#4C01B5', cursor: 'pointer'}}
+                                        />
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px'}}>
+                                            <span style={{fontWeight: 'bold', color: '#4C01B5'}}>{highlightDays} dias</span>
+                                            <span style={{fontSize: '1.2rem', fontWeight: '800', color: '#1e293b'}}>
+                                                R$ {(highlightDays * prices.standardPrice).toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <p style={{fontSize:'0.75rem', color:'#64748b', marginTop: '5px'}}>
+                                            (R$ {prices.standardPrice.toFixed(2)} / dia)
+                                        </p>
+                                    </div>
                                 </div>
-                                <h4 style={{fontSize:'1.4rem', margin:'10px 0'}}>R$ {prices.standardPrice}</h4>
-                                <p style={{fontSize:'0.85rem', color:'#666'}}>Topo da categoria e busca.</p>
-                            </div>
 
-                            {/* PREMIUM */}
-                            <div 
-                                onClick={() => setHighlightTier('PREMIUM')}
-                                style={{
-                                    border: highlightTier === 'PREMIUM' ? '2px solid #F59E0B' : '1px solid #e2e8f0',
-                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
-                                    background: highlightTier === 'PREMIUM' ? '#FFFBEB' : '#fff'
-                                }}
-                            >
-                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                    <strong style={{color: '#B45309'}}>Destaque Premium</strong>
-                                    {highlightTier === 'PREMIUM' ? <FaCheckCircle color="#B45309"/> : <FaRegCircle color="#ccc"/>}
+                                {/* PREMIUM (ATÉ O EVENTO) */}
+                                <div 
+                                    onClick={() => setHighlightTier('PREMIUM')}
+                                    style={{
+                                        border: highlightTier === 'PREMIUM' ? '2px solid #F59E0B' : '1px solid #e2e8f0',
+                                        borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                        background: highlightTier === 'PREMIUM' ? '#FFFBEB' : '#fff',
+                                        transition: '0.2s'
+                                    }}
+                                >
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                        <strong style={{color: '#B45309'}}>Destaque Premium</strong>
+                                        {highlightTier === 'PREMIUM' ? <FaCheckCircle color="#B45309"/> : <FaRegCircle color="#cbd5e1"/>}
+                                    </div>
+                                    <h4 style={{fontSize:'1.4rem', margin:'15px 0', color: '#B45309'}}>
+                                        R$ {prices.premiumPrice.toFixed(2)}
+                                    </h4>
+                                    <p style={{fontSize:'0.85rem', color:'#B45309', fontWeight: '600'}}>
+                                        Válido até a data do evento!
+                                    </p>
+                                    <p style={{fontSize:'0.75rem', color:'#64748b', marginTop:'5px'}}>
+                                        Destaque máximo na Home e Banner rotativo.
+                                    </p>
                                 </div>
-                                <h4 style={{fontSize:'1.4rem', margin:'10px 0', color: '#B45309'}}>R$ {prices.premiumPrice}</h4>
-                                <p style={{fontSize:'0.85rem', color:'#666'}}>Topo da Home Principal.</p>
+
                             </div>
                         </div>
                     </section>
