@@ -10,7 +10,6 @@ const handleStripeWebhook = async (req, res) => {
     let event;
 
     try {
-        // O corpo precisa ser RAW para validar a assinatura
         const payload = req.rawBody || req.body;
         event = stripe.webhooks.constructEvent(payload, sig, process.env.STRIPE_WEBHOOK_SECRET);
     } catch (err) {
@@ -26,21 +25,25 @@ const handleStripeWebhook = async (req, res) => {
 
         console.log(`🔔 Webhook recebido. Tipo: ${metadata?.type}`);
 
-        // 1. PAGAMENTO DE DESTAQUE
+        // --- 1. ATIVAÇÃO DE DESTAQUE ---
         if (metadata && metadata.type === 'EVENT_HIGHLIGHT') {
             try {
                 await prisma.event.update({
                     where: { id: metadata.eventId },
-                    data: { highlightStatus: 'approved', isFeaturedRequested: false, isFeatured: true }
+                    data: { 
+                        highlightStatus: 'paid', // Status final
+                        isFeaturedRequested: false, 
+                        isFeatured: true, // AGORA SIM ESTÁ DESTACADO
+                        highlightPaymentLink: null // Limpa o link
+                    }
                 });
-                console.log('✅ Evento destacado!');
+                console.log('✅ Evento destacado com sucesso!');
             } catch (err) { console.error('Erro ao destacar:', err); }
         }
 
-        // 2. VENDA DE INGRESSO (Processamento)
+        // --- 2. VENDA DE INGRESSO ---
         if (metadata && metadata.type === 'TICKET_SALE') {
             try {
-                // Atualiza Order para PAID
                 const updatedOrder = await prisma.order.update({
                     where: { id: metadata.orderId },
                     data: { status: 'paid', paymentIntentId: session.payment_intent },
@@ -50,9 +53,7 @@ const handleStripeWebhook = async (req, res) => {
                 let participantsData = [];
                 try { participantsData = JSON.parse(metadata.participantsPreview || '[]'); } catch (e) {}
 
-                // Gera Ingressos no Banco
                 for (const item of updatedOrder.items) {
-                    // Atualiza contagem de vendidos
                     await prisma.ticketType.update({
                         where: { id: item.ticketTypeId },
                         data: { sold: { increment: item.quantity } }
@@ -79,13 +80,11 @@ const handleStripeWebhook = async (req, res) => {
 
                 console.log("🎟️ Ingressos gerados via Webhook.");
 
-                // Envia PDF para Comprador
                 const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
                 if (user) {
                     await generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
                 }
 
-                // --- TÓPICO 8: NOTIFICAÇÃO AO ORGANIZADOR ---
                 const eventData = await prisma.event.findUnique({
                     where: { id: updatedOrder.eventId },
                     include: { organizer: true }
@@ -103,7 +102,6 @@ const handleStripeWebhook = async (req, res) => {
                         totalValue
                     );
                 }
-                // ---------------------------------------------
 
             } catch (err) {
                 console.error("❌ Erro crítico webhook venda:", err);

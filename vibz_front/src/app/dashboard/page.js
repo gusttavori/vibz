@@ -372,6 +372,13 @@ const DashboardContent = () => {
                                         <strong>{formatText(event.title)}</strong>
                                         <span>{formatDate(event.date)} • {event.city}</span>
                                         <span className={`badge ${event.status}`}>{getStatusLabel(event.status)}</span>
+                                        
+                                        {/* STATUS DESTAQUE */}
+                                        {event.highlightStatus === 'pending' && <div className="highlight-tag pending">⏳ Destaque em análise</div>}
+                                        {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
+                                            <a href={event.highlightPaymentLink} target="_blank" className="highlight-pay-btn">💳 Pagar Destaque</a>
+                                        )}
+                                        {event.highlightStatus === 'paid' && <div className="highlight-tag active">🌟 Destaque Ativo</div>}
                                     </div>
                                 </div>
 
@@ -431,4 +438,4 @@ export default function Dashboard() {
             <DashboardContent />
         </Suspense>
     );
-}
+};

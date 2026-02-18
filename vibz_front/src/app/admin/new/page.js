@@ -8,7 +8,7 @@ import styles from './CadastroEvento.module.css';
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaStar, FaCalendarAlt, FaMapMarkerAlt,
-    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList, FaClock, FaUserLock
+    FaAlignLeft, FaLayerGroup, FaArrowLeft, FaClipboardList, FaClock, FaUserLock, FaCheckCircle, FaRegCircle
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -54,7 +54,8 @@ const CadastroEvento = () => {
     const [customQuestions, setCustomQuestions] = useState([]);
     const [refundPolicy, setRefundPolicy] = useState('O cancelamento pode ser solicitado em até 7 dias após a compra.');
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
-    const FEATURED_FEE = 9.90;
+    const [highlightTier, setHighlightTier] = useState(null); // 'STANDARD' ou 'PREMIUM'
+    const [prices, setPrices] = useState({ standardPrice: 50, premiumPrice: 100 });
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -70,6 +71,18 @@ const CadastroEvento = () => {
     useEffect(() => {
         const token = localStorage.getItem('userToken');
         if (!token) router.push('/login');
+        
+        // Buscar Preços de Destaque
+        const fetchPrices = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/config/prices`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPrices(data);
+                }
+            } catch (e) { console.error("Erro preços:", e); }
+        };
+        fetchPrices();
     }, [router]);
 
     const handleImageUpload = (e) => {
@@ -217,7 +230,14 @@ const CadastroEvento = () => {
         }
         formData.append('tickets', JSON.stringify(flatTickets));
         formData.append('organizer', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
-        formData.append('isFeaturedRequested', isFeaturedRequested);
+        
+        if (highlightTier) {
+            formData.append('isFeaturedRequested', 'true');
+            formData.append('highlightTier', highlightTier);
+        } else {
+            formData.append('isFeaturedRequested', 'false');
+        }
+        
         formData.append('formSchema', JSON.stringify(customQuestions));
 
         try {
@@ -395,10 +415,61 @@ const CadastroEvento = () => {
                         </div>
                     </section>
 
-                    <div className={`${styles.featuredBox} ${isFeaturedRequested ? styles.featuredActive : ''}`} onClick={() => setIsFeaturedRequested(!isFeaturedRequested)}>
-                        <div className={styles.featuredInfo}><div className={styles.featuredIcon}><FaStar /></div><div className={styles.featuredText}><h4>Destaque seu evento</h4><p>Apareça no topo e venda mais.</p></div></div>
-                        <div style={{display: 'flex', alignItems: 'center'}}><div className={styles.featuredPrice}>R$ {FEATURED_FEE.toFixed(2)}</div><label className={styles.switch} onClick={e => e.stopPropagation()}><input className={styles.hiddenCheckbox} type="checkbox" checked={isFeaturedRequested} onChange={e => setIsFeaturedRequested(e.target.checked)} /><span className={styles.slider}></span></label></div>
-                    </div>
+                    {/* --- DESTAQUE (ATUALIZADO) --- */}
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaStar /></div><h3>Destacar Evento (Opcional)</h3></div>
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', padding: '20px'}}>
+                            {/* GRÁTIS */}
+                            <div 
+                                onClick={() => setHighlightTier(null)}
+                                style={{
+                                    border: highlightTier === null ? '2px solid #666' : '1px solid #e2e8f0',
+                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                    background: highlightTier === null ? '#f8fafc' : '#fff'
+                                }}
+                            >
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                    <strong>Padrão</strong>
+                                    {highlightTier === null ? <FaCheckCircle color="#666"/> : <FaRegCircle color="#ccc"/>}
+                                </div>
+                                <p style={{fontSize:'0.85rem', color:'#666', marginTop:'10px'}}>Sem destaque na home.</p>
+                            </div>
+
+                            {/* STANDARD */}
+                            <div 
+                                onClick={() => setHighlightTier('STANDARD')}
+                                style={{
+                                    border: highlightTier === 'STANDARD' ? '2px solid #4C01B5' : '1px solid #e2e8f0',
+                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                    background: highlightTier === 'STANDARD' ? '#F3E8FF' : '#fff'
+                                }}
+                            >
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                    <strong style={{color: '#4C01B5'}}>Destaque Standard</strong>
+                                    {highlightTier === 'STANDARD' ? <FaCheckCircle color="#4C01B5"/> : <FaRegCircle color="#ccc"/>}
+                                </div>
+                                <h4 style={{fontSize:'1.4rem', margin:'10px 0'}}>R$ {prices.standardPrice}</h4>
+                                <p style={{fontSize:'0.85rem', color:'#666'}}>Topo da categoria e busca.</p>
+                            </div>
+
+                            {/* PREMIUM */}
+                            <div 
+                                onClick={() => setHighlightTier('PREMIUM')}
+                                style={{
+                                    border: highlightTier === 'PREMIUM' ? '2px solid #F59E0B' : '1px solid #e2e8f0',
+                                    borderRadius: '12px', padding: '20px', cursor: 'pointer',
+                                    background: highlightTier === 'PREMIUM' ? '#FFFBEB' : '#fff'
+                                }}
+                            >
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                    <strong style={{color: '#B45309'}}>Destaque Premium</strong>
+                                    {highlightTier === 'PREMIUM' ? <FaCheckCircle color="#B45309"/> : <FaRegCircle color="#ccc"/>}
+                                </div>
+                                <h4 style={{fontSize:'1.4rem', margin:'10px 0', color: '#B45309'}}>R$ {prices.premiumPrice}</h4>
+                                <p style={{fontSize:'0.85rem', color:'#666'}}>Topo da Home Principal.</p>
+                            </div>
+                        </div>
+                    </section>
 
                     <div className={styles.footer}>
                         <div className={styles.termsBox}>

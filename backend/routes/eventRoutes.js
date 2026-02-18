@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
+const configController = require('../controllers/configController'); // NOVO
 const geocodeAddressBackend = require('../utils/geocode'); 
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -15,20 +16,16 @@ const injectGeocode = (req, res, next) => {
     next();
 };
 
+// Rota Pública de Preços (Para o form de cadastro saber quanto custa)
+router.get('/config/prices', configController.getPublicConfig);
+
 // Rotas de Criação e Edição
 router.post('/', authMiddleware, upload.single('image'), injectGeocode, eventController.createEvent);
 router.put('/:id', authMiddleware, upload.single('image'), injectGeocode, eventController.updateEvent);
 
-// --- NOVA ROTA: Pausar/Ativar Vendas de Ingresso (Resolve o erro 404) ---
 router.patch('/tickets/:ticketId/status', authMiddleware, eventController.toggleTicketStatus);
-
-// Rota do Organizador
 router.get('/organizer/my-events', authMiddleware, eventController.getMyEvents);
-
-// Rota de Favoritos
 router.post('/:id/favorite', authMiddleware, eventController.toggleFavorite);
-
-// Rota de Participantes
 router.get('/:id/participants', authMiddleware, eventController.getEventParticipants);
 
 // Rotas Públicas de Listagem
@@ -39,7 +36,7 @@ router.get('/cities', eventController.getEventCities);
 router.get('/category/:categoryName', eventController.getEventsByCategory);
 router.get('/:id', eventController.getEventById);
 
-// Rotas Administrativas (Aprovação)
+// Rotas Administrativas
 router.get('/pending', authMiddleware, eventController.getPendingEvents);
 router.put('/approve/:id', authMiddleware, eventController.approveEvent);
 router.delete('/reject/:id', authMiddleware, eventController.rejectEvent);

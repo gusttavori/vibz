@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const jwt = require('jsonwebtoken');
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const loginAdmin = async (req, res) => {
     try {
@@ -109,24 +111,82 @@ const updateEventStatus = async (req, res) => {
     }
 };
 
+// --- APROVAÇÃO COM COBRANÇA (ATUALIZADO) ---
 const updateHighlightStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { highlightStatus } = req.body;
 
-        const isFeatured = highlightStatus === 'approved';
+        const event = await prisma.event.findUnique({ where: { id } });
+        if (!event) return res.status(404).json({ message: "Evento não encontrado" });
 
-        const event = await prisma.event.update({
-            where: { id },
-            data: { 
-                highlightStatus,
-                isFeatured,
-                isFeaturedRequested: false
-            }
-        });
+        // REJEIÇÃO
+        if (highlightStatus === 'rejected') {
+            const updated = await prisma.event.update({
+                where: { id },
+                data: { 
+                    highlightStatus: 'rejected',
+                    isFeaturedRequested: false,
+                    isFeatured: false
+                }
+            });
+            return res.json({ message: "Destaque rejeitado.", event: updated });
+        }
 
-        res.json(event);
+        // APROVAÇÃO -> GERA COBRANÇA
+        if (highlightStatus === 'approved') {
+            // 1. Pega preço atual
+            const config = await prisma.systemConfig.findFirst();
+            // Se não tiver config, usa fallback
+            const priceConfig = config || { premiumPrice: 100.00, standardPrice: 50.00 };
+            
+            const price = event.highlightTier === 'PREMIUM' 
+                ? priceConfig.premiumPrice 
+                : priceConfig.standardPrice;
+
+            // 2. Cria sessão na Stripe
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card', 'boleto'],
+                line_items: [{
+                    price_data: {
+                        currency: 'brl',
+                        product_data: {
+                            name: `Destaque ${event.highlightTier || 'Padrão'} - ${event.title}`,
+                            description: 'Aprovação de destaque na plataforma Vibz',
+                        },
+                        unit_amount: Math.round(price * 100), // Em centavos
+                    },
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?success=highlight&eventId=${event.id}`,
+                cancel_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?canceled=true`,
+                metadata: {
+                    type: 'EVENT_HIGHLIGHT', // Importante para o Webhook identificar
+                    eventId: event.id,
+                    tier: event.highlightTier
+                }
+            });
+
+            // 3. Atualiza evento com link e status de espera
+            const updated = await prisma.event.update({
+                where: { id },
+                data: {
+                    highlightStatus: 'approved_waiting_payment',
+                    highlightPaymentLink: session.url,
+                    highlightFee: price
+                }
+            });
+
+            return res.json({ 
+                message: "Aprovado! Link de pagamento gerado.", 
+                event: updated,
+                paymentLink: session.url // Retorna o link pro frontend mostrar alert
+            });
+        }
+
     } catch (error) {
+        console.error("Erro ao atualizar destaque:", error);
         res.status(500).json({ message: 'Erro ao atualizar destaque.' });
     }
 };

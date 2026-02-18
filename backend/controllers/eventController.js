@@ -62,12 +62,15 @@ const createEvent = async (req, res) => {
         const { 
             title, description, category, ageRating, date, sessions, 
             location, city, address, tickets, organizerName, organizerInstagram,
-            isFeaturedRequested, formSchema, refundPolicy, isInformational 
+            isFeaturedRequested, highlightTier, formSchema, refundPolicy, isInformational 
         } = req.body;
 
         const userId = req.user.id;
         const isInfoBool = isInformational === 'true' || isInformational === true;
-        const isFeaturedBool = isFeaturedRequested === 'true' || isFeaturedRequested === true;
+        
+        // Verifica se pediu destaque E qual o nível
+        const tier = highlightTier ? highlightTier.toUpperCase() : null;
+        const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true) || !!tier;
 
         let parsedAddress, parsedTicketsFlat, parsedSessions, parsedFormSchema;
         try {
@@ -97,8 +100,13 @@ const createEvent = async (req, res) => {
                 location: location || parsedAddress.street,
                 category: category ? category.trim() : "Geral",
                 ageRating, priceFrom: 0, status: 'pending',
-                organizerId: userId, isFeaturedRequested: isFeaturedBool,
+                organizerId: userId, 
+                
+                // LÓGICA DE DESTAQUE SALVA AQUI
+                isFeaturedRequested: isFeaturedBool,
                 highlightStatus: isFeaturedBool ? 'pending' : 'none',
+                highlightTier: tier, // Salva se é PREMIUM ou STANDARD
+
                 refundPolicy: refundPolicy || "7 dias após a compra",
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
@@ -282,14 +290,13 @@ const getFeaturedEvents = async (req, res) => {
     } catch (e) { res.status(500).json({ message: "Erro" }); }
 };
 
-// CORREÇÃO CRUCIAL AQUI: Busca insensível e contains
 const getEventsByCategory = async (req, res) => {
     try {
         let { categoryName } = req.params;
         const decoded = decodeURIComponent(categoryName);
         const events = await prisma.event.findMany({
             where: { 
-                category: { contains: decoded, mode: 'insensitive' }, // AGORA USA CONTAINS
+                category: { contains: decoded, mode: 'insensitive' },
                 status: 'approved' 
             },
             include: { ticketTypes: true },
@@ -348,6 +355,7 @@ const getEventParticipants = async (req, res) => {
     } catch (error) { res.status(500).json({ message: 'Erro ao carregar lista.' }); }
 };
 
+// Funções Admin
 const getPendingEvents = async (req, res) => { 
     try {
         const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
@@ -355,7 +363,13 @@ const getPendingEvents = async (req, res) => {
     } catch (error) { res.status(500).json({ message: "Erro ao buscar pendentes" }); }
 };
 
-const getPendingHighlights = async (req, res) => { res.json([]); };
+const getPendingHighlights = async (req, res) => { 
+    try {
+        const events = await prisma.event.findMany({ where: { highlightStatus: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
+        res.json(events);
+    } catch (e) { res.status(500).json({ message: "Erro" }); }
+};
+
 const approveHighlight = async (req, res) => { res.json({}); };
 const rejectHighlight = async (req, res) => { res.json({}); };
 

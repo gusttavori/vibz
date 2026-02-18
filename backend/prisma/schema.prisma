@@ -1,4 +1,3 @@
-// URL de conexão limpa
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -122,10 +121,14 @@ model Event {
   priceFrom            Float?   // Pode ser nulo se for informativo
   refundPolicy         String
   termsAndConditions   String?
-  isFeatured           Boolean @default(false)
+  
+  // --- LÓGICA DE DESTAQUE ATUALIZADA ---
+  isFeatured           Boolean @default(false) // Só fica true após pagamento
   isFeaturedRequested  Boolean @default(false)
-  highlightStatus      String  @default("none")
+  highlightStatus      String  @default("none") // none, pending, approved_waiting_payment, paid, rejected
   highlightFee         Float   @default(0)
+  highlightTier        String? // 'STANDARD' ou 'PREMIUM'
+  highlightPaymentLink String? // Link da Stripe para pagar o destaque
 
   // Datas
   eventDate DateTime
