@@ -249,21 +249,6 @@
     object-fit: cover;
 }
 
-.imageOverlay {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    background: rgba(0,0,0,0.6);
-    color: white;
-    padding: 10px;
-    text-align: center;
-    opacity: 0;
-    transition: 0.3s;
-}
-
-.uploadBox:hover .imageOverlay {
-    opacity: 1;
-}
-
 /* --- SESSIONS --- */
 .sessionCard {
     background: #f8fafc;
@@ -449,6 +434,24 @@
     align-items: center;
 }
 
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    color: #475569;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-purple);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
 .addBtnFull {
     width: 100%;
     padding: 16px;
@@ -518,22 +521,6 @@
 .hiddenCheckbox:checked + .slider { background-color: var(--primary-purple); }
 .hiddenCheckbox:checked + .slider:before { transform: translateX(24px); }
 
-.checkboxLabel {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.95rem;
-    color: #475569;
-    cursor: pointer;
-    user-select: none;
-}
-.checkbox {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary-purple);
-    cursor: pointer;
-    border-radius: 4px;
-}
 
 /* --- DESTAQUES (NOVO) --- */
 .highlightGrid {
