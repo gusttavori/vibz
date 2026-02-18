@@ -12,41 +12,35 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Novo estado para evitar "piscada"
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const router = useRouter();
 
-  // --- 1. REDE DE SEGURANÇA (A Mágica para o PWA) ---
-  // Assim que a tela de login abre, verifica se já existe um token válido.
-  // Se existir, empurra para o dashboard imediatamente.
   useEffect(() => {
     const checkExistingAuth = () => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
         if (token) {
-            // Se já tem token, nem mostra o login, vai pro dashboard
-            router.replace('/');
+            window.location.assign('/');
         } else {
-            setIsCheckingAuth(false); // Libera para mostrar o form
+            setIsCheckingAuth(false);
         }
     };
     checkExistingAuth();
-  }, [router]);
+  }, []);
 
   const realizarLoginNoNavegador = (data) => {
-    setMessage(data.msg || 'Login realizado! Entrando...');
+    setMessage(data.msg || 'Login realizado! Redirecionando...');
     
     if (typeof window !== 'undefined') {
-        // Salva os dados
         localStorage.setItem('userToken', data.token);
         if (data.user) {
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.name);
         }
         
-        // --- 2. CORREÇÃO DE NAVEGAÇÃO PWA ---
-        // Usamos router.push primeiro (mais suave/rápido no App)
-        // O useEffect acima garante que se a página recarregar, ele redireciona de novo.
-        router.push('/');
+        setTimeout(() => {
+             window.location.assign('/');
+        }, 200);
     }
   };
 
@@ -68,7 +62,7 @@ export default function Login() {
         realizarLoginNoNavegador(data);
       } else {
         setMessage(data.msg || 'Erro ao fazer login.');
-        setIsLoading(false); 
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
@@ -80,7 +74,6 @@ export default function Login() {
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setMessage('Processando login com Google...');
-      // setIsLoading(true) aqui ajuda a evitar cliques duplos no PWA
       setIsLoading(true); 
       
       try {
@@ -118,8 +111,6 @@ export default function Login() {
     router.push('/esqueci-senha');
   };
 
-  // Se estiver verificando se já está logado, mostra um loading simples ou nada
-  // Isso evita que o usuário veja o form de login por 1 segundo e depois a tela mude.
   if (isCheckingAuth) {
       return (
         <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
