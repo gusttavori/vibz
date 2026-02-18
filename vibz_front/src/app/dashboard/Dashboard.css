@@ -86,8 +86,8 @@
 .purple-icon { color: var(--primary-purple); }
 
 .btn-create-event-top {
-    background: var(--primary-purple); color: white; border: none; padding: 14px 28px;
-    border-radius: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
+    background: var(--primary-purple); color: white; border: none; padding: 10px 21px;
+    border-radius: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px;
     box-shadow: 0 10px 15px -3px rgba(76, 1, 181, 0.2); transition: 0.2s;
 }
 .btn-create-event-top:hover { background: var(--primary-hover); transform: translateY(-2px); }

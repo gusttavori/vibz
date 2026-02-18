@@ -197,7 +197,7 @@ const DashboardContent = () => {
                 <div className="section-header-flex">
                     <h2><FaList className="purple-icon" /> Gerenciar Eventos</h2>
                     <button className="btn-create-event-top" onClick={() => router.push('/admin/new')}>
-                        <FaPlus /> Criar Novo Evento
+                        <FaPlus /> Novo Evento
                     </button>
                 </div>
 
