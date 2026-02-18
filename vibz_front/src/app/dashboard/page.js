@@ -8,27 +8,33 @@ import toast, { Toaster } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { 
     FaCheckCircle, FaExclamationCircle, FaCalendarAlt, FaEdit, 
-    FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine,
-    FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt, FaUsers, FaArrowUp
+    FaList, FaQrcode, FaCog, FaTimes,
+    FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt, FaUsers, FaArrowUp, FaPlus
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+// --- COMPONENTE SKELETON ---
 const DashboardSkeleton = () => (
     <div className="dashboard-container">
         <Header />
         <main className="dashboard-content">
-            <div className="skeleton-box skeleton-pulse" style={{height: '100px', marginBottom: '20px'}}></div>
+            <div className="skeleton-box skeleton-pulse" style={{height: '100px', marginBottom: '30px', borderRadius: '16px'}}></div>
             <div className="stats-grid">
-                {[1, 2, 3].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '120px'}}></div>)}
+                {[1, 2, 3].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>)}
+            </div>
+             <div className="skeleton-box skeleton-pulse" style={{height: '100px', margin: '30px 0', borderRadius: '16px'}}></div>
+            <div className="events-list-wrapper">
+                {[1, 2].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '140px', width: '100%', marginBottom: '15px', borderRadius: '20px'}}></div>)}
             </div>
         </main>
         <Footer />
     </div>
 );
 
+// --- MODAL DE GERENCIAMENTO DE VENDAS ---
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     const [tickets, setTickets] = useState(event.tickets || []);
     const [loadingId, setLoadingId] = useState(null);
@@ -48,7 +54,7 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
 
             if (res.ok) {
                 setTickets(tickets.map(t => (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t));
-                toast.success(newStatus === 'active' ? 'Vendas Ativadas!' : 'Vendas Pausadas');
+                toast.success(newStatus === 'active' ? 'Vendas Ativadas!' : 'Vendas Pausadas', { icon: newStatus === 'active' ? '🟢' : '🔴' });
                 if (onUpdate) onUpdate(); 
             }
         } catch (error) { toast.error('Erro de conexão.'); } 
@@ -57,9 +63,9 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
 
     return (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <div className="modal-box">
+            <div className="modal-box animate-pop-in">
                 <div className="modal-header">
-                    <h3>Gerenciar Ingressos</h3>
+                    <h3>Gerenciar Ingressos: {event.title}</h3>
                     <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
                 </div>
                 <div className="modal-body">
@@ -74,9 +80,11 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                                 <span className="slider"></span>
                             </label>
                         </div>
-                    )) : <p>Nenhum ingresso encontrado.</p>}
+                    )) : <div className="empty-state-modal">Nenhum ingresso configurado para este evento.</div>}
                 </div>
-                <button className="btn-modal-close" onClick={onClose}>Concluir</button>
+                <div className="modal-footer">
+                 <button className="btn-modal-close" onClick={onClose}>Concluir</button>
+                </div>
             </div>
         </div>
     );
@@ -110,17 +118,22 @@ const DashboardContent = () => {
                 const data = await eventsRes.json();
                 setMyEvents(data.myEvents || []);
             }
-        } catch (error) { console.error(error); } 
+        } catch (error) { console.error("Erro ao carregar dashboard:", error); } 
         finally { setLoading(false); }
     }, [router]);
 
     useEffect(() => {
         fetchAllData();
         if (searchParams.get('success') === 'highlight') {
-            toast.success("Destaque Ativado! 🚀");
-            confetti({ particleCount: 150, spread: 70 });
+            toast.success("Destaque Ativado com Sucesso! 🚀", { duration: 5000 });
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+            router.replace('/dashboard');
         }
-    }, [fetchAllData, searchParams]);
+        if (searchParams.get('stripe') === 'success') {
+             toast.success("Conta Bancária Conectada! 🎉", { duration: 5000 });
+             router.replace('/dashboard');
+        }
+    }, [fetchAllData, searchParams, router]);
 
     const metrics = useMemo(() => {
         let revenue = 0, sold = 0;
@@ -137,25 +150,28 @@ const DashboardContent = () => {
 
     return (
         <div className="dashboard-container">
-            <Toaster position="top-center" />
+            <Toaster position="top-center" toastOptions={{ style: { fontFamily: 'Urbanist, sans-serif', fontWeight: 600 } }} />
             <Header />
 
             <main className="dashboard-content">
-                {/* STATUS BAR & HEADER */}
-                <div className="dashboard-top-nav">
-                    <div className="live-status-badge">
-                        <div className="pulse-container"><div className="dot"></div><div className="pulse"></div></div>
-                        SISTEMA ONLINE
+                {/* TOPO: STATUS E HEADER */}
+                <div className="dashboard-top-bar">
+                    <div className="dashboard-header">
+                        <div className="dash-header-text">
+                            <h1>Painel do Organizador</h1>
+                             {/* CORREÇÃO: Adicionado fallback para o nome */}
+                            <p className="greeting-text">Olá, {userData?.name ? userData.name.split(' ')[0] : 'Organizador'} 👋</p>
+                        </div>
                     </div>
-                    <button className="btn-checkin-header" onClick={() => router.push('/admin/checkin')}>
-                        <FaQrcode /> Validar Ingressos
-                    </button>
-                </div>
-
-                <div className="dashboard-header">
-                    <div className="dash-header-text">
-                        <h1>Painel do Organizador</h1>
-                        <p>Olá, {userData?.name?.split(' ')[0]}</p>
+                    
+                    <div className="top-actions-container">
+                        <div className="live-status-badge">
+                            <div className="pulse-container"><div className="dot"></div><div className="pulse"></div></div>
+                            SISTEMA ONLINE
+                        </div>
+                        <button className="btn-checkin-header" onClick={() => router.push('/admin/checkin')}>
+                            <FaQrcode /> Validar Ingressos
+                        </button>
                     </div>
                 </div>
 
@@ -163,7 +179,7 @@ const DashboardContent = () => {
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon revenue"><FaMoneyBillWave /></div>
-                        <div className="stat-info"><span>Faturamento Bruto</span><strong>R$ {metrics.revenue.toFixed(2)}</strong></div>
+                        <div className="stat-info"><span>Faturamento Bruto</span><strong>R$ {metrics.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-icon tickets"><FaTicketAlt /></div>
@@ -175,29 +191,39 @@ const DashboardContent = () => {
                     </div>
                 </div>
 
-                {/* STRIPE CARD */}
-                <div className="stripe-setup-card">
-                    <div className="stripe-info">
-                        <FaExclamationCircle className={isStripeReady ? 'icon-ready' : 'icon-warn'} />
-                        <div>
-                            <h3>{isStripeReady ? 'Conta de Recebimento Ativa' : 'Configure seus Recebimentos'}</h3>
-                            <p>É necessário conectar sua conta para transferir o saldo das vendas.</p>
+                {/* STRIPE CARD - REFORMULADO */}
+                <div className={`stripe-setup-card ${isStripeReady ? 'ready-state' : 'warning-state'}`}>
+                    <div className="stripe-content-wrapper">
+                        <div className="stripe-icon-box">
+                            {isStripeReady ? <FaCheckCircle /> : <FaExclamationCircle />}
+                        </div>
+                        <div className="stripe-text">
+                            <h3>{isStripeReady ? 'Conta Bancária Conectada' : 'Configure seus Recebimentos'}</h3>
+                            <p>{isStripeReady ? 'Sua conta está pronta para receber transferências automáticas das vendas.' : 'É necessário conectar sua conta Stripe para receber o saldo das vendas dos ingressos.'}</p>
                         </div>
                     </div>
-                    <button className={`btn-stripe ${isStripeReady ? 'btn-white' : 'btn-orange'}`}>
-                        {isStripeReady ? 'Ver Extrato' : 'Conectar Banco'}
+                    <button className="btn-stripe-action">
+                        {isStripeReady ? 'Ver Extrato Financeiro' : 'Conectar Conta Agora'}
                     </button>
                 </div>
 
+                {/* TÍTULO DA SEÇÃO E BOTÃO CRIAR NOVO */}
                 <div className="section-title-row">
-                    <h2><FaList /> Gerenciar Eventos</h2>
-                    <button className="btn-primary-new" onClick={() => router.push('/admin/new')}>+ Criar Novo</button>
+                    <h2><FaList className="title-icon"/> Gerenciar Eventos</h2>
+                    <button className="btn-primary-new" onClick={() => router.push('/admin/new')}>
+                        <FaPlus /> Criar Novo Evento
+                    </button>
                 </div>
 
                 {/* LISTA DE EVENTOS */}
                 <div className="events-list-wrapper">
                     {myEvents.length === 0 ? (
-                        <div className="empty-dashboard">Nenhum evento encontrado.</div>
+                        <div className="empty-dashboard-state">
+                            <FaCalendarAlt size={40} color="#cbd5e1" />
+                            <h3>Nenhum evento criado ainda.</h3>
+                            <p>Comece a vender criando seu primeiro evento agora!</p>
+                            <button className="btn-primary-new mt-4" onClick={() => router.push('/admin/new')}>Criar Evento</button>
+                        </div>
                     ) : (
                         myEvents.map((event) => (
                             <div key={event.id || event._id} className="event-row-card">
@@ -206,41 +232,47 @@ const DashboardContent = () => {
                                     <div className="event-row-details">
                                         <div className="event-row-title-area">
                                             <strong>{event.title}</strong>
-                                            {event.highlightStatus === 'paid' && <FaStar className="star-icon" title="Destaque Ativo" />}
+                                            {event.highlightStatus === 'paid' && <FaStar className="star-icon-active" title="Destaque Ativo" />}
                                         </div>
-                                        <p>{new Date(event.date).toLocaleDateString()} • {event.city}</p>
+                                        <p className="event-date-loc"><FaCalendarAlt size={12}/> {new Date(event.date).toLocaleDateString()} • {event.city}</p>
                                         
                                         <div className="badge-container">
                                             <span className={`badge-pill status-${event.status}`}>
-                                                {event.status === 'approved' ? 'APROVADO' : event.status.toUpperCase()}
+                                                {event.status === 'approved' ? 'APROVADO' : event.status === 'pending' ? 'EM ANÁLISE' : 'REJEITADO'}
                                             </span>
 
-                                            {event.highlightStatus === 'approved_waiting_payment' ? (
+                                            {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
                                                 <a href={event.highlightPaymentLink} target="_blank" className="badge-pill highlight-pay">
                                                     <FaBolt /> PAGAR DESTAQUE
                                                 </a>
-                                            ) : event.highlightStatus === 'paid' ? (
-                                                <span className="badge-pill highlight-active">DESTAQUE ATIVO</span>
-                                            ) : (
+                                            )}
+                                            
+                                            {event.highlightStatus === 'paid' && (
+                                                <span className="badge-pill highlight-active">🌟 DESTAQUE ATIVO</span>
+                                            )}
+
+                                            {/* Botão para solicitar destaque se aprovado e sem destaque */}
+                                            {(!event.highlightStatus || event.highlightStatus === 'none') && event.status === 'approved' && (
                                                 <button className="badge-pill highlight-request" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)}>
                                                     <FaArrowUp /> SOLICITAR DESTAQUE
                                                 </button>
                                             )}
+                                             {event.highlightStatus === 'pending' && <span className="badge-pill highlight-pending">⏳ ANÁLISE DESTAQUE</span>}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="event-row-actions">
-                                    <button className="btn-row-action" onClick={() => router.push(`/eventos/${event.id || event._id}/participantes`)}>
-                                        <FaUsers /> <span className="btn-label">Participantes</span>
+                                    <button className="btn-row-action secondary" onClick={() => router.push(`/eventos/${event.id || event._id}/participantes`)} title="Ver Participantes">
+                                        <FaUsers size={16} /> <span className="btn-label">Participantes</span>
                                     </button>
                                     {!event.isInformational && (
-                                        <button className="btn-row-action" onClick={() => setSelectedEventForManage(event)}>
-                                            <FaCog /> <span className="btn-label">Ingressos</span>
+                                        <button className="btn-row-action secondary" onClick={() => setSelectedEventForManage(event)} title="Gerenciar Ingressos">
+                                            <FaCog size={16} /> <span className="btn-label">Ingressos</span>
                                         </button>
                                     )}
-                                    <button className="btn-row-action" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)}>
-                                        <FaEdit /> <span className="btn-label">Editar</span>
+                                    <button className="btn-row-action primary-outline" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)} title="Editar Evento">
+                                        <FaEdit size={16} /> <span className="btn-label">Editar</span>
                                     </button>
                                 </div>
                             </div>
