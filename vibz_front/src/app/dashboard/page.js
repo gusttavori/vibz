@@ -9,14 +9,12 @@ import confetti from 'canvas-confetti';
 import { 
     FaCheckCircle, FaExclamationCircle, FaCalendarAlt, FaEdit, 
     FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine,
-    FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt, FaUsers, FaArrowUp
+    FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt, FaUsers, FaArrowUp, FaPlus
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
-const getApiBaseUrl = () => {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // --- COMPONENTE SKELETON ---
 const DashboardSkeleton = () => (
@@ -24,20 +22,16 @@ const DashboardSkeleton = () => (
         <Header />
         <main className="dashboard-content">
             <div className="dashboard-header">
-                <div className="dash-header-text" style={{width: '100%', maxWidth: '250px'}}>
+                <div className="dash-header-text" style={{width: '250px'}}>
                     <div className="skeleton-text skeleton-pulse" style={{height: '32px', marginBottom: '10px'}}></div>
                     <div className="skeleton-text skeleton-pulse" style={{height: '20px', width: '60%'}}></div>
                 </div>
             </div>
-            <div className="stats-grid" style={{marginBottom: '30px'}}>
-                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
-                <div className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>
+            <div className="stats-grid">
+                {[1, 2, 3].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>)}
             </div>
             <div className="events-list">
-                {[1, 2].map(i => (
-                    <div key={i} className="skeleton-box skeleton-pulse" style={{height: '100px', width: '100%', marginBottom: '15px', borderRadius: '16px'}}></div>
-                ))}
+                {[1, 2].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '100px', width: '100%', marginBottom: '15px'}}></div>)}
             </div>
         </main>
         <Footer />
@@ -48,7 +42,6 @@ const DashboardSkeleton = () => (
 const ManageSalesModal = ({ event, onClose, onUpdate }) => {
     const [tickets, setTickets] = useState(event.tickets || []);
     const [loadingId, setLoadingId] = useState(null);
-    const API_BASE_URL = getApiBaseUrl();
 
     const handleToggle = async (ticket) => {
         const ticketId = ticket.id || ticket._id;
@@ -79,7 +72,7 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div className="modal-box">
                 <div className="modal-header">
-                    <h3>Configurar Ingressos</h3>
+                    <h3>Gerenciar Ingressos</h3>
                     <button className="close-modal-btn" onClick={onClose}><FaTimes /></button>
                 </div>
                 <div className="modal-body">
@@ -98,6 +91,7 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
                         ))}
                     </div>
                 </div>
+                <button className="btn-modal-close" onClick={onClose}>Concluir</button>
             </div>
         </div>
     );
@@ -106,23 +100,12 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
 const DashboardContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const API_BASE_URL = getApiBaseUrl();
     
     const [stats, setStats] = useState(null);
     const [userData, setUserData] = useState(null);
     const [myEvents, setMyEvents] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const [connectionError, setConnectionError] = useState(false);
     const [selectedEventForManage, setSelectedEventForManage] = useState(null);
-
-    useEffect(() => {
-        if (searchParams.get('stripe') === 'success') toast.success("CONTA CONECTADA!");
-        if (searchParams.get('success') === 'highlight') {
-            toast.success("DESTAQUE ATIVADO! 🚀");
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            router.replace('/dashboard');
-        }
-    }, [searchParams, router]);
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
@@ -142,24 +125,25 @@ const DashboardContent = () => {
                 const data = await eventsRes.json();
                 setMyEvents(data.myEvents || []);
             }
-        } catch (error) { setConnectionError(true); } 
+        } catch (error) { toast.error("Erro ao carregar dados."); } 
         finally { setLoading(false); }
-    }, [API_BASE_URL, router]);
+    }, [router]);
 
-    useEffect(() => { fetchAllData(); }, [fetchAllData]);
+    useEffect(() => {
+        fetchAllData();
+        if (searchParams.get('success') === 'highlight') {
+            toast.success("Destaque ativado!");
+            confetti({ particleCount: 150, spread: 70 });
+        }
+    }, [fetchAllData, searchParams]);
 
     const metrics = useMemo(() => {
-        let totalRevenue = 0;
-        let totalTicketsSold = 0;
-        myEvents.forEach(event => {
-            event.tickets?.forEach(ticket => {
-                const sold = parseInt(ticket.sold) || 0;
-                let price = Number(ticket.price) || 0;
-                totalTicketsSold += sold;
-                totalRevenue += (sold * price);
-            });
-        });
-        return { totalRevenue, totalTicketsSold };
+        let revenue = 0, sold = 0;
+        myEvents.forEach(ev => ev.tickets?.forEach(t => {
+            sold += (t.sold || 0);
+            revenue += (t.sold || 0) * (t.price || 0);
+        }));
+        return { revenue, sold };
     }, [myEvents]);
 
     if (loading && !stats) return <DashboardSkeleton />;
@@ -178,150 +162,121 @@ const DashboardContent = () => {
                         <p>Olá, {userData?.name?.split(' ')[0]}</p>
                     </div>
                     <div className="dash-header-actions">
-                        <button className="btn-action checkin" onClick={() => router.push('/admin/checkin')}>
+                        <div className="live-badge">
+                            <div className="dot-container">
+                                <div className="dot"></div>
+                                <div className="pulse"></div>
+                            </div>
+                            SISTEMA ONLINE
+                        </div>
+                        <button className="btn-action-top checkin" onClick={() => router.push('/admin/checkin')}>
                             <FaQrcode /> Validar Ingressos
                         </button>
-                        <div className="live-badge"><span className="dot"></span> Online</div>
                     </div>
                 </div>
 
-                {/* KPI CARDS */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon revenue"><FaMoneyBillWave /></div>
-                        <div className="stat-info">
-                            <span className="stat-label">Faturamento Bruto</span>
-                            <strong className="stat-value">R$ {metrics.totalRevenue.toFixed(2)}</strong>
-                        </div>
+                        <div className="stat-info"><span>Faturamento Bruto</span><strong>R$ {metrics.revenue.toFixed(2)}</strong></div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-icon tickets"><FaTicketAlt /></div>
-                        <div className="stat-info">
-                            <span className="stat-label">Ingressos Vendidos</span>
-                            <strong className="stat-value">{metrics.totalTicketsSold}</strong>
-                        </div>
+                        <div className="stat-info"><span>Ingressos Vendidos</span><strong>{metrics.sold}</strong></div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-icon events"><FaCalendarAlt /></div>
-                        <div className="stat-info">
-                            <span className="stat-label">Meus Eventos</span>
-                            <strong className="stat-value">{myEvents.length}</strong>
-                        </div>
+                        <div className="stat-info"><span>Meus Eventos</span><strong>{myEvents.length}</strong></div>
                     </div>
                 </div>
 
-                {/* STRIPE CONNECTION */}
-                <div className="wallet-section">
-                    <div className={`wallet-card ${isStripeReady ? 'success' : 'warning'}`}>
-                        <div className="wallet-icon">
-                            {isStripeReady ? <FaCheckCircle /> : <FaExclamationCircle />}
+                <div className="wallet-card">
+                    <div className="wallet-content">
+                        <div className="wallet-icon-bg"><FaExclamationCircle /></div>
+                        <div>
+                            <h3>{isStripeReady ? 'Conta Pronta' : 'Ativar Recebimentos'}</h3>
+                            <p>Configure sua conta Stripe para transferir o saldo das suas vendas.</p>
                         </div>
-                        <div className="wallet-info">
-                            <h3>{isStripeReady ? 'Recebimentos Ativos' : 'Conectar Conta Bancária'}</h3>
-                            <p>{isStripeReady ? 'Sua conta Stripe está pronta para receber vendas.' : 'Conecte sua conta para começar a vender ingressos.'}</p>
-                        </div>
-                        <button className={`btn-wallet ${isStripeReady ? 'outline' : 'primary'}`}>
-                            {isStripeReady ? 'Ver Extrato' : 'Conectar'}
-                        </button>
                     </div>
+                    <button className={`btn-connect ${isStripeReady ? 'ready' : ''}`}>
+                        {isStripeReady ? 'Ver Extrato' : 'Conectar'}
+                    </button>
                 </div>
 
                 <div className="section-header">
-                    <h2>Gerenciar Eventos</h2>
-                    <button className="btn-new" onClick={() => router.push('/admin/new')}>+ Criar Novo</button>
+                    <h2><FaList /> Gerenciar Meus Eventos</h2>
+                    <button className="btn-new-event" onClick={() => router.push('/admin/new')}>
+                        <FaPlus /> Criar Novo
+                    </button>
                 </div>
 
-                {/* LISTA DE EVENTOS */}
                 <div className="events-list">
-                    {myEvents.length === 0 ? (
-                        <div className="empty-state">Você ainda não possui eventos criados.</div>
-                    ) : (
-                        myEvents.map((event) => (
-                            <div key={event.id || event._id} className="event-card-dash">
-                                <div className="event-info">
-                                    <img src={event.imageUrl} alt="" className="event-thumb" />
-                                    <div className="event-meta">
-                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                            <strong>{event.title}</strong>
-                                            {event.highlightStatus === 'paid' && <FaStar color="#F59E0B" title="Destaque Ativo" />}
-                                        </div>
-                                        <span>{new Date(event.date).toLocaleDateString()} • {event.city}</span>
+                    {myEvents.map((event) => (
+                        <div key={event.id || event._id} className="event-card-dash">
+                            <div className="event-main-info">
+                                <img src={event.imageUrl} alt="" className="event-img" />
+                                <div className="event-details">
+                                    <div className="title-row">
+                                        <strong>{event.title}</strong>
+                                        {event.highlightStatus === 'paid' && <FaStar className="star-active" />}
+                                    </div>
+                                    <p className="event-date-loc">
+                                        {new Date(event.date).toLocaleDateString()} • {event.city}
+                                    </p>
+                                    
+                                    <div className="badge-row">
+                                        <span className={`badge-status ${event.status}`}>{event.status}</span>
                                         
-                                        <div className="status-row" style={{display:'flex', gap:'8px', marginTop:'5px', alignItems:'center'}}>
-                                            <span className={`badge ${event.status}`}>{event.status}</span>
-                                            
-                                            {/* Status de Destaque / Pagamento */}
-                                            {event.highlightStatus === 'pending' && <span className="badge highlight-pending">⏳ Análise Destaque</span>}
-                                            {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
-                                                <a href={event.highlightPaymentLink} target="_blank" className="badge highlight-pay">
-                                                    <FaBolt size={10} /> Pagar Destaque
-                                                </a>
-                                            )}
-                                            {event.highlightStatus === 'paid' && <span className="badge highlight-active">🌟 Destaque Ativo</span>}
-                                            
-                                            {/* Opção para destacar evento já postado */}
-                                            {(!event.highlightStatus || event.highlightStatus === 'none' || event.highlightStatus === 'rejected') && event.status === 'approved' && (
-                                                <button className="badge highlight-request" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)}>
-                                                    <FaArrowUp size={10} /> Solicitar Destaque
-                                                </button>
-                                            )}
-                                        </div>
+                                        {/* Logica de Status de Destaque */}
+                                        {event.highlightStatus === 'pending' && <span className="badge-highlight pending">⏳ Análise Destaque</span>}
+                                        
+                                        {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
+                                            <a href={event.highlightPaymentLink} target="_blank" className="badge-highlight pay">
+                                                <FaBolt /> PAGAR DESTAQUE
+                                            </a>
+                                        )}
+                                        
+                                        {event.highlightStatus === 'paid' && <span className="badge-highlight active">🌟 DESTAQUE ATIVO</span>}
+                                        
+                                        {/* Botão de Solicitar Destaque para eventos já aprovados sem destaque */}
+                                        {(!event.highlightStatus || event.highlightStatus === 'none') && event.status === 'approved' && (
+                                            <button 
+                                                className="badge-highlight request" 
+                                                onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)}
+                                            >
+                                                <FaArrowUp /> SOLICITAR DESTAQUE
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-
-                                <div className="event-actions">
-                                    <button className="btn-icon" onClick={() => router.push(`/eventos/${event.id || event._id}/participantes`)} title="Lista de Participantes">
-                                        <FaUsers /> Participantes
-                                    </button>
-                                    {!event.isInformational && (
-                                        <button className="btn-icon" onClick={() => setSelectedEventForManage(event)} title="Gerenciar Ingressos">
-                                            <FaCog /> Ingressos
-                                        </button>
-                                    )}
-                                    <button className="btn-icon" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)} title="Editar Evento">
-                                        <FaEdit /> Editar
-                                    </button>
-                                </div>
                             </div>
-                        ))
-                    )}
-                </div>
 
-                {/* GRÁFICO DE VENDAS */}
-                {stats?.chartData?.length > 0 && (
-                    <div className="chart-section">
-                        <h2><FaChartLine /> Desempenho de Vendas (7 dias)</h2>
-                        <div className="chart-wrapper">
-                            <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={stats.chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
-                                    <Tooltip contentStyle={{borderRadius: '8px', border:'none', boxShadow:'0 4px 12px rgba(0,0,0,0.1)'}} />
-                                    <Line type="monotone" dataKey="vendas" stroke="#4C01B5" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            <div className="event-actions">
+                                <button className="btn-dash" onClick={() => router.push(`/eventos/${event.id || event._id}/participantes`)}>
+                                    <FaUsers /> Participantes
+                                </button>
+                                {!event.isInformational && (
+                                    <button className="btn-dash" onClick={() => setSelectedEventForManage(event)}>
+                                        <FaCog /> Ingressos
+                                    </button>
+                                )}
+                                <button className="btn-dash" onClick={() => router.push(`/eventos/editar/${event.id || event._id}`)}>
+                                    <FaEdit /> Editar
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
-
-                {selectedEventForManage && (
-                    <ManageSalesModal 
-                        event={selectedEventForManage} 
-                        onClose={() => setSelectedEventForManage(null)} 
-                        onUpdate={fetchAllData}
-                    />
-                )}
+                    ))}
+                </div>
             </main>
+
+            {selectedEventForManage && (
+                <ManageSalesModal event={selectedEventForManage} onClose={() => setSelectedEventForManage(null)} onUpdate={fetchAllData} />
+            )}
             <Footer />
         </div>
     );
 };
 
 export default function Dashboard() {
-    return (
-        <Suspense fallback={<DashboardSkeleton />}>
-            <DashboardContent />
-        </Suspense>
-    );
-};
+    return <Suspense fallback={<DashboardSkeleton />}><DashboardContent /></Suspense>;
+}
