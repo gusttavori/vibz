@@ -23,8 +23,10 @@ export default function Login() {
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.name);
         }
-        // --- CORREÇÃO PWA: Forçar recarregamento via location.href ---
-        window.location.href = '/dashboard'; 
+        
+        setTimeout(() => {
+             window.location.replace('/dashboard');
+        }, 200);
     }
   };
 
@@ -46,7 +48,7 @@ export default function Login() {
         realizarLoginNoNavegador(data);
       } else {
         setMessage(data.msg || 'Erro ao fazer login.');
-        setIsLoading(false); // Só desativa loading se der erro
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
