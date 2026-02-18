@@ -144,7 +144,7 @@ const DashboardContent = () => {
                 <div className="dashboard-main-header">
                     <div className="header-titles">
                         <h1>Painel do Organizador</h1>
-                        <p className="sub-greeting">Olá, {firstName} 👋</p>
+                        <p className="sub-greeting">Olá, {firstName}</p>
                     </div>
                     
                     <div className="header-status-actions">
@@ -185,7 +185,7 @@ const DashboardContent = () => {
                         </div>
                         <div className="stripe-banner-text">
                             <h3>{isStripeReady ? 'Conta Bancária Conectada' : 'Configure seus Recebimentos'}</h3>
-                            <p>{isStripeReady ? 'Sua conta está pronta para receber os repasses das vendas.' : 'Conecte sua conta Stripe agora para começar a receber o valor das suas vendas.'}</p>
+                            <p>{isStripeReady ? 'Sua conta está pronta para receber os repasses das vendas.' : 'Conecte sua conta Stripe para começar a receber o valor das suas vendas.'}</p>
                         </div>
                     </div>
                     <button className="btn-stripe-cta">

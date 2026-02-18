@@ -75,10 +75,10 @@
 .stripe-banner-text p { margin: 0; color: var(--text-medium); font-size: 1rem; max-width: 500px; }
 
 .btn-stripe-cta {
-    background: var(--text-dark); color: white; border: none; padding: 14px 28px;
+    background: var(--warning); color: white; border: none; padding: 14px 28px;
     border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;
 }
-.btn-stripe-cta:hover { transform: scale(1.05); background: #000; }
+.btn-stripe-cta:hover { transform: scale(1.05); background: #da8a00; }
 
 /* --- SECTION HEADER --- */
 .section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
