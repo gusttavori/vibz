@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { 
     FaChartPie, FaList, FaCheck, FaTimes, FaCog, 
     FaMoneyBillWave, FaUsers, FaStar, FaEye, FaSignOutAlt,
-    FaTicketAlt, FaTrash, FaPlus 
+    FaTicketAlt, FaTrash, FaPlus, FaInbox
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import './AdminDashboard.css';
@@ -26,7 +26,7 @@ export default function AdminDashboard() {
     const [stats, setStats] = useState(null);
     const [pendingEvents, setPendingEvents] = useState([]);
     const [pendingHighlights, setPendingHighlights] = useState([]);
-    const [coupons, setCoupons] = useState([]); // Lista de cupons
+    const [coupons, setCoupons] = useState([]); 
     const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 50 });
     
     const [selectedEvent, setSelectedEvent] = useState(null);
@@ -107,7 +107,6 @@ export default function AdminDashboard() {
         } catch (e) { toast.error("Erro de conexão."); }
     };
 
-    // --- LÓGICA DE CUPONS ---
     const handleCreateCoupon = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('userToken');
@@ -126,7 +125,7 @@ export default function AdminDashboard() {
             if (res.ok) {
                 toast.success("Cupom criado!");
                 setNewCoupon({ code: '', discountType: 'percentage', value: '', partner: '', maxUses: '', expiresAt: '' });
-                checkAdminAndFetch(); // Recarrega lista
+                checkAdminAndFetch(); 
             } else {
                 const err = await res.json();
                 toast.error(err.message || "Erro ao criar cupom.");
@@ -174,7 +173,7 @@ export default function AdminDashboard() {
         amount: item.platformFeeFinal
     })) || [];
 
-    if (loading) return <div className="admin-loading">Carregando...</div>;
+    if (loading) return <div className="admin-loading"><div className="spinner"></div> Carregando painel...</div>;
     if (!isAdmin) return null;
 
     return (
@@ -188,35 +187,35 @@ export default function AdminDashboard() {
                 
                 <nav className="admin-nav">
                     <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
-                        <FaChartPie /> Dashboard
+                        <FaChartPie /> <span>Dashboard</span>
                     </button>
                     <button className={activeTab === 'events' ? 'active' : ''} onClick={() => setActiveTab('events')}>
-                        <FaList /> Moderação Eventos
+                        <FaList /> <span>Moderação</span>
                         {pendingEvents.length > 0 && <span className="badge">{pendingEvents.length}</span>}
                     </button>
                     <button className={activeTab === 'highlights' ? 'active' : ''} onClick={() => setActiveTab('highlights')}>
-                        <FaStar /> Pedidos Destaque
+                        <FaStar /> <span>Destaques</span>
                         {pendingHighlights.length > 0 && <span className="badge">{pendingHighlights.length}</span>}
                     </button>
                     <button className={activeTab === 'coupons' ? 'active' : ''} onClick={() => setActiveTab('coupons')}>
-                        <FaTicketAlt /> Cupons
+                        <FaTicketAlt /> <span>Cupons</span>
                     </button>
                     <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
-                        <FaCog /> Configurações
+                        <FaCog /> <span>Configurações</span>
                     </button>
                 </nav>
 
                 <div className="admin-footer">
                     <button onClick={() => router.push('/')}>
-                        <FaSignOutAlt /> Sair do Admin
+                        <FaSignOutAlt /> <span>Sair</span>
                     </button>
                 </div>
             </aside>
 
             <main className="admin-main">
                 <header className="admin-header">
-                    <h3>{activeTab === 'overview' ? 'Visão Geral' : activeTab === 'coupons' ? 'Gerenciar Cupons' : activeTab === 'events' ? 'Moderação' : 'Configurações'}</h3>
-                    <div className="admin-badge">SUPER ADMIN</div>
+                    <h3>{activeTab === 'overview' ? 'Visão Geral' : activeTab === 'coupons' ? 'Gerenciar Cupons' : activeTab === 'events' ? 'Moderação de Eventos' : activeTab === 'highlights' ? 'Solicitações de Destaque' : 'Configurações Globais'}</h3>
+                    <div className="admin-badge-role">SUPER ADMIN</div>
                 </header>
 
                 <div className="admin-content-area">
@@ -226,30 +225,27 @@ export default function AdminDashboard() {
                             <div className="overview-grid">
                                 <div className="kpi-card purple">
                                     <div className="icon"><FaMoneyBillWave /></div>
-                                    <div><h4>Receita Líquida (Vibz)</h4><p>{stats.revenue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
+                                    <div><h4>Receita Líquida</h4><p>{stats.revenue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
                                 </div>
                                 <div className="kpi-card blue">
                                     <div className="icon"><FaUsers /></div>
-                                    <div><h4>Usuários Totais</h4><p>{stats.users}</p></div>
+                                    <div><h4>Usuários</h4><p>{stats.users}</p></div>
                                 </div>
                                 <div className="kpi-card orange">
                                     <div className="icon"><FaList /></div>
                                     <div><h4>Pendentes</h4><p>{stats.pendingEvents}</p></div>
                                 </div>
                             </div>
-                            <div className="chart-section-admin">
+                            <div className="chart-card">
                                 <h4>Crescimento de Receita (7 dias)</h4>
-                                <div style={{ height: 280, width: '100%' }}>
+                                <div style={{ height: 300, width: '100%', marginTop: '20px' }}>
                                     <ResponsiveContainer>
                                         <LineChart data={chartData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                             <XAxis dataKey="date" stroke="#94a3b8" axisLine={false} tickLine={false} dy={10} fontSize={12} />
                                             <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} dx={-10} fontSize={12} />
-                                            <Tooltip 
-                                                contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px'}}
-                                                cursor={{stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '4 4'}}
-                                            />
-                                            <Line type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={3} dot={{r:4, fill: '#6366f1'}} activeDot={{r:6}} />
+                                            <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px'}} cursor={{stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '4 4'}} />
+                                            <Line type="monotone" dataKey="amount" stroke="#4C01B5" strokeWidth={3} dot={{r:4, fill: '#4C01B5'}} activeDot={{r:6}} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -257,244 +253,193 @@ export default function AdminDashboard() {
                         </>
                     )}
 
-                    {/* EVENTS */}
-                    {activeTab === 'events' && (
-                        <div className="table-wrapper">
-                            <h3>Novos Eventos Aguardando Aprovação</h3>
-                            {pendingEvents.length === 0 ? (
-                                <div className="empty-admin">
-                                    <FaCheck size={32} color="#cbd5e1" style={{marginBottom: 10}}/>
-                                    <p>Nenhum evento pendente.</p>
-                                </div>
-                            ) : (
-                                <table className="admin-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Evento</th>
-                                            <th>Organizador</th>
-                                            <th>Data</th>
-                                            <th>Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pendingEvents.map(ev => (
-                                            <tr key={ev.id}>
-                                                <td><strong>{ev.title}</strong><small>{ev.city}</small></td>
-                                                <td>{ev.organizer?.name}<br/><small>{ev.organizer?.email}</small></td>
-                                                <td>{new Date(ev.eventDate).toLocaleDateString()}</td>
-                                                <td className="actions-cell">
-                                                    <button className="btn-view" title="Ver Detalhes" onClick={() => setSelectedEvent(ev)}><FaEye/></button>
-                                                    <button className="btn-approve" title="Aprovar" onClick={() => handleAction(ev.id, 'approved')}><FaCheck/></button>
-                                                    <button className="btn-reject" title="Rejeitar" onClick={() => handleAction(ev.id, 'rejected')}><FaTimes/></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    )}
-
-                    {/* HIGHLIGHTS */}
-                    {activeTab === 'highlights' && (
-                        <div className="table-wrapper">
-                            <h3>Solicitações de Destaque</h3>
-                            {pendingHighlights.length === 0 ? (
-                                <div className="empty-admin">
-                                    <FaStar size={32} color="#cbd5e1" style={{marginBottom: 10}}/>
-                                    <p>Nenhum pedido de destaque.</p>
-                                </div>
-                            ) : (
-                                <table className="admin-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Evento</th>
-                                            <th>Valor Estimado</th>
-                                            <th>Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pendingHighlights.map(ev => (
-                                            <tr key={ev.id}>
-                                                <td><strong>{ev.title}</strong></td>
-                                                <td>R$ {ev.highlightFee || '0,00'}</td>
-                                                <td className="actions-cell">
-                                                    <button className="btn-view" onClick={() => setSelectedEvent(ev)}><FaEye/></button>
-                                                    <button className="btn-approve" style={{width: 'auto', padding: '0 12px'}} onClick={() => handleAction(ev.id, 'approved', 'highlight')}>Aprovar</button>
-                                                    <button className="btn-reject" onClick={() => handleAction(ev.id, 'rejected', 'highlight')}><FaTimes/></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    )}
-
-                    {/* CUPONS (NOVO) */}
-                    {activeTab === 'coupons' && (
-                        <div className="coupons-section">
-                            {/* FORMULÁRIO DE CRIAÇÃO */}
-                            <div className="settings-card" style={{marginBottom: '30px'}}>
-                                <h4>Adicionar Novo Cupom</h4>
-                                <form onSubmit={handleCreateCoupon} className="coupon-form">
-                                    <div className="form-group">
-                                        <label>Código do Cupom</label>
-                                        <input 
-                                            type="text" 
-                                            value={newCoupon.code} 
-                                            onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} 
-                                            placeholder="Ex: PARCEIRO10" 
-                                            required 
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Parceiro / Influencer</label>
-                                        <input 
-                                            type="text" 
-                                            value={newCoupon.partner} 
-                                            onChange={e => setNewCoupon({...newCoupon, partner: e.target.value})} 
-                                            placeholder="Nome do parceiro" 
-                                            required 
-                                        />
-                                    </div>
-                                    <div className="form-row-2">
-                                        <div className="form-group">
-                                            <label>Tipo de Desconto</label>
-                                            <select 
-                                                value={newCoupon.discountType} 
-                                                onChange={e => setNewCoupon({...newCoupon, discountType: e.target.value})}
-                                            >
-                                                <option value="percentage">Porcentagem (%)</option>
-                                                <option value="fixed">Valor Fixo (R$)</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Valor</label>
-                                            <input 
-                                                type="number" 
-                                                value={newCoupon.value} 
-                                                onChange={e => setNewCoupon({...newCoupon, value: e.target.value})} 
-                                                placeholder={newCoupon.discountType === 'percentage' ? '10' : '50.00'} 
-                                                required 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-row-2">
-                                        <div className="form-group">
-                                            <label>Limite de Usos (Opcional)</label>
-                                            <input 
-                                                type="number" 
-                                                value={newCoupon.maxUses} 
-                                                onChange={e => setNewCoupon({...newCoupon, maxUses: e.target.value})} 
-                                                placeholder="Ilimitado" 
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Validade (Opcional)</label>
-                                            <input 
-                                                type="date" 
-                                                value={newCoupon.expiresAt} 
-                                                onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})} 
-                                            />
-                                        </div>
-                                    </div>
-                                    <button type="submit" className="btn-save" style={{marginTop:'10px'}}><FaPlus /> Criar Cupom</button>
-                                </form>
+                    {/* EVENTS & HIGHLIGHTS (Tabelas) */}
+                    {(activeTab === 'events' || activeTab === 'highlights') && (
+                        <div className="table-card">
+                            <div className="card-header">
+                                <h3>{activeTab === 'events' ? 'Novos Eventos' : 'Pedidos de Destaque'}</h3>
                             </div>
-
-                            {/* LISTA DE CUPONS */}
-                            <div className="table-wrapper">
-                                <h3>Cupons Ativos</h3>
-                                {coupons.length === 0 ? (
-                                    <div className="empty-admin"><p>Nenhum cupom cadastrado.</p></div>
-                                ) : (
+                            
+                            {(activeTab === 'events' ? pendingEvents : pendingHighlights).length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-icon"><FaInbox /></div>
+                                    <p>Nenhuma solicitação pendente.</p>
+                                </div>
+                            ) : (
+                                <div className="table-responsive">
                                     <table className="admin-table">
                                         <thead>
                                             <tr>
-                                                <th>Código</th>
-                                                <th>Parceiro</th>
-                                                <th>Desconto</th>
-                                                <th>Usos</th>
-                                                <th>Ação</th>
+                                                <th>Evento</th>
+                                                <th>{activeTab === 'events' ? 'Organizador' : 'Valor'}</th>
+                                                <th>{activeTab === 'events' ? 'Data' : 'Status'}</th>
+                                                <th style={{textAlign: 'right'}}>Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {coupons.map(coupon => (
-                                                <tr key={coupon.id || coupon._id}>
-                                                    <td><strong>{coupon.code}</strong></td>
-                                                    <td>{coupon.partner}</td>
+                                            {(activeTab === 'events' ? pendingEvents : pendingHighlights).map(ev => (
+                                                <tr key={ev.id}>
                                                     <td>
-                                                        {coupon.discountType === 'percentage' 
-                                                            ? `${coupon.value}%` 
-                                                            : `R$ ${coupon.value}`}
+                                                        <div className="event-cell">
+                                                            <strong>{ev.title}</strong>
+                                                            <small>{ev.city}</small>
+                                                        </div>
                                                     </td>
-                                                    <td>{coupon.usedCount || 0} / {coupon.maxUses || '∞'}</td>
+                                                    <td>
+                                                        {activeTab === 'events' 
+                                                            ? <div>{ev.organizer?.name}<br/><small style={{color:'#94a3b8'}}>{ev.organizer?.email}</small></div>
+                                                            : `R$ ${ev.highlightFee || '0,00'}`
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        {activeTab === 'events' 
+                                                            ? new Date(ev.eventDate).toLocaleDateString()
+                                                            : <span className="status-badge pending">Pendente</span>
+                                                        }
+                                                    </td>
                                                     <td className="actions-cell">
-                                                        <button 
-                                                            className="btn-reject" 
-                                                            title="Excluir" 
-                                                            onClick={() => handleDeleteCoupon(coupon.id || coupon._id)}
-                                                        >
-                                                            <FaTrash />
-                                                        </button>
+                                                        <div className="action-buttons">
+                                                            <button className="btn-icon view" title="Ver" onClick={() => setSelectedEvent(ev)}><FaEye/></button>
+                                                            <button className="btn-icon approve" title="Aprovar" onClick={() => handleAction(ev.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck/></button>
+                                                            <button className="btn-icon reject" title="Rejeitar" onClick={() => handleAction(ev.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes/></button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* CUPONS */}
+                    {activeTab === 'coupons' && (
+                        <div className="content-grid-2">
+                            {/* Card de Criação */}
+                            <div className="form-card">
+                                <h4>Novo Cupom</h4>
+                                <form onSubmit={handleCreateCoupon} className="admin-form">
+                                    <div className="form-group">
+                                        <label>Código</label>
+                                        <input className="admin-input" type="text" value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} placeholder="Ex: VIBZ10" required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Parceiro</label>
+                                        <input className="admin-input" type="text" value={newCoupon.partner} onChange={e => setNewCoupon({...newCoupon, partner: e.target.value})} placeholder="Nome do parceiro" required />
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label>Tipo</label>
+                                            <select className="admin-select" value={newCoupon.discountType} onChange={e => setNewCoupon({...newCoupon, discountType: e.target.value})}>
+                                                <option value="percentage">% Porcentagem</option>
+                                                <option value="fixed">R$ Fixo</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Valor</label>
+                                            <input className="admin-input" type="number" value={newCoupon.value} onChange={e => setNewCoupon({...newCoupon, value: e.target.value})} placeholder="10" required />
+                                        </div>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label>Limite (Opcional)</label>
+                                            <input className="admin-input" type="number" value={newCoupon.maxUses} onChange={e => setNewCoupon({...newCoupon, maxUses: e.target.value})} placeholder="∞" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Validade</label>
+                                            <input className="admin-input" type="date" value={newCoupon.expiresAt} onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="btn-primary full"><FaPlus /> Criar Cupom</button>
+                                </form>
+                            </div>
+
+                            {/* Lista de Cupons */}
+                            <div className="table-card">
+                                <div className="card-header">
+                                    <h3>Cupons Ativos</h3>
+                                </div>
+                                <div className="table-responsive">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Código</th>
+                                                <th>Desconto</th>
+                                                <th>Usos</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {coupons.map(coupon => (
+                                                <tr key={coupon.id || coupon._id}>
+                                                    <td><strong>{coupon.code}</strong><br/><small>{coupon.partner}</small></td>
+                                                    <td>{coupon.discountType === 'percentage' ? `${coupon.value}%` : `R$ ${coupon.value}`}</td>
+                                                    <td>{coupon.usedCount || 0} / {coupon.maxUses || '∞'}</td>
+                                                    <td style={{textAlign:'right'}}>
+                                                        <button className="btn-icon reject" onClick={() => handleDeleteCoupon(coupon.id || coupon._id)}><FaTrash /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {coupons.length === 0 && <tr><td colSpan="4" style={{textAlign:'center', color:'#94a3b8', padding:'20px'}}>Nenhum cupom ativo.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
 
                     {/* SETTINGS */}
                     {activeTab === 'settings' && (
-                        <div className="settings-card">
-                            <h4>Taxas Globais</h4>
-                            <div className="form-group">
-                                <label>Taxa da Plataforma (Decimal)</label>
-                                <input type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({...config, platformFee: e.target.value})} />
-                                <small>0.08 = 8%</small>
+                        <div className="form-card settings-limit">
+                            <h4>Taxas e Valores</h4>
+                            <div className="admin-form">
+                                <div className="form-group">
+                                    <label>Taxa da Plataforma (Decimal)</label>
+                                    <input className="admin-input" type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({...config, platformFee: e.target.value})} />
+                                    <small>Ex: 0.08 equivale a 8% por venda.</small>
+                                </div>
+                                <div className="form-group">
+                                    <label>Preço Destaque Premium (R$)</label>
+                                    <input className="admin-input" type="number" value={config.premiumPrice} onChange={e => setConfig({...config, premiumPrice: e.target.value})} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Preço Destaque Padrão (R$)</label>
+                                    <input className="admin-input" type="number" value={config.standardPrice} onChange={e => setConfig({...config, standardPrice: e.target.value})} />
+                                </div>
+                                <button className="btn-primary" onClick={handleSaveSettings}>Salvar Alterações</button>
                             </div>
-                            <div className="form-group">
-                                <label>Preço Destaque Premium (R$)</label>
-                                <input type="number" value={config.premiumPrice} onChange={e => setConfig({...config, premiumPrice: e.target.value})} />
-                            </div>
-                            <div className="form-group">
-                                <label>Preço Destaque Padrão (R$)</label>
-                                <input type="number" value={config.standardPrice} onChange={e => setConfig({...config, standardPrice: e.target.value})} />
-                            </div>
-                            <button className="btn-save" onClick={handleSaveSettings}>Salvar Alterações</button>
                         </div>
                     )}
                 </div>
 
-                {/* MODAL */}
+                {/* MODAL DE DETALHES */}
                 {selectedEvent && (
-                    <div className="modal-overlay" onClick={() => setSelectedEvent(null)}>
-                        <div className="modal-content" onClick={e => e.stopPropagation()}>
-                            <button className="close-modal" onClick={() => setSelectedEvent(null)}><FaTimes/></button>
-                            <img src={selectedEvent.imageUrl} alt="Capa" className="modal-cover"/>
-                            <div className="modal-body">
+                    <div className="admin-modal-overlay" onClick={() => setSelectedEvent(null)}>
+                        <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                            <button className="close-modal-btn" onClick={() => setSelectedEvent(null)}><FaTimes/></button>
+                            <div className="modal-header-img" style={{backgroundImage: `url(${selectedEvent.imageUrl})`}}></div>
+                            <div className="modal-body-content">
                                 <h2>{selectedEvent.title}</h2>
                                 <p className="modal-meta">{selectedEvent.city} • {new Date(selectedEvent.eventDate).toLocaleDateString()}</p>
-                                <div className="modal-desc">
-                                    <h4>Descrição:</h4>
+                                
+                                <div className="info-block">
+                                    <label>Descrição</label>
                                     <p>{selectedEvent.description}</p>
                                 </div>
-                                <div className="modal-actions">
-                                    {activeTab === 'events' ? (
-                                        <>
-                                            <button className="btn-approve large" onClick={() => handleAction(selectedEvent.id, 'approved')}>Aprovar</button>
-                                            <button className="btn-reject large" onClick={() => handleAction(selectedEvent.id, 'rejected')}>Rejeitar</button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button className="btn-approve large" onClick={() => handleAction(selectedEvent.id, 'approved', 'highlight')}>Aprovar</button>
-                                            <button className="btn-reject large" onClick={() => handleAction(selectedEvent.id, 'rejected', 'highlight')}>Recusar</button>
-                                        </>
-                                    )}
+                                
+                                <div className="info-row">
+                                    <div><label>Categoria</label><span>{selectedEvent.category}</span></div>
+                                    <div><label>Classificação</label><span>{selectedEvent.ageRating}</span></div>
+                                </div>
+
+                                <div className="modal-actions-footer">
+                                    <button className="btn-action approve" onClick={() => handleAction(selectedEvent.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}>
+                                        <FaCheck /> Aprovar
+                                    </button>
+                                    <button className="btn-action reject" onClick={() => handleAction(selectedEvent.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}>
+                                        <FaTimes /> Rejeitar
+                                    </button>
                                 </div>
                             </div>
                         </div>
