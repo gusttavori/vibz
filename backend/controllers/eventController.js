@@ -7,8 +7,11 @@ const {
     sendAdminNotificationEmail 
 } = require('../services/emailService');
 
+// --- MAPPER PARA O FRONTEND ---
 const mapEventToFrontend = (event) => {
     const safeDate = event.eventDate ? new Date(event.eventDate).toISOString() : new Date(event.createdAt).toISOString();
+    
+    // 1. Sessões
     let parsedSessions = [];
     if (event.sessions) {
         parsedSessions = typeof event.sessions === 'string' ? JSON.parse(event.sessions) : event.sessions;
@@ -16,25 +19,25 @@ const mapEventToFrontend = (event) => {
         parsedSessions = [{ date: safeDate, endDate: safeDate }];
     }
 
-    // --- CORREÇÃO DO ORGANIZADOR ---
-    let organizerData = { name: "Organizador", instagram: "" };
-    
-    // 1. Tenta pegar do organizerInfo (personalizado)
+    // 2. Lógica Robusta de Organizador
+    // Prioridade: 1. Customizado (organizerInfo) -> 2. Conta do Usuário (organizer) -> 3. Padrão
+    let organizerNameFinal = "Organizador";
+    let organizerInstaFinal = "";
+
+    // Tenta ler do organizerInfo (JSON salvo no banco)
     if (event.organizerInfo) {
         try {
             const info = typeof event.organizerInfo === 'string' ? JSON.parse(event.organizerInfo) : event.organizerInfo;
-            // Só usa se o nome não for vazio
-            if (info.name && info.name.trim() !== "") {
-                organizerData = { name: info.name, instagram: info.instagram || "" };
-            }
+            if (info.name && info.name.trim() !== "") organizerNameFinal = info.name;
+            if (info.instagram) organizerInstaFinal = info.instagram;
         } catch (e) {
-            console.error("Erro ao parsear organizerInfo", e);
+            console.error("Erro parse organizerInfo:", e);
         }
-    } 
-    
-    // 2. Se não achou no organizerInfo, tenta pegar do usuário dono do evento
-    if (organizerData.name === "Organizador" && event.organizer && event.organizer.name) {
-        organizerData = { name: event.organizer.name, instagram: "" };
+    }
+
+    // Se ainda for o padrão e tivermos os dados do usuário dono do evento
+    if (organizerNameFinal === "Organizador" && event.organizer && event.organizer.name) {
+        organizerNameFinal = event.organizer.name;
     }
 
     return {
@@ -59,9 +62,12 @@ const mapEventToFrontend = (event) => {
             maxPerUser: t.maxPerUser || 4
         })) : [],
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
-        organizer: organizerData, // Objeto completo
-        organizerName: organizerData.name, // String direta para facilidade
-        organizerInstagram: organizerData.instagram,
+        
+        // Retorna dados tratados
+        organizer: { name: organizerNameFinal, instagram: organizerInstaFinal },
+        organizerName: organizerNameFinal,
+        organizerInstagram: organizerInstaFinal,
+        
         isInformational: event.isInformational,
         highlightStatus: event.highlightStatus,
         highlightPaymentLink: event.highlightPaymentLink 
@@ -76,17 +82,41 @@ const createEvent = async (req, res) => {
 
         const { 
             title, description, category, ageRating, date, sessions, 
-            location, city, address, tickets, organizerName, organizerInstagram,
+            location, city, address, tickets, 
+            // Note: organizerName não vem solto mais, vem dentro de organizerInfo
+            organizerInfo, 
             isFeaturedRequested, highlightTier, formSchema, refundPolicy, isInformational 
         } = req.body;
 
         const userId = req.user.id;
-        const isInfoBool = isInformational === 'true' || isInformational === true;
         
+        // --- EXTRAÇÃO CORRETA DOS DADOS DO ORGANIZADOR ---
+        let finalOrganizerName = "Organizador";
+        let finalOrganizerInsta = "";
+        let parsedOrganizerInfo = {};
+
+        if (organizerInfo) {
+            try {
+                parsedOrganizerInfo = JSON.parse(organizerInfo);
+                if (parsedOrganizerInfo.name) finalOrganizerName = parsedOrganizerInfo.name;
+                if (parsedOrganizerInfo.instagram) finalOrganizerInsta = parsedOrganizerInfo.instagram;
+            } catch (e) {
+                console.error("Erro ao ler organizerInfo no create:", e);
+            }
+        } else {
+            // Se não veio customizado, pega o nome do usuário logado
+            finalOrganizerName = req.user.name || "Organizador";
+        }
+
+        const isInfoBool = isInformational === 'true' || isInformational === true;
         const tier = highlightTier ? highlightTier.toUpperCase() : null;
         const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true) || !!tier;
 
-        let parsedAddress, parsedTicketsFlat, parsedSessions, parsedFormSchema;
+        let parsedAddress = {};
+        let parsedTicketsFlat = [];
+        let parsedSessions = [];
+        let parsedFormSchema = [];
+
         try {
             parsedAddress = address ? JSON.parse(address) : {};
             parsedTicketsFlat = tickets ? JSON.parse(tickets) : [];
@@ -123,7 +153,10 @@ const createEvent = async (req, res) => {
                 refundPolicy: refundPolicy || "7 dias após a compra",
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
-                organizerInfo: { name: organizerName || "Organizador", instagram: organizerInstagram || "" },
+                
+                // SALVA O JSON CORRETAMENTE NO BANCO
+                organizerInfo: { name: finalOrganizerName, instagram: finalOrganizerInsta },
+                
                 formSchema: parsedFormSchema,
                 isInformational: isInfoBool,
                 ticketTypes: {
@@ -139,8 +172,15 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        sendEventReceivedEmail(req.user.email, organizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
-        sendAdminNotificationEmail({ title, organizerName, city, date: mainEventDate.toLocaleDateString('pt-BR') }).catch(err => console.error("[Email] Erro admin:", err));
+        // ENVIO DE EMAIL COM O NOME CORRETO (Extraído acima)
+        sendEventReceivedEmail(req.user.email, finalOrganizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
+        
+        sendAdminNotificationEmail({ 
+            title, 
+            organizerName: finalOrganizerName, // Passa o nome extraído corretamente
+            city, 
+            date: mainEventDate.toLocaleDateString('pt-BR') 
+        }).catch(err => console.error("[Email] Erro admin:", err));
 
         res.status(201).json({ message: 'Evento enviado para análise.', event: mapEventToFrontend(event) });
     } catch (error) {
@@ -173,13 +213,19 @@ const updateEvent = async (req, res) => {
         let mainEventDate = existingEvent.eventDate;
         if (parsedSessions && parsedSessions.length > 0) mainEventDate = new Date(parsedSessions[0].date);
 
+        // Tratamento do OrganizerInfo no Update também
+        let parsedOrgInfo = existingEvent.organizerInfo;
+        if (organizerInfo) {
+            parsedOrgInfo = typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo;
+        }
+
         const updatedEvent = await prisma.event.update({
             where: { id },
             data: {
                 title, description, category: category ? category.trim() : existingEvent.category,
                 ageRating, refundPolicy, imageUrl, location, city,
                 eventDate: mainEventDate, sessions: parsedSessions,
-                organizerInfo: typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo,
+                organizerInfo: parsedOrgInfo,
                 formSchema: typeof formSchema === 'string' ? JSON.parse(formSchema) : formSchema,
                 isInformational: isInfoBool 
             }
@@ -372,14 +418,15 @@ const getEventParticipants = async (req, res) => {
 const getPendingEvents = async (req, res) => { 
     try {
         const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
-        res.json(events);
+        // Adicionamos o mapeamento para garantir que o admin veja o nome personalizado também
+        res.json(events.map(mapEventToFrontend));
     } catch (error) { res.status(500).json({ message: "Erro ao buscar pendentes" }); }
 };
 
 const getPendingHighlights = async (req, res) => { 
     try {
         const events = await prisma.event.findMany({ where: { highlightStatus: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
-        res.json(events);
+        res.json(events.map(mapEventToFrontend));
     } catch (e) { res.status(500).json({ message: "Erro" }); }
 };
 

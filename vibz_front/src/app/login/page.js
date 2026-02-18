@@ -25,7 +25,7 @@ export default function Login() {
         }
         
         setTimeout(() => {
-             window.location.replace('/dashboard');
+             window.location.replace('/');
         }, 200);
     }
   };
