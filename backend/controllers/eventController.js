@@ -16,11 +16,24 @@ const mapEventToFrontend = (event) => {
         parsedSessions = [{ date: safeDate, endDate: safeDate }];
     }
 
+    // --- CORREÇÃO DO ORGANIZADOR ---
     let organizerData = { name: "Organizador", instagram: "" };
+    
+    // 1. Tenta pegar do organizerInfo (personalizado)
     if (event.organizerInfo) {
-        const info = typeof event.organizerInfo === 'string' ? JSON.parse(event.organizerInfo) : event.organizerInfo;
-        organizerData = { name: info.name || "Organizador", instagram: info.instagram || "" };
-    } else if (event.organizer) {
+        try {
+            const info = typeof event.organizerInfo === 'string' ? JSON.parse(event.organizerInfo) : event.organizerInfo;
+            // Só usa se o nome não for vazio
+            if (info.name && info.name.trim() !== "") {
+                organizerData = { name: info.name, instagram: info.instagram || "" };
+            }
+        } catch (e) {
+            console.error("Erro ao parsear organizerInfo", e);
+        }
+    } 
+    
+    // 2. Se não achou no organizerInfo, tenta pegar do usuário dono do evento
+    if (organizerData.name === "Organizador" && event.organizer && event.organizer.name) {
         organizerData = { name: event.organizer.name, instagram: "" };
     }
 
@@ -46,12 +59,12 @@ const mapEventToFrontend = (event) => {
             maxPerUser: t.maxPerUser || 4
         })) : [],
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
-        organizer: organizerData,
-        organizerName: organizerData.name,
+        organizer: organizerData, // Objeto completo
+        organizerName: organizerData.name, // String direta para facilidade
         organizerInstagram: organizerData.instagram,
         isInformational: event.isInformational,
-        highlightStatus: event.highlightStatus, // Adicionado para controle no dashboard
-        highlightPaymentLink: event.highlightPaymentLink // Adicionado para pagamento
+        highlightStatus: event.highlightStatus,
+        highlightPaymentLink: event.highlightPaymentLink 
     };
 };
 
@@ -70,7 +83,6 @@ const createEvent = async (req, res) => {
         const userId = req.user.id;
         const isInfoBool = isInformational === 'true' || isInformational === true;
         
-        // Verifica se pediu destaque E qual o nível
         const tier = highlightTier ? highlightTier.toUpperCase() : null;
         const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true) || !!tier;
 
@@ -104,10 +116,9 @@ const createEvent = async (req, res) => {
                 ageRating, priceFrom: 0, status: 'pending',
                 organizerId: userId, 
                 
-                // LÓGICA DE DESTAQUE SALVA AQUI
                 isFeaturedRequested: isFeaturedBool,
                 highlightStatus: isFeaturedBool ? 'pending' : 'none',
-                highlightTier: tier, // Salva se é PREMIUM ou STANDARD
+                highlightTier: tier, 
 
                 refundPolicy: refundPolicy || "7 dias após a compra",
                 eventDate: mainEventDate,
