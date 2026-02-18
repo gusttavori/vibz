@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
-const configController = require('../controllers/configController'); // NOVO
+const configController = require('../controllers/configController');
 const geocodeAddressBackend = require('../utils/geocode'); 
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -23,9 +23,16 @@ router.get('/config/prices', configController.getPublicConfig);
 router.post('/', authMiddleware, upload.single('image'), injectGeocode, eventController.createEvent);
 router.put('/:id', authMiddleware, upload.single('image'), injectGeocode, eventController.updateEvent);
 
+// Nova Rota: Pausar/Ativar Vendas de Ingresso
 router.patch('/tickets/:ticketId/status', authMiddleware, eventController.toggleTicketStatus);
+
+// Rota do Organizador
 router.get('/organizer/my-events', authMiddleware, eventController.getMyEvents);
+
+// Rota de Favoritos
 router.post('/:id/favorite', authMiddleware, eventController.toggleFavorite);
+
+// Rota de Participantes
 router.get('/:id/participants', authMiddleware, eventController.getEventParticipants);
 
 // Rotas Públicas de Listagem
@@ -36,7 +43,7 @@ router.get('/cities', eventController.getEventCities);
 router.get('/category/:categoryName', eventController.getEventsByCategory);
 router.get('/:id', eventController.getEventById);
 
-// Rotas Administrativas
+// Rotas Administrativas (Aprovação)
 router.get('/pending', authMiddleware, eventController.getPendingEvents);
 router.put('/approve/:id', authMiddleware, eventController.approveEvent);
 router.delete('/reject/:id', authMiddleware, eventController.rejectEvent);

@@ -49,7 +49,9 @@ const mapEventToFrontend = (event) => {
         organizer: organizerData,
         organizerName: organizerData.name,
         organizerInstagram: organizerData.instagram,
-        isInformational: event.isInformational 
+        isInformational: event.isInformational,
+        highlightStatus: event.highlightStatus, // Adicionado para controle no dashboard
+        highlightPaymentLink: event.highlightPaymentLink // Adicionado para pagamento
     };
 };
 
