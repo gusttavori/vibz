@@ -20,6 +20,7 @@ export default function Login() {
     const checkExistingAuth = () => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
         if (token) {
+            // Se já está logado, pula a tela de login imediatamente
             window.location.assign('/');
         } else {
             setIsCheckingAuth(false);
@@ -32,12 +33,16 @@ export default function Login() {
     setMessage(data.msg || 'Login realizado! Redirecionando...');
     
     if (typeof window !== 'undefined') {
-        localStorage.setItem('userToken', data.token);
+        // Garantimos que o token seja salvo corretamente como string
+        const tokenValue = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
+        localStorage.setItem('userToken', tokenValue);
+        
         if (data.user) {
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.name);
         }
         
+        // O assign('/') força o PWA a recarregar a Home do zero com o novo token
         setTimeout(() => {
              window.location.assign('/');
         }, 200);
