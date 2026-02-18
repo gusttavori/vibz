@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../Auth.css';
@@ -16,19 +16,7 @@ export default function Login() {
   
   const router = useRouter();
 
-  useEffect(() => {
-    const checkExistingAuth = () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
-        if (token) {
-            window.location.replace('/');
-        } else {
-            setIsCheckingAuth(false);
-        }
-    };
-    checkExistingAuth();
-  }, []);
-
-  const realizarLoginNoNavegador = (data) => {
+  const realizarLoginNoNavegador = useCallback((data) => {
     if (typeof window !== 'undefined') {
         const tokenValue = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
         localStorage.setItem('userToken', tokenValue);
@@ -44,7 +32,50 @@ export default function Login() {
              window.location.replace('/');
         }, 100);
     }
-  };
+  }, []);
+
+  const handleGoogleCallback = useCallback(async (code) => {
+    setIsLoading(true);
+    setIsCheckingAuth(true);
+    setMessage('Autenticando com Google...');
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+          realizarLoginNoNavegador(data);
+      } else {
+          setMessage(data.msg || 'Falha na autenticação com Google.');
+          setIsLoading(false);
+          setIsCheckingAuth(false);
+      }
+    } catch (error) {
+      console.error("Erro ao processar callback do Google:", error);
+      setMessage("Erro ao comunicar com o servidor.");
+      setIsLoading(false);
+      setIsCheckingAuth(false);
+    }
+  }, [realizarLoginNoNavegador]);
+
+  useEffect(() => {
+    const checkAuthAndParams = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+
+        if (code) {
+            handleGoogleCallback(code);
+        } else if (token) {
+            window.location.replace('/');
+        } else {
+            setIsCheckingAuth(false);
+        }
+    };
+    checkAuthAndParams();
+  }, [handleGoogleCallback]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,37 +105,9 @@ export default function Login() {
   };
 
   const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setMessage('Autenticando com Google...');
-      setIsLoading(true); 
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                googleAccessToken: tokenResponse.access_token 
-            }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-            realizarLoginNoNavegador(data);
-        } else {
-            setMessage(data.msg || 'Falha na autenticação com Google.');
-            setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Erro API Google:", error);
-        setMessage("Erro ao comunicar com o servidor.");
-        setIsLoading(false);
-      }
-    },
-    onError: () => {
-      setMessage('O login com Google foi cancelado ou falhou.');
-      setIsLoading(false);
-    },
-    // Removido 'ux_mode' para manter compatibilidade com o fluxo atual, 
-    // mas forçando o tratamento de sucesso via replace('/')
+    flow: 'auth-code',
+    ux_mode: 'redirect',
+    redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/login` : '',
   });
 
   const handleGoToRegister = () => {

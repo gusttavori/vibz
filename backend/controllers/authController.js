@@ -2,8 +2,14 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const axios = require('axios');
 const nodemailer = require('nodemailer');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    'postmessage'
+);
 
 const generateToken = (id) => {
     if (!process.env.JWT_SECRET) {
@@ -14,14 +20,12 @@ const generateToken = (id) => {
     });
 };
 
-// --- CONFIGURAÇÃO DO TRANSPORTE (Porta 2525 - Igual ao TicketController) ---
-// Usa as variáveis da Render APENAS para autenticação (Login/Senha)
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 2525, 
     secure: false,
     auth: {
-        user: process.env.EMAIL_USER, // Aqui usa o 'a1f8...' para logar no servidor
+        user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
     tls: {
@@ -81,41 +85,42 @@ const loginUser = async (req, res) => {
 };
 
 const googleLogin = async (req, res) => {
-    const { googleAccessToken } = req.body;
-    const { email: directEmail, name: directName } = req.body;
+    const { code } = req.body;
 
     try {
-        let emailToUse = directEmail;
-        let nameToUse = directName;
-
-        if (googleAccessToken) {
-            try {
-                const response = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-                    headers: { "Authorization": `Bearer ${googleAccessToken}` }
-                });
-                emailToUse = response.data.email;
-                nameToUse = response.data.name;
-            } catch (axiosError) {
-                return res.status(400).json({ msg: "Token Google inválido." });
-            }
+        if (!code) {
+            return res.status(400).json({ msg: "Código de autorização não fornecido." });
         }
 
-        if (!emailToUse) return res.status(400).json({ msg: "Email não obtido." });
+        const { tokens } = await googleClient.getToken({
+            code,
+            redirect_uri: process.env.NODE_ENV === 'production' 
+                ? 'https://vibz.com.br/login' 
+                : 'http://localhost:3000/login'
+        });
 
-        let user = await prisma.user.findUnique({ where: { email: emailToUse } });
+        const ticket = await googleClient.verifyIdToken({
+            idToken: tokens.id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const { email, name } = payload;
+
+        let user = await prisma.user.findUnique({ where: { email } });
 
         if (user) {
             const token = generateToken(user.id);
             return res.json({ msg: "Login Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         } else {
-            const randomPassword = Math.random().toString(36).slice(-8) + process.env.JWT_SECRET;
+            const randomPassword = Math.random().toString(36).slice(-8) + (process.env.JWT_SECRET || 'vibz');
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(randomPassword, salt);
 
             user = await prisma.user.create({
                 data: {
-                    name: nameToUse || 'Usuário Google',
-                    email: emailToUse,
+                    name: name || 'Usuário Google',
+                    email: email,
                     password: hashedPassword,
                     isAdmin: false
                 }
@@ -124,16 +129,13 @@ const googleLogin = async (req, res) => {
             return res.status(201).json({ msg: "Cadastro Google OK!", token, user: { id: user.id, _id: user.id, name: user.name, email: user.email } });
         }
     } catch (err) {
-        console.error("Erro Google Login:", err);
+        console.error("Erro detalhado no Google Login:", err);
         res.status(500).json({ msg: "Falha na autenticação Google." });
     }
 };
 
-// --- FLUXO DE RECUPERAÇÃO DE SENHA ---
-
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
-    console.log("📨 Solicitando senha para:", email);
 
     try {
         const user = await prisma.user.findUnique({ where: { email } });
@@ -149,11 +151,8 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        // Configuração do e-mail
         const mailOptions = {
             to: user.email,
-            // CORREÇÃO CRÍTICA: Substituímos 'process.env.EMAIL_USER' pelo email real
-            // Isso garante que o remetente seja "Vibz <vibzeventos@gmail.com>" e não o login do Brevo
             from: `"Vibz" <vibzeventos@gmail.com>`, 
             subject: 'Redefinir Senha - Vibz',
             html: `
@@ -166,13 +165,10 @@ const forgotPassword = async (req, res) => {
             `
         };
         
-        console.log("🚀 Enviando via SMTP (Porta 2525)..."); 
         await transporter.sendMail(mailOptions);
-        console.log("✅ E-mail enviado!"); 
-        
         res.status(200).json({ msg: 'Código enviado!' });
     } catch (error) {
-        console.error("❌ ERRO NO ENVIO:", error); 
+        console.error("Erro no envio:", error); 
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
