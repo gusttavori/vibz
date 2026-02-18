@@ -1,14 +1,13 @@
-"use client";
-
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "./Auth.css"; 
-import { useEffect } from "react";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import InstallPrompt from '@/components/InstallPrompt';
+import PWACleaner from '@/components/PWACleaner'; // <--- Importe o novo componente
 
 const inter = Inter({ subsets: ["latin"] });
 
+// METADADOS PERMITIDOS AQUI (Pois o arquivo não é mais "use client")
 export const metadata = {
   title: "Vibz",
   description: "Plataforma de eventos",
@@ -27,19 +26,10 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (let registration of registrations) {
-          registration.update();
-        }
-      });
-    }
-  }, []);
-
   return (
     <html lang="pt-br">
       <body className={inter.className}>
+        <PWACleaner /> {/* <--- Adicione o limpador aqui */}
         <GoogleOAuthProvider clientId="433598857050-jrj1482ea6ea3kvvshrr711qolunsv48.apps.googleusercontent.com">
             {children}
             <InstallPrompt />
