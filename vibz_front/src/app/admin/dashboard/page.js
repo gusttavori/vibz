@@ -27,14 +27,14 @@ export default function AdminDashboard() {
     const [pendingEvents, setPendingEvents] = useState([]);
     const [pendingHighlights, setPendingHighlights] = useState([]);
     const [coupons, setCoupons] = useState([]); 
-    const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 50 });
+    const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 2.00 }); // Default atualizado
     
     const [selectedEvent, setSelectedEvent] = useState(null);
 
     // Estado para novo cupom
     const [newCoupon, setNewCoupon] = useState({
         code: '',
-        discountType: 'percentage_fee', // Novo tipo para sua lógica
+        discountType: 'percentage_fee', 
         value: '',
         partner: '',
         maxUses: '',
@@ -100,8 +100,17 @@ export default function AdminDashboard() {
                 body: JSON.stringify(body)
             });
 
+            // Se for sucesso e tiver link de pagamento no retorno
+            const data = await res.json();
+
             if (res.ok) {
                 toast.success('Atualizado com sucesso!');
+                
+                // Se aprovou destaque, avisa sobre o link (opcional, pois o usuário recebe no painel dele)
+                if (type === 'highlight' && action === 'approved' && data.paymentLink) {
+                    // toast.success("Link de pagamento gerado!", { duration: 4000 });
+                }
+
                 checkAdminAndFetch();
                 setSelectedEvent(null);
             } else { toast.error("Erro ao atualizar."); }
@@ -320,7 +329,12 @@ export default function AdminDashboard() {
                                                 <td>
                                                     {activeTab === 'events' 
                                                         ? <span>{ev.organizer?.name}</span>
-                                                        : <span className="highlight-price">R$ {ev.highlightFee}</span>
+                                                        : <div style={{display:'flex', flexDirection:'column'}}>
+                                                            <span className="highlight-price">
+                                                                {ev.highlightTier === 'PREMIUM' ? 'R$ 100,00 (Fixo)' : `R$ ${ev.highlightDuration * 2},00 (${ev.highlightDuration} dias)`}
+                                                            </span>
+                                                            <small style={{color:'#64748b'}}>{ev.highlightTier}</small>
+                                                          </div>
                                                     }
                                                 </td>
                                                 <td><span className="status-badge pending">Aguardando</span></td>
@@ -418,26 +432,28 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* --- ABA: SETTINGS --- */}
+                    {/* --- ABA: SETTINGS (CORRIGIDA) --- */}
                     {activeTab === 'settings' && (
                         <div className="center-container">
                             <div className="form-card large">
                                 <h4>Configurações Globais</h4>
-                                <p className="form-desc">Defina as taxas base da plataforma.</p>
+                                <p className="form-desc">Defina as taxas e valores base da plataforma.</p>
                                 <div className="admin-form">
                                     <div className="form-group">
                                         <label>Taxa da Plataforma (Decimal)</label>
                                         <input className="admin-input" type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({...config, platformFee: e.target.value})} />
-                                        <small>Valor padrão: 0.08 (8%)</small>
+                                        <small>Ex: 0.08 equivale a 8% por venda.</small>
                                     </div>
                                     <div className="form-row">
                                         <div className="form-group">
-                                            <label>Preço Destaque Premium (R$)</label>
+                                            <label>Preço Destaque Premium (Fixo)</label>
                                             <input className="admin-input" type="number" value={config.premiumPrice} onChange={e => setConfig({...config, premiumPrice: e.target.value})} />
+                                            <small>Valor único até a data do evento.</small>
                                         </div>
                                         <div className="form-group">
-                                            <label>Preço Destaque Padrão (R$)</label>
+                                            <label>Valor Diária Standard (R$)</label>
                                             <input className="admin-input" type="number" value={config.standardPrice} onChange={e => setConfig({...config, standardPrice: e.target.value})} />
+                                            <small>Valor cobrado por dia de destaque.</small>
                                         </div>
                                     </div>
                                     <button className="btn-primary" onClick={handleSaveSettings}>Salvar Alterações</button>
@@ -470,6 +486,19 @@ export default function AdminDashboard() {
                                         <label>Organizador</label>
                                         <p>{selectedEvent.organizer?.name} ({selectedEvent.organizer?.email})</p>
                                     </div>
+
+                                    {/* SE FOR DESTAQUE, MOSTRA INFO EXTRA */}
+                                    {selectedEvent.isFeaturedRequested && (
+                                        <div className="modal-organizer" style={{backgroundColor: '#FFFBEB', border: '1px solid #FEF3C7'}}>
+                                            <label style={{color: '#B45309'}}>Solicitação de Destaque</label>
+                                            <p>
+                                                Tipo: <strong>{selectedEvent.highlightTier}</strong><br/>
+                                                {selectedEvent.highlightTier === 'STANDARD' && (
+                                                    <span>Duração: {selectedEvent.highlightDuration} dias</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <div className="modal-actions-row">
                                         <button className="btn-action approve" onClick={() => handleAction(selectedEvent.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}>

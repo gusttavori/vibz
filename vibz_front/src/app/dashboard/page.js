@@ -185,7 +185,8 @@ const DashboardContent = () => {
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             router.replace('/dashboard'); 
         }
-        // Feedback de pagamento de destaque
+        
+        // Novo: Feedback de pagamento de destaque
         const success = searchParams.get('success');
         if (success === 'highlight') {
             toast.success("Destaque ativado com sucesso! 🌟");
@@ -375,21 +376,24 @@ const DashboardContent = () => {
                                 <div className="event-info">
                                     <img src={event.imageUrl} alt="" className="event-thumb" />
                                     <div className="event-meta">
-                                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                             <strong>{formatText(event.title)}</strong>
-                                            {/* BADGE DESTAQUE ATIVO */}
+                                            {/* Badge Destaque Ativo */}
                                             {event.highlightStatus === 'paid' && (
-                                                <span title="Evento Destacado" style={{color: '#F59E0B'}}><FaStar /></span>
+                                                <span title="Destaque Ativo" style={{color: '#F59E0B'}}><FaStar /></span>
                                             )}
                                         </div>
                                         <span>{formatDate(event.date)} • {event.city}</span>
-                                        <div className="status-row" style={{display:'flex', gap:'8px', marginTop:'5px'}}>
+                                        
+                                        <div className="status-row" style={{display:'flex', gap:'8px', marginTop:'5px', alignItems:'center'}}>
                                             <span className={`badge ${event.status}`}>{getStatusLabel(event.status)}</span>
                                             
                                             {/* --- STATUS DE DESTAQUE --- */}
                                             {event.highlightStatus === 'pending' && (
-                                                <span className="badge highlight-pending">Análise Destaque</span>
+                                                <span className="badge highlight-pending">⏳ Análise Destaque</span>
                                             )}
+                                            
+                                            {/* BOTÃO DE PAGAR DESTAQUE */}
                                             {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
                                                 <a 
                                                     href={event.highlightPaymentLink} 
@@ -397,9 +401,24 @@ const DashboardContent = () => {
                                                     rel="noopener noreferrer"
                                                     className="badge highlight-pay"
                                                     title="Clique para pagar e ativar o destaque"
+                                                    style={{
+                                                        backgroundColor: '#2563EB', 
+                                                        color: 'white', 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '5px',
+                                                        textDecoration: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
                                                 >
-                                                    <FaBolt /> Pagar Destaque
+                                                    <FaBolt size={10} /> Pagar Destaque
                                                 </a>
+                                            )}
+
+                                            {event.highlightStatus === 'paid' && (
+                                                <span className="badge highlight-active" style={{background: '#ECFDF5', color: '#059669'}}>
+                                                    🌟 Destaque Ativo
+                                                </span>
                                             )}
                                         </div>
                                     </div>
