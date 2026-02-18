@@ -10,8 +10,9 @@ const getPublicConfig = async (req, res) => {
             }
         });
 
+        // Se não existir, retorna padrão com R$ 2,00
         if (!config) {
-            config = { premiumPrice: 100.00, standardPrice: 50.00 };
+            config = { premiumPrice: 100.00, standardPrice: 2.00 };
         }
 
         res.json(config);

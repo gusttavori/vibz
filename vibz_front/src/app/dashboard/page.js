@@ -9,7 +9,7 @@ import confetti from 'canvas-confetti';
 import { 
     FaCheckCircle, FaExclamationCircle, FaCalendarAlt, FaEdit, 
     FaWifi, FaSync, FaList, FaQrcode, FaCog, FaTimes, FaChartLine,
-    FaMoneyBillWave, FaTicketAlt
+    FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
@@ -185,6 +185,13 @@ const DashboardContent = () => {
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             router.replace('/dashboard'); 
         }
+        // Feedback de pagamento de destaque
+        const success = searchParams.get('success');
+        if (success === 'highlight') {
+            toast.success("Destaque ativado com sucesso! 🌟");
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            router.replace('/dashboard');
+        }
     }, [searchParams, router]);
 
     const fetchAllData = useCallback(async () => {
@@ -242,7 +249,6 @@ const DashboardContent = () => {
                         const sold = parseInt(ticket.sold) || 0;
                         let price = ticket.price;
                         
-                        // Garante que o preço seja um número válido
                         if (typeof price === 'string') {
                             price = parseFloat(price.replace(',', '.'));
                         }
@@ -369,16 +375,33 @@ const DashboardContent = () => {
                                 <div className="event-info">
                                     <img src={event.imageUrl} alt="" className="event-thumb" />
                                     <div className="event-meta">
-                                        <strong>{formatText(event.title)}</strong>
+                                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                            <strong>{formatText(event.title)}</strong>
+                                            {/* BADGE DESTAQUE ATIVO */}
+                                            {event.highlightStatus === 'paid' && (
+                                                <span title="Evento Destacado" style={{color: '#F59E0B'}}><FaStar /></span>
+                                            )}
+                                        </div>
                                         <span>{formatDate(event.date)} • {event.city}</span>
-                                        <span className={`badge ${event.status}`}>{getStatusLabel(event.status)}</span>
-                                        
-                                        {/* STATUS DESTAQUE */}
-                                        {event.highlightStatus === 'pending' && <div className="highlight-tag pending">⏳ Destaque em análise</div>}
-                                        {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
-                                            <a href={event.highlightPaymentLink} target="_blank" className="highlight-pay-btn">💳 Pagar Destaque</a>
-                                        )}
-                                        {event.highlightStatus === 'paid' && <div className="highlight-tag active">🌟 Destaque Ativo</div>}
+                                        <div className="status-row" style={{display:'flex', gap:'8px', marginTop:'5px'}}>
+                                            <span className={`badge ${event.status}`}>{getStatusLabel(event.status)}</span>
+                                            
+                                            {/* --- STATUS DE DESTAQUE --- */}
+                                            {event.highlightStatus === 'pending' && (
+                                                <span className="badge highlight-pending">Análise Destaque</span>
+                                            )}
+                                            {event.highlightStatus === 'approved_waiting_payment' && event.highlightPaymentLink && (
+                                                <a 
+                                                    href={event.highlightPaymentLink} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="badge highlight-pay"
+                                                    title="Clique para pagar e ativar o destaque"
+                                                >
+                                                    <FaBolt /> Pagar Destaque
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

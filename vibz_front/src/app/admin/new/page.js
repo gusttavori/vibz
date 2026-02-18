@@ -58,7 +58,7 @@ const CadastroEvento = () => {
     // --- LÓGICA DE DESTAQUE ATUALIZADA ---
     const [highlightTier, setHighlightTier] = useState(null); // 'STANDARD' ou 'PREMIUM'
     const [highlightDays, setHighlightDays] = useState(7); // Padrão 7 dias para Standard
-    const [prices, setPrices] = useState({ standardPrice: 10, premiumPrice: 100 }); // Valores padrão iniciais (Standard = diária)
+    const [prices, setPrices] = useState({ standardPrice: 2, premiumPrice: 100 }); // Padrão: R$ 2,00 / dia
     
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -83,7 +83,7 @@ const CadastroEvento = () => {
                 if (res.ok) {
                     const data = await res.json();
                     setPrices({
-                        standardPrice: data.standardPrice || 10, // R$ 10 por dia
+                        standardPrice: data.standardPrice || 2, // Default para R$ 2 se não vier
                         premiumPrice: data.premiumPrice || 100
                     });
                 }
@@ -468,7 +468,7 @@ const CadastroEvento = () => {
                                     <div style={{marginTop: '15px'}}>
                                         <label style={{fontSize: '0.8rem', fontWeight: '600', color: '#4C01B5'}}>Quantos dias?</label>
                                         <input 
-                                            type="range" min="1" max="30" 
+                                            type="range" min="1" max="45" 
                                             value={highlightDays} 
                                             onChange={(e) => setHighlightDays(parseInt(e.target.value))}
                                             onClick={(e) => e.stopPropagation()} // Evita re-clique no card

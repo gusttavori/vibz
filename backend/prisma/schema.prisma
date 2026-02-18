@@ -47,7 +47,7 @@ model SystemConfig {
   platformFee   Float    @default(0.08) // 8% padrão
   minFee        Float    @default(2.00) // Taxa mínima em R$
   premiumPrice  Float    @default(100.00)
-  standardPrice Float    @default(50.00)
+  standardPrice Float    @default(2.00) // ATUALIZADO: R$ 2,00 por dia
   updatedAt     DateTime @updatedAt
 
   @@map("system_config")
@@ -122,13 +122,15 @@ model Event {
   refundPolicy         String
   termsAndConditions   String?
   
-  // --- LÓGICA DE DESTAQUE ATUALIZADA ---
+  // --- LÓGICA DE DESTAQUE ---
   isFeatured           Boolean @default(false) // Só fica true após pagamento
   isFeaturedRequested  Boolean @default(false)
   highlightStatus      String  @default("none") // none, pending, approved_waiting_payment, paid, rejected
   highlightFee         Float   @default(0)
   highlightTier        String? // 'STANDARD' ou 'PREMIUM'
   highlightPaymentLink String? // Link da Stripe para pagar o destaque
+  highlightDuration    Int?    // Dias contratados (Standard)
+  highlightExpiresAt   DateTime?
 
   // Datas
   eventDate DateTime

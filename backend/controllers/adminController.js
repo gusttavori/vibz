@@ -111,7 +111,7 @@ const updateEventStatus = async (req, res) => {
     }
 };
 
-// --- APROVAÇÃO COM COBRANÇA (LÓGICA DIÁRIA AJUSTADA) ---
+// --- APROVAÇÃO COM COBRANÇA (ATUALIZADO) ---
 const updateHighlightStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -135,10 +135,11 @@ const updateHighlightStatus = async (req, res) => {
 
         // APROVAÇÃO -> GERA COBRANÇA
         if (highlightStatus === 'approved') {
-            // 1. Pega configurações atuais
+            // 1. Pega preço atual do banco
             const config = await prisma.systemConfig.findFirst();
-            // Fallback: Standard = R$ 10.00 (diária), Premium = R$ 100.00 (fixo)
-            const standardDailyRate = config?.standardPrice || 10.00;
+            
+            // Standard agora é diária (R$ 2.00 por padrão), Premium é fixo (R$ 100.00)
+            const standardDailyRate = config?.standardPrice || 2.00;
             const premiumFixedPrice = config?.premiumPrice || 100.00;
             
             let finalPrice = 0;
@@ -151,7 +152,7 @@ const updateHighlightStatus = async (req, res) => {
                 // STANDARD: Calcula preço por dia
                 const days = event.highlightDuration || 7; // Padrão 7 dias se não estiver definido
                 finalPrice = days * standardDailyRate;
-                description = `Destaque Standard (${days} diárias a R$ ${standardDailyRate}/dia) - ${event.title}`;
+                description = `Destaque Standard (${days} diárias a R$ ${standardDailyRate.toFixed(2)}/dia) - ${event.title}`;
             }
 
             // 2. Cria sessão na Stripe
@@ -172,14 +173,14 @@ const updateHighlightStatus = async (req, res) => {
                 success_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?success=highlight&eventId=${event.id}`,
                 cancel_url: `${process.env.FRONTEND_URL}/dashboard/meus-eventos?canceled=true`,
                 metadata: {
-                    type: 'EVENT_HIGHLIGHT',
+                    type: 'EVENT_HIGHLIGHT', // Importante para o Webhook identificar
                     eventId: event.id,
                     tier: event.highlightTier,
                     duration: event.highlightDuration || 7 // Passa duração para o webhook calcular validade
                 }
             });
 
-            // 3. Atualiza evento com link e preço congelado
+            // 3. Atualiza evento com link e status de espera
             const updated = await prisma.event.update({
                 where: { id },
                 data: {
