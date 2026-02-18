@@ -11,6 +11,8 @@ import {
     FaShieldAlt, 
     FaInstagram
 } from 'react-icons/fa';
+// Importa o botão de instalação que criamos
+import InstallAppButton from './InstallAppButton'; 
 import styles from './Footer.module.css';
 
 const Footer = () => {
@@ -25,6 +27,11 @@ const Footer = () => {
                     <div className={styles.leftColumn}>
                         <div className={styles.brand}>
                             <img src="/img/vibe_site.png" alt="Vibz Logo" className={styles.footerLogo} />
+                            
+                            {/* Botão de Instalar App posicionado aqui */}
+                            <div className={styles.installArea}>
+                                <InstallAppButton />
+                            </div>
                         </div>
 
                         <div className={styles.navLinks}>

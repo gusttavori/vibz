@@ -1,8 +1,23 @@
+import withPWAInit from 'next-pwa';
+
+const withPWA = withPWAInit({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development', // Desativa em dev para não cachear erros
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Se quiser ignorar erros de build do eslint/typescript para teste:
-  // eslint: { ignoreDuringBuilds: true },
-  // typescript: { ignoreBuildErrors: true },
+  // Mantenha suas configs de imagens se já houver
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

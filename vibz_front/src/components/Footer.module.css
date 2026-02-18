@@ -36,9 +36,16 @@
     gap: 30px;
 }
 
+/* Alterado para organizar Logo e Botão verticalmente */
 .brand {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.installArea {
+    margin-top: 5px;
 }
 
 .footerLogo {
@@ -78,8 +85,6 @@
 
 .link:hover {
     color: #fff;
-    /* Opcional: Adicionar um toque de roxo no hover */
-    /* color: #a29bfe; */ 
 }
 
 /* Coluna Direita: Ocupa menos espaço (Flex 1) para Pagamento/Segurança */
@@ -89,7 +94,6 @@
     display: flex;
     flex-direction: column;
     gap: 30px;
-    /* Alinha o conteúdo ao início (esquerda do bloco) para ficar perto dos links */
     align-items: flex-start; 
 }
 
