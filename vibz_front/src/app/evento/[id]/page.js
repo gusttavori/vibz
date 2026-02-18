@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation"; 
 import { 
     FaTicketAlt, FaMinus, FaPlus, FaShoppingCart, 
@@ -41,17 +41,6 @@ const SkeletonLoader = () => (
     </div>
 );
 
-const formatDateSimple = (dateStr) => {
-    if (!dateStr) return null;
-    const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-    const parts = cleanDate.split('-');
-    if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}`; 
-    }
-    return null;
-};
-
-// Formata data completa para o seletor (ex: "Sáb, 14 Fev")
 const formatDateSelector = (dateStr) => {
     if (!dateStr) return '';
     try {
@@ -68,6 +57,8 @@ const formatDateSelector = (dateStr) => {
         return dateStr;
     }
 };
+
+const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function EventoDetalhes() {
     const params = useParams(); 
@@ -88,7 +79,6 @@ export default function EventoDetalhes() {
     const [participantsData, setParticipantsData] = useState({});
     const [replicateData, setReplicateData] = useState(false);
 
-    // Estado para data selecionada
     const [selectedDate, setSelectedDate] = useState(null);
     const [availableDates, setAvailableDates] = useState([]);
 
@@ -103,6 +93,7 @@ export default function EventoDetalhes() {
                 if (fetchEvent.ok && eventData) {
                     setEvento(eventData);
                     
+                    // --- 1. Lógica de Data Principal ---
                     let eventDate = null;
                     if (eventData.eventDate) eventDate = new Date(eventData.eventDate);
                     else if (eventData.sessions?.length) {
@@ -112,30 +103,42 @@ export default function EventoDetalhes() {
                     if (!eventDate && eventData.createdAt) eventDate = new Date(eventData.createdAt);
                     setDisplayDate(eventDate);
 
+                    // --- 2. Lógica de Datas Disponíveis (Seletor) ---
                     const tickets = eventData.tickets || eventData.ticketTypes || [];
                     const dates = new Set();
-                    
                     tickets.forEach(t => {
                         if (t.activityDate) {
                             const datePart = t.activityDate.includes('T') ? t.activityDate.split('T')[0] : t.activityDate;
                             dates.add(datePart);
                         }
                     });
-
                     const uniqueDates = Array.from(dates).sort();
                     setAvailableDates(uniqueDates);
-                    
-                    if (uniqueDates.length > 0) {
-                        setSelectedDate(uniqueDates[0]);
+                    if (uniqueDates.length > 0) setSelectedDate(uniqueDates[0]);
+
+                    // --- 3. Lógica do Organizador (CORRIGIDA) ---
+                    let orgName = "Organizador"; 
+                    let orgInsta = "";
+
+                    // Prioridade 1: Dados personalizados salvos no evento
+                    if (eventData.organizerInfo) {
+                        try {
+                            const info = typeof eventData.organizerInfo === 'string' 
+                                ? JSON.parse(eventData.organizerInfo) 
+                                : eventData.organizerInfo;
+                            
+                            if (info.name && info.name.trim() !== "") orgName = info.name;
+                            if (info.instagram) orgInsta = info.instagram;
+                        } catch (e) {
+                            console.error("Erro parse organizerInfo", e);
+                        }
+                    } 
+                    // Prioridade 2: Dados da conta do usuário criador
+                    else if (eventData.organizer && eventData.organizer.name) {
+                        orgName = eventData.organizer.name;
+                        if (eventData.organizer.instagram) orgInsta = eventData.organizer.instagram;
                     }
 
-                    let orgName = eventData.organizerName || (eventData.organizer && eventData.organizer.name) || "Produtor";
-                    let orgInsta = eventData.organizerInstagram || "";
-                    if (eventData.organizerInfo) {
-                         const info = typeof eventData.organizerInfo === 'string' ? JSON.parse(eventData.organizerInfo) : eventData.organizerInfo;
-                         if (info.name) orgName = info.name;
-                         if (info.instagram) orgInsta = info.instagram;
-                    }
                     setOrganizerInfo({ name: orgName, instagram: orgInsta });
 
                 } else {
@@ -149,7 +152,26 @@ export default function EventoDetalhes() {
             }
         };
         loadData();
-    }, [id]);
+    }, [id, API_BASE_URL]);
+
+    // Cálculo do Total
+    const { totalValue, totalQty } = useMemo(() => {
+        if (!evento) return { totalValue: 0, totalQty: 0 };
+        let total = 0;
+        let qty = 0;
+        const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08; 
+        const allTickets = evento.tickets || evento.ticketTypes || [];
+
+        allTickets.forEach(ticket => {
+            const tId = ticket.id || ticket._id;
+            const quantity = ticketQuantities[tId] || 0;
+            if (quantity > 0) {
+                total += ((ticket.price + (ticket.price * rate)) * quantity);
+                qty += quantity;
+            }
+        });
+        return { totalValue: total, totalQty: qty };
+    }, [evento, ticketQuantities, appliedCoupon]);
 
     const handleQuantityChange = (ticketId, delta) => {
         const ticket = evento.tickets.find(t => t.id === ticketId || t._id === ticketId);
@@ -165,40 +187,6 @@ export default function EventoDetalhes() {
             }
             return { ...prev, [ticketId]: Math.max(0, newQty) };
         });
-    };
-
-    const hasTimeConflict = (candidateTicket, currentSelection) => {
-        if (!candidateTicket.startTime || !candidateTicket.endTime || !candidateTicket.activityDate) return false;
-
-        const toMinutes = (t) => {
-            if(!t) return 0;
-            const [h, m] = t.split(':').map(Number);
-            return h * 60 + m;
-        };
-        
-        const candDate = new Date(candidateTicket.activityDate).toISOString().split('T')[0];
-        const candStart = toMinutes(candidateTicket.startTime);
-        const candEnd = toMinutes(candidateTicket.endTime);
-
-        for (const [tId, qty] of Object.entries(currentSelection)) {
-            if (qty > 0 && tId !== candidateTicket.id && tId !== candidateTicket._id) {
-                const selectedTicket = evento.tickets.find(t => (t.id === tId || t._id === tId));
-                
-                if (selectedTicket && selectedTicket.activityDate && selectedTicket.startTime && selectedTicket.endTime) {
-                      const selDate = new Date(selectedTicket.activityDate).toISOString().split('T')[0];
-                      
-                      if (candDate === selDate) {
-                          const selStart = toMinutes(selectedTicket.startTime);
-                          const selEnd = toMinutes(selectedTicket.endTime);
-
-                          if (Math.max(candStart, selStart) < Math.min(candEnd, selEnd)) {
-                              return true;
-                          }
-                      }
-                }
-            }
-        }
-        return false;
     };
 
     const handleApplyCoupon = async () => {
@@ -243,13 +231,11 @@ export default function EventoDetalhes() {
     const handleReplicateDataToggle = (e) => {
         const isChecked = e.target.checked;
         setReplicateData(isChecked);
-
         if (isChecked) {
             const allKeys = getAllParticipantKeys();
             if (allKeys.length > 1) {
                 const firstKey = allKeys[0];
                 const firstData = participantsData[firstKey] || {};
-                
                 setParticipantsData(prev => {
                     const newData = { ...prev };
                     allKeys.slice(1).forEach(key => {
@@ -264,20 +250,13 @@ export default function EventoDetalhes() {
 
     const handleInputChange = (ticketId, index, questionLabel, value) => {
         const key = `${ticketId}_${index}`;
-        
         setParticipantsData(prev => {
             const newData = { ...prev, [key]: { ...prev[key], [questionLabel]: value } };
-
             if (replicateData) {
                 const allKeys = getAllParticipantKeys();
-                const firstKey = allKeys[0];
-
-                if (key === firstKey) {
+                if (key === allKeys[0]) {
                     allKeys.slice(1).forEach(targetKey => {
-                        newData[targetKey] = { 
-                            ...newData[targetKey], 
-                            [questionLabel]: value 
-                        };
+                        newData[targetKey] = { ...newData[targetKey], [questionLabel]: value };
                     });
                 }
             }
@@ -315,12 +294,9 @@ export default function EventoDetalhes() {
             return;
         }
         
-        let totalQty = 0;
-        Object.values(ticketQuantities).forEach(qty => totalQty += qty);
         if (totalQty === 0) return toast.error("Selecione pelo menos um ingresso.");
 
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
-        
         if (schema && schema.length > 0 && !showParticipantModal) {
             setShowParticipantModal(true);
             return;
@@ -335,25 +311,40 @@ export default function EventoDetalhes() {
             }
         }
 
+        const isFree = totalValue === 0;
+        const toastId = toast.loading(isFree ? "Resgatando ingresso..." : "Iniciando pagamento...");
+
         try {
-            toast.loading("Iniciando pagamento...");
             const response = await fetch(`${API_BASE_URL}/payments/create-checkout-session`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token.replace(/"/g, '')}` },
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token.replace(/"/g, '')}` 
+                },
                 body: JSON.stringify({ 
-                    eventId: id, tickets: ticketQuantities, 
-                    couponCode: appliedCoupon?.code, participantData: formattedParticipants 
+                    eventId: id, 
+                    tickets: ticketQuantities, 
+                    couponCode: appliedCoupon?.code, 
+                    participantData: formattedParticipants 
                 })
             });
+            
             const data = await response.json();
-            toast.dismiss();
-            if (response.ok && data.url) window.location.href = data.url;
-            else {
-                toast.error(data.message || "Erro no pagamento.");
+            toast.dismiss(toastId);
+
+            if (response.ok) {
+                if (data.url) {
+                    window.location.href = data.url; 
+                } else {
+                    toast.success("Ingresso garantido com sucesso! 🎟️");
+                    router.push('/dashboard'); 
+                }
+            } else {
+                toast.error(data.message || "Erro ao processar pedido.");
                 if (data.message && data.message.includes("Cupom")) setAppliedCoupon(null);
             }
         } catch (error) {
-            toast.dismiss();
+            toast.dismiss(toastId);
             toast.error("Erro de conexão.");
         }
     };
@@ -402,33 +393,24 @@ export default function EventoDetalhes() {
         return inputs;
     };
 
-    const getGoogleMapsLink = () => { if (!evento) return "#"; const query = encodeURIComponent(`${evento.location}, ${evento.city}`); return `https://www.google.com/maps/search/?api=1&query=${query}`; };
-    const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+    const getGoogleMapsLink = () => { 
+        if (!evento) return "#"; 
+        const query = encodeURIComponent(`${evento.location}, ${evento.city}`); 
+        return `https://www.google.com/maps/search/?api=1&query=${query}`; 
+    };
     
     if (loading) return <SkeletonLoader />;
     if (!evento) return <div className="error-screen">Evento não encontrado.</div>;
 
-    const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08; 
-    let total = 0;
-    
     const allTickets = evento.tickets || evento.ticketTypes || [];
     
-    // --- FILTRAGEM ---
     const filteredTickets = allTickets.filter(ticket => {
-        if (!ticket.activityDate) return true; // Sem data = aparece sempre
+        if (!ticket.activityDate) return true; 
         const tDate = ticket.activityDate.includes('T') ? ticket.activityDate.split('T')[0] : ticket.activityDate;
         return tDate === selectedDate;
     });
 
     const isEventEnded = new Date() > new Date(evento.eventDate);
-
-    if (allTickets.length > 0) {
-        allTickets.forEach(ticket => {
-            const tId = ticket.id || ticket._id;
-            const qty = ticketQuantities[tId] || 0;
-            total += ((ticket.price + (ticket.price * rate)) * qty);
-        });
-    }
 
     return (
         <div className="event-details-page-container">
@@ -475,7 +457,6 @@ export default function EventoDetalhes() {
                                 {isTicketsOpen && (
                                     <div className="tickets-content">
                                         
-                                        {/* --- SELETOR DE DATAS EM GRID --- */}
                                         {availableDates.length > 1 && (
                                             <div className="date-selector-container">
                                                 <p className="date-selector-label"><FaCalendarAlt /> Escolha a data:</p>
@@ -504,7 +485,7 @@ export default function EventoDetalhes() {
                                                 filteredTickets.map(ticket => {
                                                     const tId = ticket.id || ticket._id;
                                                     const qty = ticketQuantities[tId] || 0;
-                                                    const fee = ticket.price * rate; 
+                                                    const fee = ticket.price * 0.08; 
                                                     const available = ticket.quantity - (ticket.sold || 0);
                                                     
                                                     const now = new Date();
@@ -514,44 +495,31 @@ export default function EventoDetalhes() {
                                                     const maxPerUser = ticket.maxPerUser || 4;
                                                     const isMaxReached = qty >= maxPerUser;
                                                     const isUnavailable = isSoldOut || isPaused || isSalesExpired;
-                                                    
                                                     const disablePlus = isUnavailable || qty >= available || isMaxReached;
 
                                                     return (
                                                         <div key={tId} className={`ticket-item ${isUnavailable ? 'ticket-sold-out' : ''}`}>
-                                                            {/* LAYOUT DO TICKET ATUALIZADO (HORIZONTAL) */}
                                                             <div className="ticket-info">
                                                                 <span className="ticket-name">{ticket.name}</span>
-                                                                
                                                                 <div className="ticket-meta-row">
                                                                     <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                                    {ticket.startTime && (
-                                                                        <span className="ticket-time-badge">
-                                                                            <FaClock size={10} style={{marginRight:'3px'}}/> {ticket.startTime}
-                                                                        </span>
-                                                                    )}
+                                                                    {ticket.startTime && <span className="ticket-time-badge"><FaClock size={10} style={{marginRight:'3px'}}/> {ticket.startTime}</span>}
                                                                 </div>
-
-                                                                {/* PREÇO MUDOU PARA CÁ (ABAIXO DO LOTE/HORA) */}
                                                                 <div>
-                                                                    <span className="ticket-price">
-                                                                        {ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}
-                                                                    </span>
+                                                                    <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
                                                                     {ticket.price > 0 && <span className="ticket-fee">+ {formatCurrency(fee)} taxa</span>}
                                                                 </div>
-                                                                
-                                                                {/* Status Messages */}
-                                                                {isSoldOut && !isSalesExpired && <span className="sold-out-badge">ESGOTADO</span>}
-                                                                {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{background:'#64748b'}}>INDISPONÍVEL</span>}
-                                                                {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>ENCERRADO</span>}
+                                                                <div className="ticket-status-row">
+                                                                    {isSoldOut && !isSalesExpired && <span className="sold-out-badge">ESGOTADO</span>}
+                                                                    {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{background:'#64748b'}}>INDISPONÍVEL</span>}
+                                                                    {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>ENCERRADO</span>}
+                                                                </div>
                                                             </div>
 
-                                                            <div style={{display:'flex', alignItems:'center'}}>
-                                                                <div className="ticket-controls">
-                                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable}><FaMinus size={8}/></button>
-                                                                    <span className="qty-display">{qty}</span>
-                                                                    <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={8}/></button>
-                                                                </div>
+                                                            <div className="ticket-controls">
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable}><FaMinus size={8}/></button>
+                                                                <span className="qty-display">{qty}</span>
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={8}/></button>
                                                             </div>
                                                         </div>
                                                     );
@@ -563,22 +531,27 @@ export default function EventoDetalhes() {
                                         
                                         {!isEventEnded && allTickets.length > 0 && (
                                             <>
-                                                <div className="coupon-section">
-                                                    {!appliedCoupon ? (
-                                                        <div className="coupon-input-group">
-                                                            <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input"/>
-                                                            <button onClick={handleApplyCoupon} className="coupon-btn"><FaTag /></button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="coupon-applied-box">
-                                                            <div className="coupon-active-header"><span className="coupon-code"><FaCheckCircle /> {appliedCoupon.code}</span><button onClick={handleRemoveCoupon} className="remove-coupon-btn">Remover</button></div>
-                                                            <div className="coupon-msg"><FaPercentage /> Taxa reduzida para 3%!</div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                {totalValue > 0 && (
+                                                    <div className="coupon-section">
+                                                        {!appliedCoupon ? (
+                                                            <div className="coupon-input-group">
+                                                                <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input"/>
+                                                                <button onClick={handleApplyCoupon} className="coupon-btn"><FaTag /></button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="coupon-applied-box">
+                                                                <div className="coupon-active-header"><span className="coupon-code"><FaCheckCircle /> {appliedCoupon.code}</span><button onClick={handleRemoveCoupon} className="remove-coupon-btn">Remover</button></div>
+                                                                <div className="coupon-msg"><FaPercentage /> Desconto aplicado!</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 <div className="tickets-footer">
-                                                    <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? {color:'#2f855a'} : {}}>{formatCurrency(total)}</span></div></div>
-                                                    <button className="buy-now-button" onClick={handleBuyClick}><FaShoppingCart /> Comprar Ingressos</button>
+                                                    <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? {color:'#2f855a'} : {}}>{formatCurrency(totalValue)}</span></div></div>
+                                                    <button className="buy-now-button" onClick={handleBuyClick}>
+                                                        {totalValue === 0 ? <><FaCheckCircle /> Resgatar Ingresso Grátis</> : <><FaShoppingCart /> Comprar Ingressos</>}
+                                                    </button>
                                                     <div className="secure-checkout-text"><FaCheckCircle size={10}/> 100% Seguro</div>
                                                 </div>
                                             </>
@@ -597,16 +570,8 @@ export default function EventoDetalhes() {
                         <div className="modal-header"><h3>Dados dos Participantes</h3><button className="close-modal-btn" onClick={() => setShowParticipantModal(false)}><FaTimes /></button></div>
                         <div className="modal-body">
                              <div className="replicate-container" style={{backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center'}}>
-                                <input 
-                                    type="checkbox" 
-                                    id="replicateCheck" 
-                                    checked={replicateData} 
-                                    onChange={handleReplicateDataToggle} 
-                                    style={{width: '18px', height: '18px', marginRight: '10px', cursor: 'pointer'}} 
-                                />
-                                <label htmlFor="replicateCheck" style={{fontSize: '0.9rem', color: '#0369a1', cursor: 'pointer', fontWeight: '600'}}>
-                                    Repetir dados do primeiro participante para todos
-                                </label>
+                                <input type="checkbox" id="replicateCheck" checked={replicateData} onChange={handleReplicateDataToggle} style={{width: '18px', height: '18px', marginRight: '10px', cursor: 'pointer'}} />
+                                <label htmlFor="replicateCheck" style={{fontSize: '0.9rem', color: '#0369a1', cursor: 'pointer', fontWeight: '600'}}>Repetir dados do primeiro participante para todos</label>
                             </div>
 
                             <p style={{marginBottom: '20px', color: '#64748b', fontSize: '0.95rem'}}>O organizador solicitou as seguintes informações para a gestão do evento.</p>
@@ -614,12 +579,15 @@ export default function EventoDetalhes() {
                              
                              <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b'}}>
                                 <FaInfoCircle style={{marginRight: '5px', verticalAlign: 'middle'}}/>
-                                <strong>Privacidade:</strong> Os dados acima serão compartilhados com o organizador 
-                                (<strong>{organizerInfo.name}</strong>) exclusivamente para a realização deste evento. 
-                                A Vibz atua como operadora dos dados.
+                                <strong>Privacidade:</strong> Os dados acima serão compartilhados com o organizador (<strong>{organizerInfo.name}</strong>) exclusivamente para a realização deste evento.
                             </div>
                         </div>
-                        <div className="modal-footer"><button className="cancel-btn" onClick={() => setShowParticipantModal(false)}>Voltar</button><button className="confirm-btn" onClick={handleBuyClick}>Ir para Pagamento</button></div>
+                        <div className="modal-footer">
+                            <button className="cancel-btn" onClick={() => setShowParticipantModal(false)}>Voltar</button>
+                            <button className="confirm-btn" onClick={handleBuyClick}>
+                                {totalValue === 0 ? "Finalizar Resgate" : "Ir para Pagamento"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

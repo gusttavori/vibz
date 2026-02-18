@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../Auth.css';
 
-// Padronizado para incluir /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function Login() {
@@ -15,6 +14,19 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   
   const router = useRouter();
+
+  const realizarLoginNoNavegador = (data) => {
+    setMessage(data.msg || 'Login realizado!');
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('userToken', data.token);
+        if (data.user) {
+            localStorage.setItem('userId', data.user.id);
+            localStorage.setItem('userName', data.user.name);
+        }
+        // --- CORREÇÃO PWA: Forçar recarregamento via location.href ---
+        window.location.href = '/dashboard'; 
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,11 +46,11 @@ export default function Login() {
         realizarLoginNoNavegador(data);
       } else {
         setMessage(data.msg || 'Erro ao fazer login.');
+        setIsLoading(false); // Só desativa loading se der erro
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
       setMessage('Erro de conexão com o servidor.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -66,22 +78,9 @@ export default function Login() {
       }
     },
     onError: () => {
-        setMessage('Falha ao abrir janela do Google.');
+      setMessage('Falha ao abrir janela do Google.');
     }
   });
-
-  const realizarLoginNoNavegador = (data) => {
-    setMessage(data.msg || 'Login realizado!');
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('userToken', data.token);
-        if (data.user) {
-            localStorage.setItem('userId', data.user.id);
-            localStorage.setItem('userName', data.user.name);
-        }
-    }
-    // Redireciona para home ou dashboard
-    router.push('/');
-  };
 
   const handleGoToRegister = () => {
     router.push('/cadastro');
