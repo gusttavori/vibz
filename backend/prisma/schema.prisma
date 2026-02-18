@@ -36,8 +36,9 @@ enum OrderStatus {
 }
 
 enum DiscountType {
-  PERCENTAGE // Ex: 10% OFF
-  FIXED      // Ex: R$ 20,00 OFF
+  PERCENTAGE      // Ex: 10% OFF no valor total
+  FIXED           // Ex: R$ 20,00 OFF no valor total
+  PERCENTAGE_FEE  // Ex: 5% OFF na taxa de serviço (Split com parceiro)
 }
 
 // --- MODELS ---
@@ -54,11 +55,11 @@ model SystemConfig {
 }
 
 model User {
-  id       String  @id @default(uuid())
-  name     String
-  email    String  @unique
-  password String?
-  isAdmin  Boolean @default(false)
+  id        String  @id @default(uuid())
+  name      String
+  email     String  @unique
+  password  String?
+  isAdmin   Boolean @default(false)
 
   // Stripe Data
   stripeAccountId          String?
@@ -69,7 +70,7 @@ model User {
   coverPicture   String?
   bio            String?
 
-  // Reset de Senha (NOVOS CAMPOS)
+  // Reset de Senha
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
 
@@ -118,13 +119,13 @@ model Event {
   isInformational Boolean @default(false)
 
   // Configurações Financeiras e Destaque
-  priceFrom           Float?   // Pode ser nulo se for informativo
-  refundPolicy        String
-  termsAndConditions  String?
-  isFeatured          Boolean @default(false)
-  isFeaturedRequested Boolean @default(false)
-  highlightStatus     String  @default("none")
-  highlightFee        Float   @default(0)
+  priceFrom            Float?   // Pode ser nulo se for informativo
+  refundPolicy         String
+  termsAndConditions   String?
+  isFeatured           Boolean @default(false)
+  isFeaturedRequested  Boolean @default(false)
+  highlightStatus      String  @default("none")
+  highlightFee         Float   @default(0)
 
   // Datas
   eventDate DateTime
@@ -199,28 +200,29 @@ model Coupon {
   description String?
 
   // Configuração do Desconto
-  discountType  DiscountType // PERCENTAGE ou FIXED
-  discountValue Float
+  discountType  String // PERCENTAGE, FIXED ou PERCENTAGE_FEE (salvo como string para flexibilidade)
+  discountValue Float  // Valor do desconto (ex: 5 para 5%)
 
+  // Dados do Parceiro (Obrigatório para split)
+  partner       String // Nome do parceiro (ex: "Gustavo")
+  
   // Regras de Uso
-  maxUses           Int?
-  usedCount         Int    @default(0)
-  usageLimitPerUser Int    @default(1)
+  maxUses           Int?      // Null = ilimitado
+  usedCount         Int       @default(0)
+  usageLimitPerUser Int       @default(1)
   minPurchaseAmount Float?
 
-  validFrom DateTime?
+  validFrom  DateTime?
   validUntil DateTime?
   isActive   Boolean   @default(true)
+  expiresAt  DateTime? // Data de expiração simples
 
-  // Vínculos
+  // Vínculos Opcionais (se for cupom específico de evento/parceiro do banco)
   eventId String?
   event   Event?  @relation(fields: [eventId], references: [id])
 
   partnerId String?
-  partner   Partner? @relation(fields: [partnerId], references: [id])
-
-  platformFeeMin Float  @default(4)
-  partnerShare   Float?
+  partnerRef Partner? @relation(fields: [partnerId], references: [id]) // Relação com tabela Partner se existir
 
   orders Order[]
 
@@ -231,9 +233,9 @@ model Coupon {
 }
 
 model Order {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  id      String @id @default(uuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
 
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])
@@ -244,7 +246,7 @@ model Order {
 
   items OrderItem[]
    
-  // 👇 RELAÇÃO ADICIONADA: Um pedido gera vários ingressos
+  // Um pedido gera vários ingressos
   tickets Ticket[] 
 
   // Valores Financeiros
@@ -290,7 +292,7 @@ model Ticket {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  // 👇 RELAÇÃO ADICIONADA: O ingresso pertence a um pedido
+  // O ingresso pertence a um pedido
   orderId String
   order   Order @relation(fields: [orderId], references: [id])
 

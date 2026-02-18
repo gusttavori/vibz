@@ -7,7 +7,10 @@ const {
     updateEventStatus, 
     updateHighlightStatus,
     getSystemSettings, 
-    updateSystemSettings 
+    updateSystemSettings,
+    listCoupons,
+    createCoupon,
+    deleteCoupon
 } = require('../controllers/adminController');
 
 router.post('/login', loginAdmin);
@@ -18,5 +21,9 @@ router.put('/events/:id', updateEventStatus);
 router.put('/highlights/:id', updateHighlightStatus);
 router.get('/settings', getSystemSettings);
 router.put('/settings', updateSystemSettings);
+
+router.get('/coupons', listCoupons);
+router.post('/coupons', createCoupon);
+router.delete('/coupons/:id', deleteCoupon);
 
 module.exports = router;

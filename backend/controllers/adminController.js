@@ -164,6 +164,61 @@ const updateSystemSettings = async (req, res) => {
     }
 };
 
+// --- CUPONS ---
+
+const listCoupons = async (req, res) => {
+    try {
+        const coupons = await prisma.coupon.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(coupons);
+    } catch (error) {
+        console.error("Erro coupons:", error);
+        res.status(500).json({ message: "Erro ao listar cupons." });
+    }
+};
+
+const createCoupon = async (req, res) => {
+    try {
+        const { code, discountType, value, partner, maxUses, expiresAt } = req.body;
+
+        if (!code || !value || !partner) {
+            return res.status(400).json({ message: "Preencha os campos obrigatórios." });
+        }
+
+        const existing = await prisma.coupon.findUnique({ where: { code } });
+        if (existing) {
+            return res.status(400).json({ message: "Código de cupom já existe." });
+        }
+
+        const coupon = await prisma.coupon.create({
+            data: {
+                code: code.toUpperCase(),
+                discountType,
+                discountValue: parseFloat(value),
+                partner,
+                maxUses: maxUses ? parseInt(maxUses) : null,
+                expiresAt: expiresAt ? new Date(expiresAt) : null,
+            }
+        });
+
+        res.status(201).json(coupon);
+    } catch (error) {
+        console.error("Erro create coupon:", error);
+        res.status(500).json({ message: "Erro ao criar cupom." });
+    }
+};
+
+const deleteCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.coupon.delete({ where: { id } });
+        res.json({ message: "Cupom excluído." });
+    } catch (error) {
+        res.status(500).json({ message: "Erro ao excluir cupom." });
+    }
+};
+
 module.exports = {
     loginAdmin,
     getAdminStats,
@@ -171,5 +226,8 @@ module.exports = {
     updateEventStatus,
     updateHighlightStatus,
     getSystemSettings,
-    updateSystemSettings
+    updateSystemSettings,
+    listCoupons,
+    createCoupon,
+    deleteCoupon
 };
