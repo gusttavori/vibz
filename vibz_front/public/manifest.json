@@ -1,8 +1,8 @@
 {
-  "name": "Vibz Eventos",
+  "name": "Vibz - Seus Eventos",
   "short_name": "Vibz",
-  "description": "Plataforma de eventos e ingressos.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4C01B5",

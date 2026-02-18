@@ -20,8 +20,7 @@ export default function Login() {
     const checkExistingAuth = () => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
         if (token) {
-            // Se já está logado, pula a tela de login imediatamente
-            window.location.assign('/');
+            window.location.replace('/');
         } else {
             setIsCheckingAuth(false);
         }
@@ -30,10 +29,7 @@ export default function Login() {
   }, []);
 
   const realizarLoginNoNavegador = (data) => {
-    setMessage(data.msg || 'Login realizado! Redirecionando...');
-    
     if (typeof window !== 'undefined') {
-        // Garantimos que o token seja salvo corretamente como string
         const tokenValue = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
         localStorage.setItem('userToken', tokenValue);
         
@@ -42,10 +38,11 @@ export default function Login() {
             localStorage.setItem('userName', data.user.name);
         }
         
-        // O assign('/') força o PWA a recarregar a Home do zero com o novo token
+        setMessage('Login realizado! Redirecionando...');
+        
         setTimeout(() => {
-             window.location.assign('/');
-        }, 200);
+             window.location.replace('/');
+        }, 100);
     }
   };
 
@@ -78,7 +75,7 @@ export default function Login() {
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setMessage('Processando login com Google...');
+      setMessage('Autenticando com Google...');
       setIsLoading(true); 
       
       try {
@@ -93,19 +90,21 @@ export default function Login() {
         if (response.ok) {
             realizarLoginNoNavegador(data);
         } else {
-            setMessage(data.msg || 'Erro ao logar com Google no servidor.');
+            setMessage(data.msg || 'Falha na autenticação com Google.');
             setIsLoading(false);
         }
       } catch (error) {
-        console.error("Erro ao enviar token Google para API:", error);
-        setMessage("Falha ao comunicar com o servidor.");
+        console.error("Erro API Google:", error);
+        setMessage("Erro ao comunicar com o servidor.");
         setIsLoading(false);
       }
     },
     onError: () => {
-      setMessage('Falha ao abrir janela do Google.');
+      setMessage('O login com Google foi cancelado ou falhou.');
       setIsLoading(false);
-    }
+    },
+    // Removido 'ux_mode' para manter compatibilidade com o fluxo atual, 
+    // mas forçando o tratamento de sucesso via replace('/')
   });
 
   const handleGoToRegister = () => {
@@ -119,7 +118,7 @@ export default function Login() {
   if (isCheckingAuth) {
       return (
         <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-            <div className="skeleton-pulse" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#e2e8f0' }}></div>
+            <div className="skeleton-pulse" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#4C01B5', opacity: 0.6 }}></div>
         </div>
       );
   }
@@ -165,9 +164,9 @@ export default function Login() {
             {isLoading ? 'Entrando...' : 'Entrar'}
         </button>
 
-        <button type="button" className="google-button" onClick={() => googleLogin()}>
+        <button type="button" className="google-button" onClick={() => googleLogin()} disabled={isLoading}>
             <img src="/img/icon_google.svg" alt="Google Logo" className="google-logo"/>
-            Continue com Google
+            {isLoading ? 'Aguarde...' : 'Continue com Google'}
         </button>
 
         <p>Ainda não tem uma conta?</p>
