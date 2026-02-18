@@ -24,7 +24,7 @@ export default function Login() {
         const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
         if (token) {
             // Se já tem token, nem mostra o login, vai pro dashboard
-            router.replace('/dashboard');
+            router.replace('/');
         } else {
             setIsCheckingAuth(false); // Libera para mostrar o form
         }
@@ -46,7 +46,7 @@ export default function Login() {
         // --- 2. CORREÇÃO DE NAVEGAÇÃO PWA ---
         // Usamos router.push primeiro (mais suave/rápido no App)
         // O useEffect acima garante que se a página recarregar, ele redireciona de novo.
-        router.push('/dashboard');
+        router.push('/');
     }
   };
 
