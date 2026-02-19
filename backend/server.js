@@ -13,7 +13,7 @@ const ticketRoutes = require('./routes/ticketRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes'); 
-const configRoutes = require('./routes/configRoutes'); // <--- NOVA ROTA IMPORTADA
+const configRoutes = require('./routes/configRoutes'); 
 
 const app = express();
 
@@ -48,7 +48,12 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/config', configRoutes); // <--- ROTA REGISTRADA AQUI
+app.use('/api/config', configRoutes); 
+
+// --- ROTA PARA O UPTIMEROBOT (Health Check) ---
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'OK', message: 'Servidor acordado! 🚀' });
+});
 
 // Rota de Teste
 app.get('/', (req, res) => {
