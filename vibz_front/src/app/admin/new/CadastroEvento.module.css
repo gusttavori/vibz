@@ -9,19 +9,25 @@
     --border: #e2e8f0;
 }
 
-/* --- ESTRUTURA GERAL (CORREÇÃO FOOTER) --- */
+/* --- ESTRUTURA GERAL (CORREÇÃO FOOTER & OVERFLOW) --- */
 .pageWrapper {
-    display: flex;           /* Flexbox para empurrar o footer */
-    flex-direction: column;  /* Organização vertical */
-    min-height: 100vh;       /* Altura mínima da tela inteira */
+    display: flex;         
+    flex-direction: column;  
+    min-height: 100vh;       
     background-color: var(--bg-page);
     font-family: 'Urbanist', sans-serif;
     color: var(--text-dark);
-    padding-bottom: 0;       /* Remove padding extra que causava espaço */
+    padding-bottom: 0;       
+    overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+}
+
+/* Garantia de dimensionamento seguro para todos os elementos internos */
+.pageWrapper *, .pageWrapper *::before, .pageWrapper *::after {
+    box-sizing: border-box;
 }
 
 .mainContent {
-    flex: 1;                 /* Ocupa todo o espaço disponível, empurrando o footer */
+    flex: 1;                 
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
@@ -81,6 +87,7 @@
     box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
     border: 1px solid var(--border);
     transition: transform 0.2s;
+    width: 100%; /* Garante que não ultrapasse a tela */
 }
 
 .card:hover {
@@ -107,6 +114,7 @@
     justify-content: center;
     color: var(--primary-purple);
     font-size: 1.4rem;
+    flex-shrink: 0; /* Evita que o ícone esprema em telas pequenas */
 }
 
 .cardHeader h3 {
@@ -259,6 +267,7 @@
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 16px;
+    width: 100%; /* Previne overflow */
 }
 .ticketTypeCard { background: #fcfcfc; position: relative; }
 
@@ -359,9 +368,9 @@
     display: flex; align-items: center; gap: 10px; font-size: 0.95rem;
     color: #475569; cursor: pointer; user-select: none;
 }
-.checkbox { width: 18px; height: 18px; accent-color: var(--primary-purple); cursor: pointer; }
+.checkbox { width: 18px; height: 18px; accent-color: var(--primary-purple); cursor: pointer; flex-shrink: 0; }
 
-/* --- DESTAQUES (IMPORTANTE PARA EVITAR O ERRO) --- */
+/* --- DESTAQUES --- */
 .highlightGrid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
 }
@@ -379,7 +388,7 @@
 .questionList { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
 .questionCard {
     background-color: #f8fafc; border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; position: relative;
+    padding: 20px; position: relative; width: 100%;
 }
 .questionRow { display: grid; grid-template-columns: 3fr 1.5fr; gap: 16px; align-items: start; margin-bottom: 12px; }
 .optionsRow { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
@@ -402,18 +411,51 @@
 .skImage { height: 250px; width: 100%; border-radius: 16px; margin-bottom: 10px; }
 .skButton { height: 56px; width: 100%; border-radius: 14px; margin-top: 20px; }
 
-/* RESPONSIVIDADE */
+/* ==========================================================================
+   RESPONSIVIDADE INTELIGENTE
+   ========================================================================== */
+
 @media (max-width: 768px) {
-    .gridTwo, .gridDateTime, .gridAddressTop, .gridAddressStreet { grid-template-columns: 1fr; gap: 16px; }
+    .mainContent { padding: 20px 16px; }
+    
+    .pageHeader h1 { font-size: 1.8rem; }
+    .pageHeader p { font-size: 1rem; }
+    
+    .card { padding: 24px 16px; border-radius: 16px; }
+    
+    .uploadBox { height: 180px; }
+    
+    /* Achata todas as grids complexas para 1 coluna */
+    .gridTwo, .gridDateTime, .gridAddressTop, .gridAddressStreet { 
+        grid-template-columns: 1fr; 
+        gap: 16px; 
+    }
+    
     .ticketTypeHeader { flex-direction: column; align-items: stretch; gap: 16px; }
+    
     .batchRow { grid-template-columns: 1fr 1fr; gap: 12px; }
     .batchRow > *:first-child { grid-column: span 2; }
     .removeBatchBtn { grid-column: span 2; width: 100%; }
-    .card { padding: 24px 20px; }
+    
     .inputWrapper .input, .inputWrapper .select { padding-left: 44px; }
-    .inputIcon { left: 12px; }
+    .inputIcon { left: 14px; }
+    
     .questionRow { grid-template-columns: 1fr; gap: 12px; }
-    .questionFooter { flex-direction: column-reverse; gap: 12px; align-items: stretch; }
+    
+    .questionFooter { flex-direction: column-reverse; gap: 16px; align-items: stretch; }
     .deleteQuestionBtn { justify-content: center; width: 100%; background: #fee2e2; }
+    
     .highlightGrid { grid-template-columns: 1fr; }
+    
+    .sessionCard, .ticketTypeCard { padding: 16px; }
+}
+
+/* Telas muito pequenas (iPhone SE, Galaxy Fold) */
+@media (max-width: 480px) {
+    .batchRow { display: flex; flex-direction: column; gap: 10px; }
+    .batchRow > * { width: 100%; }
+    
+    .cardHeader { flex-direction: column; align-items: flex-start; gap: 12px; }
+    
+    .submitButton { font-size: 1.05rem; padding: 16px; }
 }
