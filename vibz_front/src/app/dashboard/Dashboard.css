@@ -139,3 +139,210 @@
     .event-item-actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px dashed var(--border); padding-top: 20px; }
     .btn-row-action { justify-content: center; }
 }
+
+
+/* ==========================================================================
+   MODAL DE GESTÃO DE INGRESSOS (FLUTUANTE)
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.6); 
+    backdrop-filter: blur(4px); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.modal-box {
+    background: var(--white);
+    width: 100%;
+    max-width: 550px;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+/* Animação suave de entrada */
+.animate-pop {
+    animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.95) translateY(20px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 30px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+.close-modal-btn {
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-medium);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.close-modal-btn:hover {
+    background: #e2e8f0;
+    color: var(--text-dark);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 24px 30px;
+    overflow-y: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Card individual de cada ingresso */
+.ticket-manage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    transition: 0.2s;
+}
+
+.ticket-manage-item:hover {
+    border-color: var(--primary-purple);
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.ticket-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ticket-info strong {
+    font-size: 1.15rem;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+.ticket-info span {
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    font-weight: 600;
+    background: #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 8px;
+    display: inline-block;
+    width: fit-content;
+}
+
+/* ==========================================================================
+   ESTILIZAÇÃO DO TOGGLE SWITCH (Liga/Desliga)
+   ========================================================================== */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1; 
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+    background-color: var(--success); 
+}
+
+input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+/* Botão de concluir */
+.btn-modal-done {
+    margin: 10px 30px 30px 30px;
+    padding: 16px;
+    background: var(--primary-purple);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 10px 15px -3px rgba(76, 1, 181, 0.2);
+}
+
+.btn-modal-done:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+/* Responsividade do Modal */
+@media (max-width: 600px) {
+    .modal-box { max-height: 95vh; }
+    .modal-header, .modal-body { padding: 20px; }
+    .btn-modal-done { margin: 10px 20px 20px 20px; }
+    .ticket-manage-item { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .switch { align-self: flex-end; }
+}
