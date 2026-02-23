@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     FaMagic, FaBullhorn, FaMoneyBillWave, FaArrowRight, FaSearch, FaTimes, FaLayerGroup,
-    FaGraduationCap, FaMusic, FaTheaterMasks, FaFutbol, FaUtensils, FaChalkboardTeacher // Novos ícones importados
+    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher // Trocado FaFutbol por FaTrophy
 } from 'react-icons/fa'; 
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -64,7 +64,7 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE COM LOGICA DE CATEGORIA ---
+    // --- AUTOCOMPLETE COM LÓGICA DE CATEGORIA ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) { 
@@ -114,9 +114,26 @@ export default function Home() {
         setShowSuggestions(false);
     };
 
+    // --- CORREÇÃO DO CLIQUE NA CATEGORIA DA BUSCA ---
     const handleCategorySuggestionClick = (catName) => {
-        router.push(`/categoria/${encodeURIComponent(catName)}`);
-        setShowSuggestions(false);
+        setShowSuggestions(false); // Fecha o menu
+        setSearchTerm(''); // Limpa a barra de busca
+        
+        // Mapeia o nome da categoria para a sua referência (Ref) na página
+        let targetRef = null;
+        if (catName === 'Acadêmico / Congresso') targetRef = academicoRef;
+        else if (catName === 'Festas e Shows') targetRef = festasRef;
+        else if (catName === 'Teatro e Cultura') targetRef = teatroRef;
+        else if (catName === 'Esportes') targetRef = esportesRef;
+        else if (catName === 'Gastronomia') targetRef = gastronomiaRef;
+        else if (catName === 'Cursos e Workshops') targetRef = cursosRef;
+
+        // Faz o scroll suave até a sessão correspondente
+        if (targetRef && targetRef.current) {
+            setTimeout(() => {
+                targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     };
 
     const handleClearCity = (e) => {
@@ -277,7 +294,6 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
-    // --- FUNÇÃO FAVORITAR CORRIGIDA ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
         if (!currentUserId) { 
@@ -333,12 +349,12 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
-    // --- AQUI ESTÁ A CORREÇÃO DOS ÍCONES DAS CATEGORIAS ---
+    // --- ÍCONES DE CATEGORIA ATUALIZADOS ---
     const categoriesConfig = [
         { name: 'Acadêmico', icon: <FaGraduationCap size={28} />, ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: <FaMusic size={28} />, ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: <FaTheaterMasks size={28} />, ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes', icon: <FaFutbol size={28} />, ref: esportesRef, key: 'esportes' },
+        { name: 'Esportes', icon: <FaTrophy size={28} />, ref: esportesRef, key: 'esportes' }, // Ícone Troféu
         { name: 'Gastronomia', icon: <FaUtensils size={28} />, ref: gastronomiaRef, key: 'gastronomia' },
         { name: 'Cursos', icon: <FaChalkboardTeacher size={28} />, ref: cursosRef, key: 'cursos' }
     ];
@@ -475,7 +491,6 @@ export default function Home() {
                     <div className="categories-list">
                         {categoriesToShowInNavigation.map((cat, index) => (
                             <div key={index} className="category-item" onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                                {/* Adaptação para renderizar o componente React Icon em vez da tag img */}
                                 <div className="category-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4C01B5' }}>
                                     {cat.icon}
                                 </div>
