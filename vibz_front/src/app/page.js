@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaMagic, FaBullhorn, FaMoneyBillWave, FaArrowRight, FaSearch, FaTimes, FaLayerGroup } from 'react-icons/fa'; 
+import { 
+    FaMagic, FaBullhorn, FaMoneyBillWave, FaArrowRight, FaSearch, FaTimes, FaLayerGroup,
+    FaGraduationCap, FaMusic, FaTheaterMasks, FaFutbol, FaUtensils, FaChalkboardTeacher // Novos ícones importados
+} from 'react-icons/fa'; 
 import toast, { Toaster } from 'react-hot-toast'; 
 
 import Header from '@/components/Header';
@@ -32,7 +35,7 @@ export default function Home() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState([]); 
-    const [matchedCategory, setMatchedCategory] = useState(null); // Nova categoria sugerida
+    const [matchedCategory, setMatchedCategory] = useState(null); 
     const [showSuggestions, setShowSuggestions] = useState(false); 
     
     const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -236,14 +239,12 @@ export default function Home() {
             const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
             if (!currentUserId || !token) { setFavoritedEventIds([]); return; }
             try {
-                // Chama endpoint que retorna os IDs ou a lista completa
                 const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/favorites`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
                     const data = await response.json();
                     if (Array.isArray(data)) {
-                        // Garante que pegamos o ID correto, seja _id ou id
                         setFavoritedEventIds(data.map(event => event.id || event._id));
                     }
                 }
@@ -285,7 +286,6 @@ export default function Home() {
             return; 
         }
 
-        // Atualização Otimista (Muda na tela antes de confirmar no servidor)
         setFavoritedEventIds(prev => {
             if (isFavoriting) {
                 return [...prev, eventId];
@@ -295,14 +295,12 @@ export default function Home() {
         });
 
         try {
-            // Tenta a rota de toggle (mais moderna)
             let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ eventId })
             });
 
-            // Se a rota toggle não existir (404), tenta a rota antiga
             if (response.status === 404) {
                  response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
@@ -312,7 +310,6 @@ export default function Home() {
             }
 
             if (!response.ok) {
-                // Se der erro, reverte a mudança visual
                 setFavoritedEventIds(prev => {
                     if (isFavoriting) return prev.filter(id => id !== eventId);
                     return [...prev, eventId];
@@ -324,7 +321,6 @@ export default function Home() {
             }
         } catch (error) { 
             console.error('Erro favorito:', error);
-            // Reverte em caso de erro de rede
             setFavoritedEventIds(prev => {
                 if (isFavoriting) return prev.filter(id => id !== eventId);
                 return [...prev, eventId];
@@ -337,13 +333,14 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
+    // --- AQUI ESTÁ A CORREÇÃO DOS ÍCONES DAS CATEGORIAS ---
     const categoriesConfig = [
-        { name: 'Acadêmico', icon: '/img/academic.png', ref: academicoRef, key: 'academico' },
-        { name: 'Festas e Shows', icon: '/img/music.svg', ref: festasRef, key: 'festas' },
-        { name: 'Teatro', icon: '/img/theater.svg', ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes', icon: '/img/sports.svg', ref: esportesRef, key: 'esportes' },
-        { name: 'Gastronomia', icon: '/img/kids.svg', ref: gastronomiaRef, key: 'gastronomia' },
-        { name: 'Cursos', icon: '/img/theater.svg', ref: cursosRef, key: 'cursos' }
+        { name: 'Acadêmico', icon: <FaGraduationCap size={28} />, ref: academicoRef, key: 'academico' },
+        { name: 'Festas e Shows', icon: <FaMusic size={28} />, ref: festasRef, key: 'festas' },
+        { name: 'Teatro', icon: <FaTheaterMasks size={28} />, ref: teatroRef, key: 'teatro' },
+        { name: 'Esportes', icon: <FaFutbol size={28} />, ref: esportesRef, key: 'esportes' },
+        { name: 'Gastronomia', icon: <FaUtensils size={28} />, ref: gastronomiaRef, key: 'gastronomia' },
+        { name: 'Cursos', icon: <FaChalkboardTeacher size={28} />, ref: cursosRef, key: 'cursos' }
     ];
 
     const categoriesToShowInNavigation = categoriesConfig.filter(cat => 
@@ -371,12 +368,12 @@ export default function Home() {
                     {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <EventCard 
-                                key={event._id || event.id} // Garante chave única
+                                key={event._id || event.id} 
                                 event={event} 
                                 isUserLoggedIn={isUserLoggedIn} 
                                 currentUserId={currentUserId} 
                                 onToggleFavorite={handleToggleFavorite} 
-                                isFavorited={favoritedEventIds.includes(event._id || event.id)} // Verifica ID corretamente
+                                isFavorited={favoritedEventIds.includes(event._id || event.id)} 
                             />
                         ))
                     ) : (
@@ -478,8 +475,9 @@ export default function Home() {
                     <div className="categories-list">
                         {categoriesToShowInNavigation.map((cat, index) => (
                             <div key={index} className="category-item" onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                                <div className="category-icon">
-                                    <img src={cat.icon} alt={cat.name} />
+                                {/* Adaptação para renderizar o componente React Icon em vez da tag img */}
+                                <div className="category-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4C01B5' }}>
+                                    {cat.icon}
                                 </div>
                                 <span className="category-name">{cat.name}</span>
                             </div>
