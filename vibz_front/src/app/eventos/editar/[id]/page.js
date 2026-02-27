@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import styles from '@/app/admin/new/CadastroEvento.module.css'; // Mantenha o seu caminho original de estilos
+import styles from '@/app/admin/new/CadastroEvento.module.css'; 
 import { 
     FaImage, FaInstagram, FaPlus, FaTrashAlt, 
     FaTicketAlt, FaCalendarAlt, FaMapMarkerAlt,
@@ -141,7 +141,7 @@ const EditarEvento = () => {
 
                 setCustomQuestions(data.formSchema || []);
 
-                // RECONSTRUÇÃO DOS TICKETS
+                // RECONSTRUÇÃO DOS TICKETS (Garantindo a manutenção do ID)
                 const rawTickets = data.ticketTypes || data.tickets || [];
                 const grouped = {};
                 rawTickets.forEach(t => {
@@ -160,7 +160,7 @@ const EditarEvento = () => {
                         };
                     }
                     grouped[key].batches.push({
-                        id: t.id,
+                        id: t.id || t._id, // PEGA O ID AQUI!
                         name: t.batchName || t.batch || 'Lote',
                         price: t.price,
                         quantity: t.quantity
@@ -305,6 +305,7 @@ const EditarEvento = () => {
                 type.batches.forEach(batch => {
                     flatTickets.push({
                         ...type,
+                        id: batch.id, // IMPORTANTE: Passando o ID para não duplicar
                         batch: batch.name,
                         price: parseFloat(batch.price.toString().replace(',', '.')),
                         quantity: parseInt(batch.quantity),
