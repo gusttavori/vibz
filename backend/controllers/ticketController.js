@@ -36,9 +36,7 @@ async function fetchImage(src) {
     }
 }
 
-// Função auxiliar para desenhar pares de Título/Valor de forma segura
 function drawField(doc, label, value, x, y, width, colorLabel, colorValue, isBoldValue = true) {
-    // Garante que x, y, width sejam números
     if (isNaN(x) || isNaN(y) || isNaN(width)) return 0;
 
     doc.font('Helvetica').fontSize(9).fillColor(colorLabel).text((label || '').toUpperCase(), x, y);
@@ -46,7 +44,6 @@ function drawField(doc, label, value, x, y, width, colorLabel, colorValue, isBol
     
     doc.font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica').fontSize(11).fillColor(colorValue);
     
-    // Calcula a altura que o valor vai ocupar
     const safeValue = value || '-';
     const valueHeight = doc.heightOfString(safeValue, { width });
     doc.text(safeValue, x, y + labelHeight, { width });
@@ -64,31 +61,24 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
         DIVIDER: '#EEEEEE' 
     };
 
-    // Garante valores numéricos para a página (Padrão A4 se falhar)
     const pageW = doc.page ? doc.page.width : 595.28;
     const pageH = doc.page ? doc.page.height : 841.89;
     
-    // Configurações do Card
     const cardW = 380;
     const cardX = (pageW - cardW) / 2;
     const cardY = 40; 
     const cardH = 700; 
 
-    // 1. Fundo
     doc.rect(0, 0, pageW, pageH).fill(C.BG);
 
-    // 2. Sombra e Card
     doc.roundedRect(cardX + 3, cardY + 3, cardW, cardH, 12).fillColor('rgba(0,0,0,0.1)').fill();
     doc.roundedRect(cardX, cardY, cardW, cardH, 12).fillColor(C.CARD).fill();
 
-    // --- IMAGEM DE CAPA ---
     const imgH = 180;
     const eventImageBuffer = await fetchImage(event.imageUrl);
 
     doc.save();
     
-    // PATH CORRIGIDO: Removida a quebra de linha da template string que pode causar erro no parser do PDFKit em alguns ambientes
-    // E garantindo que todos os valores interpolados são números
     doc.path('M ' + cardX + ' ' + (cardY + 12) + 
              ' Q ' + cardX + ' ' + cardY + ' ' + (cardX + 12) + ' ' + cardY + 
              ' L ' + (cardX + cardW - 12) + ' ' + cardY + 
@@ -105,29 +95,24 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     }
     doc.restore();
 
-    // --- CONTEÚDO ---
     let y = cardY + imgH + 25;
     const pad = 25;
     const contentW = cardW - (pad * 2);
 
-    // Título
     doc.font('Helvetica-Bold').fontSize(18).fillColor(C.TEXT_DARK)
         .text((event.title || 'Evento').toUpperCase(), cardX + pad, y, { width: contentW, align: 'left' });
     
     y += doc.heightOfString((event.title || 'Evento').toUpperCase(), { width: contentW }) + 20;
 
-    // Divisor
     doc.moveTo(cardX + pad, y).lineTo(cardX + cardW - pad, y).lineWidth(1).strokeColor(C.DIVIDER).stroke();
     y += 20;
 
-    // --- DADOS ---
     const colGap = 20;
     const colW = (contentW - colGap) / 2;
     const col1X = cardX + pad;
     const col2X = cardX + pad + colW + colGap;
     const rowGap = 20;
 
-    // Linha 1: Data / Participante
     let dateStr = "";
     if (ticketType && ticketType.activityDate) {
         try {
@@ -146,7 +131,6 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     const h2 = drawField(doc, 'PARTICIPANTE', customName || user.name || 'Convidado', col2X, y, colW, C.PRIMARY, C.TEXT_DARK);
     y += Math.max(h1, h2) + rowGap;
 
-    // Linha 2: Local / Ingresso
     const locationFull = `${event.location || 'Local a definir'}\n${event.city || ''}`;
     const ticketInfo = `${ticketType ? ticketType.name : 'Geral'}\n${ticketType?.batchName || 'Lote Único'}`;
 
@@ -154,17 +138,14 @@ async function drawTicketPDF(doc, ticket, event, user, ticketType, customName = 
     const h4 = drawField(doc, 'TIPO DE INGRESSO', ticketInfo, col2X, y, colW, C.PRIMARY, C.TEXT_DARK);
     y += Math.max(h3, h4) + rowGap;
 
-    // Linha 3: Valor
     const priceVal = (!ticket.price || Number(ticket.price) === 0) ? 'GRÁTIS' : `R$ ${Number(ticket.price).toFixed(2).replace('.', ',')}`;
     const h5 = drawField(doc, 'VALOR PAGO', priceVal, col1X, y, colW, C.PRIMARY, C.TEXT_DARK);
     y += h5 + 25;
 
-    // Divisor Pontilhado
     doc.moveTo(cardX, y).lineTo(cardX + cardW, y).lineWidth(1).dash(4, { space: 4 }).strokeColor(C.DIVIDER).stroke();
     doc.undash();
     y += 30;
 
-    // --- QR CODE ---
     const uniqueCode = ticket.qrCodeData || 'CODE-ERROR';
     const qrCodeImage = await QRCode.toDataURL(uniqueCode, { width: 400, margin: 0, color: { dark: '#000000', light: '#ffffff' } });
     const qrSize = 160;
@@ -270,24 +251,42 @@ const generateAndSendTickets = async (order, stripeEmail = null, stripeName = nu
 };
 
 const validateTicket = async (req, res) => {
-    const { qrCode } = req.body;
+    const { qrCodeData, ticketId, qrCode } = req.body;
     
     if (!req.user || !req.user.id) {
         return res.status(401).json({ message: 'Não autorizado. Faça login.' });
     }
 
-    try {
-        console.log("🔍 Validando:", qrCode);
+    const searchKey = qrCodeData || qrCode;
 
-        let ticket = await prisma.ticket.findUnique({ 
-            where: { qrCodeData: qrCode },
-            include: { event: true, user: true, ticketType: true }
+    if (!searchKey && !ticketId) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Dados de validação não fornecidos (Falta QR Code ou ID)." 
+        });
+    }
+
+    try {
+        console.log("🔍 Validando QR:", searchKey, "ou ID:", ticketId);
+
+        let ticket = await prisma.ticket.findFirst({
+            where: {
+                OR: [
+                    { qrCodeData: searchKey ? searchKey : undefined },
+                    { id: ticketId ? ticketId : undefined }
+                ]
+            },
+            include: { 
+                event: true, 
+                user: true, 
+                ticketType: true 
+            }
         });
 
-        if (!ticket) {
+        if (!ticket && searchKey) {
             try {
                 ticket = await prisma.ticket.findUnique({
-                    where: { id: qrCode },
+                    where: { id: searchKey },
                     include: { event: true, user: true, ticketType: true }
                 });
             } catch (e) {}
@@ -316,7 +315,10 @@ const validateTicket = async (req, res) => {
             });
         }
 
-        await prisma.ticket.update({ where: { id: ticket.id }, data: { status: 'used', usedAt: new Date() } });
+        const updatedTicket = await prisma.ticket.update({ 
+            where: { id: ticket.id }, 
+            data: { status: 'used', usedAt: new Date() } 
+        });
         
         res.json({ 
             valid: true, 
@@ -326,7 +328,8 @@ const validateTicket = async (req, res) => {
                 event: ticket.event.title, 
                 type: ticket.ticketType?.name, 
                 batch: ticket.ticketType?.batchName
-            } 
+            },
+            ticket: updatedTicket
         });
     } catch (e) { 
         console.error("Erro validação:", e);
