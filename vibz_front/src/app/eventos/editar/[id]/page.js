@@ -33,6 +33,15 @@ const parseLocalDatetime = (utcString) => {
     }
 };
 
+const extractDateSafely = (dateString) => {
+    if (!dateString) return '';
+    if (dateString.includes('T')) {
+        if (dateString.includes('T00:00:00')) return dateString.split('T')[0];
+        return parseLocalDatetime(dateString).date;
+    }
+    return dateString;
+};
+
 const FormSkeleton = () => (
     <div className={styles.pageWrapper}>
         <Header />
@@ -154,35 +163,35 @@ const EditarEvento = () => {
                 const grouped = {};
 
                 rawTickets.forEach(t => {
-                    const batchesToProcess = (t.batches && Array.isArray(t.batches)) ? t.batches : [t];
+                    const batchesToProcess = (t.batches && Array.isArray(t.batches) && t.batches.length > 0) ? t.batches : [t];
 
                     batchesToProcess.forEach(b => {
                         const tName = t.name || b.name || 'Geral';
                         const tCat = t.category || b.category || 'Inteira';
-                        const key = `${tName}-${tCat}`;
+                        
+                        const actDate = extractDateSafely(t.activityDate || b.activityDate);
+                        const tStart = t.startTime || b.startTime || '';
+                        const tEnd = t.endTime || b.endTime || '';
+
+                        const key = `${tName}-${tCat}-${actDate}-${tStart}-${tEnd}`;
 
                         if (!grouped[key]) {
-                            let actDate = t.activityDate || b.activityDate || '';
-                            if (actDate && actDate.includes('T')) {
-                                actDate = parseLocalDatetime(actDate).date;
-                            }
-
                             grouped[key] = {
                                 name: tName,
                                 category: tCat,
                                 isHalfPrice: t.isHalfPrice || b.isHalfPrice || false,
                                 maxPerUser: t.maxPerUser || b.maxPerUser || 4,
-                                hasSchedule: !!(t.activityDate || b.activityDate || t.startTime || b.startTime),
+                                hasSchedule: !!(actDate || tStart),
                                 activityDate: actDate,
-                                startTime: t.startTime || b.startTime || '',
-                                endTime: t.endTime || b.endTime || '',
+                                startTime: tStart,
+                                endTime: tEnd,
                                 batches: []
                             };
                         }
 
                         grouped[key].batches.push({
                             id: b.id || b._id || t.id || t._id,
-                            name: b.batchName || b.batch || (t.batches ? b.name : t.name) || '1º Lote',
+                            name: b.batchName || b.batch || b.name || t.name || '1º Lote',
                             price: b.price !== undefined && b.price !== null ? parseFloat(b.price) : '',
                             quantity: b.quantity !== undefined && b.quantity !== null ? parseInt(b.quantity) : ''
                         });
