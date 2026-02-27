@@ -20,11 +20,9 @@ const mapEventToFrontend = (event) => {
     }
 
     // 2. Lógica Robusta de Organizador
-    // Prioridade: 1. Customizado (organizerInfo) -> 2. Conta do Usuário (organizer) -> 3. Padrão
     let organizerNameFinal = "Organizador";
     let organizerInstaFinal = "";
 
-    // Tenta ler do organizerInfo (JSON salvo no banco)
     if (event.organizerInfo) {
         try {
             const info = typeof event.organizerInfo === 'string' ? JSON.parse(event.organizerInfo) : event.organizerInfo;
@@ -35,7 +33,6 @@ const mapEventToFrontend = (event) => {
         }
     }
 
-    // Se ainda for o padrão e tivermos os dados do usuário dono do evento
     if (organizerNameFinal === "Organizador" && event.organizer && event.organizer.name) {
         organizerNameFinal = event.organizer.name;
     }
@@ -62,12 +59,9 @@ const mapEventToFrontend = (event) => {
             maxPerUser: t.maxPerUser || 4
         })) : [],
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
-        
-        // Retorna dados tratados
         organizer: { name: organizerNameFinal, instagram: organizerInstaFinal },
         organizerName: organizerNameFinal,
         organizerInstagram: organizerInstaFinal,
-        
         isInformational: event.isInformational,
         highlightStatus: event.highlightStatus,
         highlightPaymentLink: event.highlightPaymentLink 
@@ -82,15 +76,12 @@ const createEvent = async (req, res) => {
 
         const { 
             title, description, category, ageRating, date, sessions, 
-            location, city, address, tickets, 
-            // Note: organizerName não vem solto mais, vem dentro de organizerInfo
-            organizerInfo, 
+            location, city, address, tickets, organizerInfo, 
             isFeaturedRequested, highlightTier, formSchema, refundPolicy, isInformational 
         } = req.body;
 
         const userId = req.user.id;
         
-        // --- EXTRAÇÃO CORRETA DOS DADOS DO ORGANIZADOR ---
         let finalOrganizerName = "Organizador";
         let finalOrganizerInsta = "";
         let parsedOrganizerInfo = {};
@@ -104,7 +95,6 @@ const createEvent = async (req, res) => {
                 console.error("Erro ao ler organizerInfo no create:", e);
             }
         } else {
-            // Se não veio customizado, pega o nome do usuário logado
             finalOrganizerName = req.user.name || "Organizador";
         }
 
@@ -145,18 +135,13 @@ const createEvent = async (req, res) => {
                 category: category ? category.trim() : "Geral",
                 ageRating, priceFrom: 0, status: 'pending',
                 organizerId: userId, 
-                
                 isFeaturedRequested: isFeaturedBool,
                 highlightStatus: isFeaturedBool ? 'pending' : 'none',
                 highlightTier: tier, 
-
                 refundPolicy: refundPolicy || "7 dias após a compra",
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
-                
-                // SALVA O JSON CORRETAMENTE NO BANCO
                 organizerInfo: { name: finalOrganizerName, instagram: finalOrganizerInsta },
-                
                 formSchema: parsedFormSchema,
                 isInformational: isInfoBool,
                 ticketTypes: {
@@ -172,12 +157,11 @@ const createEvent = async (req, res) => {
             include: { ticketTypes: true }
         });
 
-        // ENVIO DE EMAIL COM O NOME CORRETO (Extraído acima)
         sendEventReceivedEmail(req.user.email, finalOrganizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
         
         sendAdminNotificationEmail({ 
             title, 
-            organizerName: finalOrganizerName, // Passa o nome extraído corretamente
+            organizerName: finalOrganizerName, 
             city, 
             date: mainEventDate.toLocaleDateString('pt-BR') 
         }).catch(err => console.error("[Email] Erro admin:", err));
@@ -213,7 +197,6 @@ const updateEvent = async (req, res) => {
         let mainEventDate = existingEvent.eventDate;
         if (parsedSessions && parsedSessions.length > 0) mainEventDate = new Date(parsedSessions[0].date);
 
-        // Tratamento do OrganizerInfo no Update também
         let parsedOrgInfo = existingEvent.organizerInfo;
         if (organizerInfo) {
             parsedOrgInfo = typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo;
@@ -231,8 +214,22 @@ const updateEvent = async (req, res) => {
             }
         });
 
+        // --- NOVA LÓGICA DE ATUALIZAÇÃO E EXCLUSÃO DE INGRESSOS ---
         if (tickets) {
             const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
+            
+            // 1. Extrai todos os IDs que vieram do Frontend (que o usuário manteve)
+            const incomingTicketIds = ticketsData.filter(t => t.id).map(t => t.id);
+
+            // 2. Exclui do banco de dados todos os ingressos deste evento que NÃO estão nessa lista
+            await prisma.ticketType.deleteMany({
+                where: {
+                    eventId: id,
+                    id: { notIn: incomingTicketIds }
+                }
+            });
+
+            // 3. Atualiza os existentes ou cria os novos
             for (const t of ticketsData) {
                 const payload = {
                     name: t.name, price: parseFloat(t.price), quantity: parseInt(t.quantity), 
@@ -240,11 +237,22 @@ const updateEvent = async (req, res) => {
                     activityDate: t.activityDate ? new Date(t.activityDate) : null, 
                     startTime: t.startTime || null, endTime: t.endTime || null, maxPerUser: parseInt(t.maxPerUser) || 4
                 };
-                if (t.id) { await prisma.ticketType.update({ where: { id: t.id }, data: payload }); }
-                else { await prisma.ticketType.create({ data: { ...payload, eventId: id } }); }
+                
+                if (t.id) { 
+                    await prisma.ticketType.update({ where: { id: t.id }, data: payload }); 
+                } else { 
+                    await prisma.ticketType.create({ data: { ...payload, eventId: id } }); 
+                }
             }
         }
-        res.json(mapEventToFrontend(updatedEvent));
+        
+        // Busca o evento completo atualizado para retornar
+        const finalEvent = await prisma.event.findUnique({
+            where: { id },
+            include: { ticketTypes: true }
+        });
+
+        res.json(mapEventToFrontend(finalEvent));
     } catch (error) {
         console.error("Erro updateEvent:", error);
         res.status(500).json({ message: 'Erro ao atualizar evento.' });
@@ -414,11 +422,9 @@ const getEventParticipants = async (req, res) => {
     } catch (error) { res.status(500).json({ message: 'Erro ao carregar lista.' }); }
 };
 
-// Funções Admin
 const getPendingEvents = async (req, res) => { 
     try {
         const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
-        // Adicionamos o mapeamento para garantir que o admin veja o nome personalizado também
         res.json(events.map(mapEventToFrontend));
     } catch (error) { res.status(500).json({ message: "Erro ao buscar pendentes" }); }
 };

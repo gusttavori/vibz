@@ -159,50 +159,49 @@ const EditarEvento = () => {
 
                 setCustomQuestions(data.formSchema || []);
 
+                // RECONSTRUÇÃO DOS TICKETS CORRIGIDA
                 const rawTickets = data.ticketTypes || data.tickets || [];
-                const grouped = {};
+                const finalTicketsMap = new Map();
 
                 rawTickets.forEach(t => {
-                    const batchesToProcess = (t.batches && Array.isArray(t.batches) && t.batches.length > 0) ? t.batches : [t];
+                    const actDate = extractDateSafely(t.activityDate);
+                    const tStart = t.startTime || '';
+                    const tEnd = t.endTime || '';
 
-                    batchesToProcess.forEach(b => {
-                        const tName = t.name || b.name || 'Geral';
-                        const tCat = t.category || b.category || 'Inteira';
-                        
-                        const actDate = extractDateSafely(t.activityDate || b.activityDate);
-                        const tStart = t.startTime || b.startTime || '';
-                        const tEnd = t.endTime || b.endTime || '';
+                    // Cria uma chave super específica para garantir que ingressos iguais mas com horários diferentes fiquem separados
+                    const uniqueKey = `${t.name}-${t.category}-${actDate}-${tStart}-${tEnd}`;
 
-                        const key = `${tName}-${tCat}-${actDate}-${tStart}-${tEnd}`;
-
-                        if (!grouped[key]) {
-                            grouped[key] = {
-                                name: tName,
-                                category: tCat,
-                                isHalfPrice: t.isHalfPrice || b.isHalfPrice || false,
-                                maxPerUser: t.maxPerUser || b.maxPerUser || 4,
-                                hasSchedule: !!(actDate || tStart),
-                                activityDate: actDate,
-                                startTime: tStart,
-                                endTime: tEnd,
-                                batches: []
-                            };
-                        }
-
-                        grouped[key].batches.push({
-                            id: b.id || b._id || t.id || t._id,
-                            name: b.batchName || b.batch || b.name || t.name || '1º Lote',
-                            price: b.price !== undefined && b.price !== null ? parseFloat(b.price) : '',
-                            quantity: b.quantity !== undefined && b.quantity !== null ? parseInt(b.quantity) : ''
+                    if (!finalTicketsMap.has(uniqueKey)) {
+                        finalTicketsMap.set(uniqueKey, {
+                            uniqueGroupId: uniqueKey, // ID temporário para o frontend
+                            name: t.name || 'Geral',
+                            category: t.category || 'Inteira',
+                            isHalfPrice: t.isHalfPrice || false,
+                            maxPerUser: t.maxPerUser || 4,
+                            hasSchedule: !!(actDate || tStart),
+                            activityDate: actDate,
+                            startTime: tStart,
+                            endTime: tEnd,
+                            batches: []
                         });
+                    }
+
+                    // Pega o grupo e adiciona o lote com o ID REAL do banco de dados
+                    const group = finalTicketsMap.get(uniqueKey);
+                    group.batches.push({
+                        id: t.id || t._id, // Muito importante não perder esse ID
+                        name: t.batchName || t.batch || 'Lote',
+                        price: t.price !== undefined && t.price !== null ? parseFloat(t.price) : '',
+                        quantity: t.quantity !== undefined && t.quantity !== null ? parseInt(t.quantity) : ''
                     });
                 });
 
-                const finalTickets = Object.values(grouped);
+                const finalTickets = Array.from(finalTicketsMap.values());
+                
                 if (finalTickets.length > 0) {
                     setTicketTypes(finalTickets);
                 } else {
-                    setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '', batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
+                    setTicketTypes([{ uniqueGroupId: Date.now().toString(), name: '', category: 'Inteira', isHalfPrice: false, hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '', batches: [{ id: null, name: '1º Lote', price: '', quantity: '' }] }]);
                 }
 
             } catch (err) {
@@ -234,9 +233,10 @@ const EditarEvento = () => {
     
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
+            uniqueGroupId: Date.now().toString(), // Chave única temporária
             name: '', category: 'Inteira', isHalfPrice: false,
             hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '',
-            batches: [{ name: `${ticketTypes.length + 1}º Lote`, price: '', quantity: '' }] 
+            batches: [{ id: null, name: `1º Lote`, price: '', quantity: '' }] 
         }]);
     };
     const handleRemoveTicketType = (i) => {
@@ -258,7 +258,7 @@ const EditarEvento = () => {
     const handleAddBatch = (ti) => {
         const updated = [...ticketTypes];
         const nextBatchNum = updated[ti].batches.length + 1;
-        updated[ti].batches.push({ name: `${nextBatchNum}º Lote`, price: '', quantity: '' });
+        updated[ti].batches.push({ id: null, name: `${nextBatchNum}º Lote`, price: '', quantity: '' });
         setTicketTypes(updated);
     };
     const handleRemoveBatch = (typeIndex, batchIndex) => {
@@ -342,7 +342,7 @@ const EditarEvento = () => {
                         activityDate: type.hasSchedule ? type.activityDate : null,
                         startTime: type.hasSchedule ? type.startTime : null,
                         endTime: type.hasSchedule ? type.endTime : null,
-                        id: batch.id || undefined,
+                        id: batch.id || undefined, // AQUI GARANTE O ID PRO BACKEND
                         batch: batch.name || 'Lote',
                         price: batch.price !== '' ? parseFloat(batch.price.toString().replace(',', '.')) : 0,
                         quantity: batch.quantity !== '' ? parseInt(batch.quantity) : 0
@@ -350,6 +350,8 @@ const EditarEvento = () => {
                 });
             });
         }
+        
+        // A mágica acontece aqui: ao enviar os flatTickets que têm um 'id', o backend sabe os que devem ficar. Os que não vierem na lista, ele precisa apagar.
         formData.append('tickets', JSON.stringify(flatTickets));
 
         formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
@@ -516,7 +518,7 @@ const EditarEvento = () => {
                         {!isInformational && (
                             <div className={styles.ticketsContainer}>
                                 {ticketTypes.map((type, typeIdx) => (
-                                    <div key={typeIdx} className={styles.ticketTypeCard}>
+                                    <div key={type.uniqueGroupId || typeIdx} className={styles.ticketTypeCard}>
                                         <div className={styles.ticketTypeHeader}>
                                             <div className={styles.inputGroup} style={{flex: 2}}>
                                                 <label className={styles.label}>Nome do Ingresso</label>
@@ -565,7 +567,7 @@ const EditarEvento = () => {
                                         <div className={styles.batchesContainer}>
                                             <h4 className={styles.batchTitle}>Lotes:</h4>
                                             {type.batches.map((batch, batchIdx) => (
-                                                <div key={batchIdx} className={styles.batchRow}>
+                                                <div key={batch.id || batchIdx} className={styles.batchRow}>
                                                     <div className={styles.inputGroup}>
                                                         <input className={styles.inputSmall} type="text" value={batch.name || ''} onChange={e => handleChangeBatch(typeIdx, batchIdx, 'name', e.target.value)} placeholder="Lote" />
                                                     </div>
