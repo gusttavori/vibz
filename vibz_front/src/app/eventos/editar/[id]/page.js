@@ -17,7 +17,22 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 };
 
-// --- COMPONENTE DE SKELETON (UX) ---
+const parseLocalDatetime = (utcString) => {
+    if (!utcString) return { date: '', time: '' };
+    try {
+        const d = new Date(utcString);
+        if (isNaN(d.getTime())) return { date: '', time: '' };
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return { date: `${year}-${month}-${day}`, time: `${hours}:${minutes}` };
+    } catch (e) {
+        return { date: '', time: '' };
+    }
+};
+
 const FormSkeleton = () => (
     <div className={styles.pageWrapper}>
         <Header />
@@ -41,7 +56,6 @@ const EditarEvento = () => {
     const eventId = params?.id;
     const API_BASE_URL = getApiBaseUrl();
 
-    // --- ESTADOS DO FORMULÁRIO ---
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
     
@@ -70,17 +84,9 @@ const EditarEvento = () => {
     const [ticketTypes, setTicketTypes] = useState([]);
     const [customQuestions, setCustomQuestions] = useState([]);
 
-    // --- ESTADOS DE DESTAQUE ---
     const [highlightTier, setHighlightTier] = useState(null); 
     const [highlightDays, setHighlightDays] = useState(7);
     const [prices, setPrices] = useState({ standardPrice: 2, premiumPrice: 100 });
-
-    // --- FORMATADORES ---
-    const formatDateForInput = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
-    };
 
     const handleZipCodeChange = (value) => {
         const cleanValue = value.replace(/\D/g, "");
@@ -88,7 +94,6 @@ const EditarEvento = () => {
         setAddressZipCode(maskedValue);
     };
 
-    // --- CARREGAMENTO DOS DADOS ---
     useEffect(() => {
         const fetchInitialData = async () => {
             if (!eventId) return;
@@ -116,12 +121,16 @@ const EditarEvento = () => {
                 setHighlightDays(data.highlightDuration || 7);
 
                 if (data.sessions && data.sessions.length > 0) {
-                    setSessions(data.sessions.map(s => ({
-                        date: formatDateForInput(s.date),
-                        time: new Date(s.date).toTimeString().slice(0, 5),
-                        endDate: s.endDate ? formatDateForInput(s.endDate) : '',
-                        endTime: s.endDate ? new Date(s.endDate).toTimeString().slice(0, 5) : ''
-                    })));
+                    setSessions(data.sessions.map(s => {
+                        const start = parseLocalDatetime(s.date);
+                        const end = s.endDate ? parseLocalDatetime(s.endDate) : { date: '', time: '' };
+                        return {
+                            date: start.date,
+                            time: start.time || (s.time ? s.time.slice(0, 5) : ''),
+                            endDate: end.date,
+                            endTime: end.time || (s.endTime ? s.endTime.slice(0, 5) : '')
+                        };
+                    }));
                 }
 
                 setLocationName(data.location || '');
@@ -141,32 +150,51 @@ const EditarEvento = () => {
 
                 setCustomQuestions(data.formSchema || []);
 
-                // RECONSTRUÇÃO DOS TICKETS (Garantindo a manutenção do ID)
                 const rawTickets = data.ticketTypes || data.tickets || [];
                 const grouped = {};
+
                 rawTickets.forEach(t => {
-                    const key = `${t.name}-${t.category}`;
-                    if (!grouped[key]) {
-                        grouped[key] = {
-                            name: t.name,
-                            category: t.category || 'Inteira',
-                            isHalfPrice: t.isHalfPrice || false,
-                            maxPerUser: t.maxPerUser || 4,
-                            hasSchedule: !!t.activityDate,
-                            activityDate: t.activityDate ? formatDateForInput(t.activityDate) : '',
-                            startTime: t.startTime || '',
-                            endTime: t.endTime || '',
-                            batches: []
-                        };
-                    }
-                    grouped[key].batches.push({
-                        id: t.id || t._id, // PEGA O ID AQUI!
-                        name: t.batchName || t.batch || 'Lote',
-                        price: t.price,
-                        quantity: t.quantity
+                    const batchesToProcess = (t.batches && Array.isArray(t.batches)) ? t.batches : [t];
+
+                    batchesToProcess.forEach(b => {
+                        const tName = t.name || b.name || 'Geral';
+                        const tCat = t.category || b.category || 'Inteira';
+                        const key = `${tName}-${tCat}`;
+
+                        if (!grouped[key]) {
+                            let actDate = t.activityDate || b.activityDate || '';
+                            if (actDate && actDate.includes('T')) {
+                                actDate = parseLocalDatetime(actDate).date;
+                            }
+
+                            grouped[key] = {
+                                name: tName,
+                                category: tCat,
+                                isHalfPrice: t.isHalfPrice || b.isHalfPrice || false,
+                                maxPerUser: t.maxPerUser || b.maxPerUser || 4,
+                                hasSchedule: !!(t.activityDate || b.activityDate || t.startTime || b.startTime),
+                                activityDate: actDate,
+                                startTime: t.startTime || b.startTime || '',
+                                endTime: t.endTime || b.endTime || '',
+                                batches: []
+                            };
+                        }
+
+                        grouped[key].batches.push({
+                            id: b.id || b._id || t.id || t._id,
+                            name: b.batchName || b.batch || (t.batches ? b.name : t.name) || '1º Lote',
+                            price: b.price !== undefined && b.price !== null ? parseFloat(b.price) : '',
+                            quantity: b.quantity !== undefined && b.quantity !== null ? parseInt(b.quantity) : ''
+                        });
                     });
                 });
-                setTicketTypes(Object.values(grouped).length > 0 ? Object.values(grouped) : [{ name: '', category: 'Inteira', isHalfPrice: false, hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '', batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
+
+                const finalTickets = Object.values(grouped);
+                if (finalTickets.length > 0) {
+                    setTicketTypes(finalTickets);
+                } else {
+                    setTicketTypes([{ name: '', category: 'Inteira', isHalfPrice: false, hasSchedule: false, maxPerUser: 4, activityDate: '', startTime: '', endTime: '', batches: [{ name: '1º Lote', price: '', quantity: '' }] }]);
+                }
 
             } catch (err) {
                 console.error(err);
@@ -178,7 +206,6 @@ const EditarEvento = () => {
         fetchInitialData();
     }, [eventId, API_BASE_URL]);
 
-    // --- FUNÇÕES DE MANIPULAÇÃO ---
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -196,7 +223,6 @@ const EditarEvento = () => {
         setSessions(updated);
     };
     
-    // Ingressos
     const handleAddTicketType = () => {
         setTicketTypes([...ticketTypes, { 
             name: '', category: 'Inteira', isHalfPrice: false,
@@ -238,7 +264,6 @@ const EditarEvento = () => {
         setTicketTypes(updated);
     };
 
-    // Formulário Personalizado
     const handleAddQuestion = () => setCustomQuestions([...customQuestions, { label: '', type: 'text', required: true, options: '' }]);
     const handleRemoveQuestion = (index) => setCustomQuestions(customQuestions.filter((_, i) => i !== index));
     const handleChangeQuestion = (index, field, value) => {
@@ -247,7 +272,6 @@ const EditarEvento = () => {
         setCustomQuestions(updated);
     };
 
-    // --- SUBMISSÃO ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -282,7 +306,6 @@ const EditarEvento = () => {
         formData.append('isInformational', isInformational);
         if (imageFile) formData.append('image', imageFile);
 
-        // Formatação de Sessões
         const formattedSessions = sessions.map(s => ({
             date: new Date(`${s.date}T${s.time}`).toISOString(),
             endDate: s.endDate && s.endTime ? new Date(`${s.endDate}T${s.endTime}`).toISOString() : null
@@ -290,7 +313,6 @@ const EditarEvento = () => {
         formData.append('sessions', JSON.stringify(formattedSessions));
         if (formattedSessions.length > 0) formData.append('date', formattedSessions[0].date);
 
-        // Endereço
         formData.append('location', locationName);
         formData.append('city', addressCity);
         formData.append('address', JSON.stringify({
@@ -298,25 +320,29 @@ const EditarEvento = () => {
             city: addressCity, state: addressState, zipCode: addressZipCode
         }));
 
-        // Ingressos
         const flatTickets = [];
         if (!isInformational) {
             ticketTypes.forEach(type => {
                 type.batches.forEach(batch => {
                     flatTickets.push({
-                        ...type,
-                        id: batch.id, // IMPORTANTE: Passando o ID para não duplicar
-                        batch: batch.name,
-                        price: parseFloat(batch.price.toString().replace(',', '.')),
-                        quantity: parseInt(batch.quantity),
-                        batches: undefined 
+                        name: type.name,
+                        category: type.category,
+                        isHalfPrice: type.isHalfPrice,
+                        maxPerUser: parseInt(type.maxPerUser) || 4,
+                        hasSchedule: type.hasSchedule,
+                        activityDate: type.hasSchedule ? type.activityDate : null,
+                        startTime: type.hasSchedule ? type.startTime : null,
+                        endTime: type.hasSchedule ? type.endTime : null,
+                        id: batch.id || undefined,
+                        batch: batch.name || 'Lote',
+                        price: batch.price !== '' ? parseFloat(batch.price.toString().replace(',', '.')) : 0,
+                        quantity: batch.quantity !== '' ? parseInt(batch.quantity) : 0
                     });
                 });
             });
         }
         formData.append('tickets', JSON.stringify(flatTickets));
 
-        // Organizador e Destaque
         formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
         
         if (highlightTier) {
@@ -368,7 +394,6 @@ const EditarEvento = () => {
 
                 <form onSubmit={handleSubmit} className={styles.formContainer}>
                     
-                    {/* SEÇÃO 1: PRINCIPAL */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaImage /></div>
@@ -414,7 +439,6 @@ const EditarEvento = () => {
                         </div>
                     </section>
 
-                    {/* SEÇÃO 2: DATAS E LOCAL */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}>
                             <div className={styles.iconWrapper}><FaCalendarAlt /></div>
@@ -467,7 +491,6 @@ const EditarEvento = () => {
                         <div className={styles.inputGroup}><label className={styles.label}>Bairro</label><input className={styles.input} value={addressDistrict} onChange={e => setAddressDistrict(e.target.value)} /></div>
                     </section>
 
-                    {/* SEÇÃO 3: INGRESSOS */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaTicketAlt /></div><h3>Inscrições / Ingressos</h3></div>
                         <div className={styles.infoSwitchContainer}>
@@ -558,7 +581,6 @@ const EditarEvento = () => {
                         )}
                     </section>
 
-                    {/* SEÇÃO 4: DADOS DO PARTICIPANTE */}
                     {!isInformational && (
                         <section className={styles.card}>
                             <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardList /></div><h3>Dados do Participante</h3></div>
@@ -600,7 +622,6 @@ const EditarEvento = () => {
                         </section>
                     )}
 
-                    {/* SEÇÃO 5: ORGANIZADOR */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Organizador</h3></div>
                         <div className={styles.gridTwo}>
@@ -618,7 +639,6 @@ const EditarEvento = () => {
                         </div>
                     </section>
 
-                    {/* SEÇÃO 6: DESTAQUE */}
                     <section className={styles.card}>
                         <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaStar /></div><h3>Destacar Evento (Opcional)</h3></div>
                         <div style={{padding: '20px'}}>
