@@ -9,7 +9,7 @@ import {
     FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes, FaFileExcel 
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
-import * as XLSX from 'xlsx'; // <--- IMPORTANTE: Importe a biblioteca aqui
+import * as XLSX from 'xlsx'; 
 import './Participantes.css';
 
 const getApiBaseUrl = () => {
@@ -69,7 +69,7 @@ export default function Participantes() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ qrCode }) 
+                body: JSON.stringify({ ticketId: ticketId }) 
             });
 
             const result = await response.json();
@@ -103,13 +103,10 @@ export default function Participantes() {
 
     const checkinsCount = data.participants.filter(p => p.status === 'used').length;
 
-    // --- NOVA FUNÇÃO DE EXPORTAÇÃO (EXCEL REAL) ---
     const handleExportExcel = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
 
-        // 1. Prepara os dados limpos para o Excel
         const dataToExport = filteredParticipants.map(p => {
-            // Dados fixos
             const row = {
                 "Status": p.status === 'used' ? 'UTILIZADO' : 'VÁLIDO',
                 "Código": p.code,
@@ -120,7 +117,6 @@ export default function Participantes() {
                 "Data da Compra": new Date(p.purchaseDate).toLocaleString('pt-BR')
             };
 
-            // Adiciona colunas dinâmicas (Formulário Personalizado)
             if (data.formSchema) {
                 data.formSchema.forEach(q => {
                     row[q.label] = p[q.label] || '-';
@@ -130,31 +126,26 @@ export default function Participantes() {
             return row;
         });
 
-        // 2. Cria a Planilha (Worksheet)
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
 
-        // 3. Ajusta a largura das colunas automaticamente (Para ficar bonito)
         const columnWidths = [
-            { wch: 15 }, // Status
-            { wch: 30 }, // Código (Largo)
-            { wch: 30 }, // Nome
-            { wch: 30 }, // Email
-            { wch: 20 }, // Ingresso
-            { wch: 15 }, // Lote
-            { wch: 20 }, // Data
+            { wch: 15 }, 
+            { wch: 30 }, 
+            { wch: 30 }, 
+            { wch: 30 }, 
+            { wch: 20 }, 
+            { wch: 15 }, 
+            { wch: 20 }, 
         ];
         
-        // Adiciona largura para colunas extras do formulário
         if (data.formSchema) {
             data.formSchema.forEach(() => columnWidths.push({ wch: 25 }));
         }
         worksheet['!cols'] = columnWidths;
 
-        // 4. Cria o Arquivo (Workbook) e Baixa
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Participantes");
         
-        // Gera o nome do arquivo limpo
         const cleanTitle = data.eventTitle ? data.eventTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'evento';
         XLSX.writeFile(workbook, `lista_${cleanTitle}.xlsx`);
     };
@@ -228,7 +219,6 @@ export default function Participantes() {
                         <FaSearch className="search-icon"/>
                         <input type="text" placeholder="Buscar participante..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
                     </div>
-                    {/* Botão Atualizado para chamar handleExportExcel */}
                     <button className="export-btn" onClick={handleExportExcel}>
                         <FaFileExcel /> Baixar Excel
                     </button>
