@@ -116,11 +116,10 @@ export default function EventoDetalhes() {
                     setAvailableDates(uniqueDates);
                     if (uniqueDates.length > 0) setSelectedDate(uniqueDates[0]);
 
-                    // --- 3. Lógica do Organizador (CORRIGIDA) ---
+                    // --- 3. Lógica do Organizador ---
                     let orgName = "Organizador"; 
                     let orgInsta = "";
 
-                    // Prioridade 1: Dados personalizados salvos no evento
                     if (eventData.organizerInfo) {
                         try {
                             const info = typeof eventData.organizerInfo === 'string' 
@@ -133,7 +132,6 @@ export default function EventoDetalhes() {
                             console.error("Erro parse organizerInfo", e);
                         }
                     } 
-                    // Prioridade 2: Dados da conta do usuário criador
                     else if (eventData.organizer && eventData.organizer.name) {
                         orgName = eventData.organizer.name;
                         if (eventData.organizer.instagram) orgInsta = eventData.organizer.instagram;
@@ -396,7 +394,7 @@ export default function EventoDetalhes() {
     const getGoogleMapsLink = () => { 
         if (!evento) return "#"; 
         const query = encodeURIComponent(`${evento.location}, ${evento.city}`); 
-        return `https://www.google.com/maps/search/?api=1&query=${query}`; 
+        return `https://maps.google.com/?q=${query}`; 
     };
     
     if (loading) return <SkeletonLoader />;
@@ -410,7 +408,22 @@ export default function EventoDetalhes() {
         return tDate === selectedDate;
     });
 
-    const isEventEnded = new Date() > new Date(evento.eventDate);
+    // --- CORREÇÃO DO BLOQUEIO DE DATA AQUI ---
+    let isEventEnded = false;
+    
+    if (selectedDate) {
+        // Cria uma data para o dia selecionado considerando meia-noite (UTC) e converte para evitar bug de fuso horário
+        const selectedDateObj = new Date(`${selectedDate}T23:59:59`); // Dá até o final do dia para comprar
+        const now = new Date();
+        isEventEnded = now > selectedDateObj;
+    } else if (evento.eventDate) {
+        // Se o evento não tiver datas múltiplas (tabs), usa a lógica antiga, mas dando até o fim do dia
+        const eventDateObj = new Date(evento.eventDate);
+        eventDateObj.setHours(23, 59, 59);
+        const now = new Date();
+        isEventEnded = now > eventDateObj;
+    }
+    // ----------------------------------------
 
     return (
         <div className="event-details-page-container">
