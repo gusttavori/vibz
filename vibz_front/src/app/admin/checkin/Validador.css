@@ -1,7 +1,7 @@
 /* --- VIBZ VALIDATOR THEME (Fixed & Centered) --- */
 :root {
     --primary: #6366f1;
-    --bg-page: #f8fafc; /* Fundo cinza claro para destaque */
+    --bg-page: #f8fafc;
     --surface: #ffffff;
     --text-main: #1e293b;
     --text-sub: #64748b;
@@ -10,15 +10,14 @@
     --brand-color: #4C01B5;
 }
 
-/* Container Principal - Fixa a tela inteira e centraliza TUDO */
 .validator-page {
     background-color: var(--bg-page);
-    position: fixed; /* Garante que fique sobre tudo */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Altura real mobile */
+    height: 100dvh; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -28,7 +27,6 @@
     overflow: hidden;
 }
 
-/* Header Flutuante */
 .validator-nav {
     position: absolute;
     top: 20px;
@@ -63,7 +61,6 @@
     text-transform: uppercase;
 }
 
-/* Área de Conteúdo Central */
 .validator-main {
     width: 100%;
     max-width: 100%;
@@ -73,10 +70,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 1; /* Ocupa o espaço restante */
+    flex: 1; 
 }
 
-/* Card Padrão (Usado para Login, Erro, Sucesso, Manual) */
 .state-card {
     background: var(--surface);
     width: 100%;
@@ -89,9 +85,9 @@
     flex-direction: column;
     align-items: center;
     animation: slideUp 0.4s ease-out;
+    z-index: 100;
 }
 
-/* --- ESTILO ESPECÍFICO: ACESSO RESTRITO --- */
 .state-card.unauthorized {
     border-top: none;
     width: 80%;
@@ -129,7 +125,6 @@
     font-weight: 700;
 }
 
-/* --- ESTILO: IDLE / MANUAL --- */
 .pulse-ring, .icon-header {
     background: #e0e7ff;
     color: var(--primary);
@@ -154,7 +149,6 @@
     gap: 12px;
 }
 
-/* Inputs */
 .manual-form { width: 100%; display: flex; flex-direction: column; gap: 15px; }
 .input-code {
     width: 100%;
@@ -173,7 +167,6 @@
 }
 .input-code:focus { border-color: var(--primary); background: #fff; }
 
-/* Botões */
 .btn-primary-large {
     width: 100%;
     padding: 16px;
@@ -220,7 +213,6 @@
     cursor: pointer;
 }
 
-/* --- RESULTADOS --- */
 .ticket-info-box {
     background: #f8f9fa;
     border-radius: 12px;
@@ -238,21 +230,107 @@
 .info-row .value.name { color: var(--brand-color); font-size: 1.2rem; }
 .info-row .value.type { color: var(--success); }
 
-/* Erro */
 .error-box { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 15px; border-radius: 12px; margin-bottom: 20px; width: 100%; box-sizing: border-box; font-weight: 600; }
 .icon-result { font-size: 3.5rem; margin-bottom: 15px; display: block; margin: 0 auto; }
 .success .icon-result { color: var(--success); }
 .error .icon-result { color: var(--error); }
 
-/* Scanner Overlay */
-.state-fullscreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10; }
-#reader { width: 100% !important; height: 100% !important; object-fit: cover; }
-#reader video { object-fit: cover !important; }
-.scan-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 15; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.scan-controls { position: absolute; bottom: 40px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 40; pointer-events: auto; }
-.btn-manual-overlay, .btn-close-scan { background: rgba(255,255,255,0.9); border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; display: flex; gap: 8px; align-items: center; cursor: pointer; color: black; }
+/* --- CORREÇÕES DA CÂMERA (FULLSCREEN VERDADEIRO) --- */
+.state-fullscreen { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh;
+    height: 100dvh; 
+    background: #000; 
+    z-index: 10; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-/* Loader */
+.camera-container { 
+    width: 100% !important; 
+    height: 100% !important; 
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: none !important;
+}
+
+/* Força o elemento de vídeo gerado pela lib a preencher a tela inteira sem distorcer */
+.camera-container video { 
+    width: 100vw !important; 
+    height: 100vh !important; 
+    height: 100dvh !important;
+    object-fit: cover !important; 
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.scan-overlay { 
+    position: absolute; 
+    top: 80px; 
+    left: 0; 
+    width: 100%; 
+    z-index: 15; 
+    display: flex; 
+    align-items: flex-start; 
+    justify-content: center; 
+    pointer-events: none; 
+}
+
+.scan-overlay p {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.scan-controls { 
+    position: absolute; 
+    bottom: 50px; 
+    left: 0; 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+    gap: 15px; 
+    z-index: 40; 
+    pointer-events: auto; 
+}
+
+.btn-manual-overlay { 
+    background: rgba(255,255,255,0.95); 
+    border: none; 
+    padding: 14px 24px; 
+    border-radius: 30px; 
+    font-weight: 700; 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+    cursor: pointer; 
+    color: var(--text-main); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-close-scan { 
+    background: rgba(0,0,0,0.7); 
+    border: 1px solid rgba(255,255,255,0.2); 
+    padding: 14px 24px; 
+    border-radius: 30px; 
+    font-weight: 700; 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+    cursor: pointer; 
+    color: #fff; 
+    backdrop-filter: blur(5px);
+}
+
 .loader-container { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; background: var(--bg-page); }
 .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

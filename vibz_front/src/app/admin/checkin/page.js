@@ -21,7 +21,6 @@ export default function ValidadorUniversal() {
     
     const html5QrCodeRef = useRef(null);
 
-    // 1. VERIFICAÇÃO DE SEGURANÇA
     useEffect(() => {
         const checkPermission = async () => {
             try {
@@ -40,7 +39,6 @@ export default function ValidadorUniversal() {
 
                 const data = await res.json();
                 
-                // Se não tiver eventos e não for admin, bloqueia
                 const hasEvents = data.myEvents && data.myEvents.length > 0;
                 const isAdmin = data.user && data.user.isAdmin;
 
@@ -116,9 +114,14 @@ export default function ValidadorUniversal() {
         setStatus('scanning');
         setTimeout(() => {
             if (!html5QrCodeRef.current) html5QrCodeRef.current = new Html5Qrcode("reader");
+            
             html5QrCodeRef.current.start(
                 { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 },
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: window.innerWidth / window.innerHeight 
+                },
                 onScanSuccess,
                 () => {} 
             ).catch(() => {
@@ -142,10 +145,8 @@ export default function ValidadorUniversal() {
         setManualCode('');
     };
 
-    // Loader inicial (pode ficar separado pois tem CSS próprio de full-screen)
     if (status === 'checking_permission') return <div className="loader-container"><div className="spinner"></div></div>;
 
-    // --- RENDERIZAÇÃO UNIFICADA (CORREÇÃO DE LAYOUT) ---
     return (
         <div className={`validator-page ${status}`}>
             <Toaster position="top-center" />
@@ -159,7 +160,6 @@ export default function ValidadorUniversal() {
 
             <main className="validator-main">
                 
-                {/* 1. TELA DE ACESSO RESTRITO (Agora dentro do main centralizado) */}
                 {status === 'unauthorized' && (
                     <div className="state-card unauthorized">
                         <div className="icon-wrapper-error">
@@ -180,7 +180,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 2. TELA INICIAL (IDLE) */}
                 {status === 'idle' && (
                     <div className="state-card idle">
                         <div className="pulse-ring">
@@ -200,12 +199,11 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 3. TELA DE SCANNER */}
                 {status === 'scanning' && (
                     <div className="state-fullscreen">
-                        <div id="reader"></div>
+                        <div id="reader" className="camera-container"></div>
                         <div className="scan-overlay">
-                            <p>Enquadre o QR Code</p>
+                            <p>Enquadre o QR Code no quadrado</p>
                         </div>
                         <div className="scan-controls">
                             <button className="btn-manual-overlay" onClick={switchToManual}>
@@ -218,7 +216,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 4. TELA MANUAL */}
                 {status === 'manual_entry' && (
                     <div className="state-card manual">
                         <div className="icon-header">
@@ -244,7 +241,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 5. PROCESSANDO */}
                 {status === 'processing' && (
                     <div className="state-card processing">
                         <div className="spinner"></div>
@@ -252,7 +248,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 6. TELA DE SUCESSO */}
                 {status === 'success' && (
                     <div className="state-card result success">
                         <div className="result-header">
@@ -283,7 +278,6 @@ export default function ValidadorUniversal() {
                     </div>
                 )}
 
-                {/* 7. TELA DE ERRO */}
                 {status === 'error' && (
                     <div className="state-card result error">
                         <div className="result-header">
