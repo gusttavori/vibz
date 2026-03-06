@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { 
     FaArrowLeft, FaFileCsv, FaSearch, FaUserFriends, FaTicketAlt, 
-    FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes, FaFileExcel 
+    FaCheck, FaCheckCircle, FaSpinner, FaClipboardCheck, FaEye, FaTimes, FaFileExcel, FaUser 
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 import * as XLSX from 'xlsx'; 
@@ -101,7 +101,9 @@ export default function Participantes() {
         (p.code && p.code.includes(searchTerm))
     );
 
+    // --- CONTADORES ATUALIZADOS ---
     const checkinsCount = data.participants.filter(p => p.status === 'used').length;
+    const uniqueBuyersCount = new Set(data.participants.filter(p => p.buyerEmail).map(p => p.buyerEmail)).size;
 
     const handleExportExcel = () => {
         if (filteredParticipants.length === 0) return toast.error("Nada para exportar.");
@@ -205,9 +207,15 @@ export default function Participantes() {
                                 <p className="subtitle">Gestão de Participantes</p>
                             </div>
                         </div>
-                        <div style={{display: 'flex', gap: '15px'}}>
-                            <span className="badge-total"><FaUserFriends /> {data.participants.length}</span>
-                            <span className="badge-total" style={{backgroundColor: '#10b981', color: '#fff'}}>
+                        {/* --- NOVA ÁREA DE BADGES COM O COMPRADORES ÚNICOS --- */}
+                        <div style={{display: 'flex', gap: '15px', flexWrap: 'wrap'}}>
+                            <span className="badge-total" title="Total de Ingressos Gerados">
+                                <FaTicketAlt /> {data.participants.length}
+                            </span>
+                            <span className="badge-total" style={{backgroundColor: '#8b5cf6', color: '#fff'}} title="Compradores Únicos">
+                                <FaUserFriends /> {uniqueBuyersCount}
+                            </span>
+                            <span className="badge-total" style={{backgroundColor: '#10b981', color: '#fff'}} title="Check-ins Realizados">
                                 <FaClipboardCheck /> {checkinsCount}
                             </span>
                         </div>

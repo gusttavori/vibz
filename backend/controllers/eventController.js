@@ -405,21 +405,75 @@ const getEventCities = async (req, res) => {
     res.json(cities.map(c => c.city));
 };
 
+// --- FUNÇÃO ATUALIZADA: DADOS COMPLETOS PARA O EXCEL E O PAINEL ---
 const getEventParticipants = async (req, res) => {
     try {
         const { id } = req.params;
-        const event = await prisma.event.findUnique({ where: { id }, select: { title: true, organizerId: true } });
-        if (!event || event.organizerId !== req.user.id) return res.status(403).json({ message: 'Sem permissão.' });
+        
+        // 1. Busca o evento para garantir que existe e que o usuário é dono dele
+        const event = await prisma.event.findUnique({ 
+            where: { id }, 
+            select: { title: true, organizerId: true, imageUrl: true, formSchema: true } 
+        });
+        
+        if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
+        
+        // Proteção de segurança: apenas o dono ou um admin pode ver a lista
+        if (event.organizerId !== req.user.id && !req.user.isAdmin) {
+            return res.status(403).json({ message: 'Sem permissão para visualizar participantes.' });
+        }
+
+        // 2. Busca todos os ingressos válidos e utilizados deste evento
         const tickets = await prisma.ticket.findMany({
-            where: { eventId: id, status: { in: ['valid', 'used'] } },
-            include: { user: { select: { name: true, email: true } }, ticketType: { select: { name: true, batchName: true } } },
+            where: { 
+                eventId: id, 
+                status: { in: ['valid', 'used'] } 
+            },
+            include: { 
+                user: { select: { name: true, email: true } }, 
+                ticketType: { select: { name: true, batchName: true } } 
+            },
             orderBy: { createdAt: 'desc' }
         });
+
+        // 3. Formata os dados para o Frontend consumir sem erros
+        const formattedParticipants = tickets.map(t => {
+            let customData = {};
+            if (t.participantData) {
+                try {
+                    customData = typeof t.participantData === 'string' 
+                        ? JSON.parse(t.participantData) 
+                        : t.participantData;
+                } catch (e) {
+                    console.error("Erro ao dar parse no participantData:", e);
+                }
+            }
+
+            return {
+                id: t.id,
+                code: t.id, // O ID do ticket é o código validador
+                status: t.status,
+                buyerName: t.user?.name || 'Usuário Deletado',
+                buyerEmail: t.user?.email || 'Sem e-mail',
+                ticketType: t.ticketType?.name || 'Ingresso Padrão',
+                batch: t.ticketType?.batchName || 'Lote Único',
+                purchaseDate: t.createdAt, // Envia a data da compra
+                ...customData 
+            };
+        });
+
+        // 4. Devolve tudo redondinho para a tela do Organizador
         res.json({ 
             eventTitle: event.title,
-            participants: tickets.map(t => ({ id: t.id, status: t.status, buyerName: t.user.name, buyerEmail: t.user.email, ticketType: t.ticketType.name, ...t.participantData })) 
+            eventImageUrl: event.imageUrl,
+            formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
+            participants: formattedParticipants 
         });
-    } catch (error) { res.status(500).json({ message: 'Erro ao carregar lista.' }); }
+
+    } catch (error) { 
+        console.error("Erro no getEventParticipants:", error);
+        res.status(500).json({ message: 'Erro ao carregar lista de participantes.' }); 
+    }
 };
 
 const getPendingEvents = async (req, res) => { 
