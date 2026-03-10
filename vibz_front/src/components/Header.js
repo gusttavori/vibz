@@ -13,19 +13,51 @@ export default function Header() {
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
+    // --- NOVA FUNÇÃO DE CHECAGEM DE TOKEN EXPIRADO ---
+    const checkTokenExpiration = (token) => {
+        if (!token) return true; // Se não tem token, está "expirado" por padrão
+
+        try {
+            // Decodifica o payload do token JWT (a parte do meio, base64)
+            const payloadBase64 = token.split('.')[1];
+            // Em navegadores modernos (Next.js client-side), usamos atob para decodificar base64
+            const decodedJson = atob(payloadBase64);
+            const decoded = JSON.parse(decodedJson);
+
+            // Pega a data de expiração (exp vem em segundos, o JS usa milissegundos)
+            const expDate = decoded.exp * 1000;
+
+            // Se a data atual for maior que a data de expiração, o token venceu
+            if (Date.now() >= expDate) {
+                return true; // Expirou
+            }
+            return false; // Válido
+        } catch (error) {
+            console.error("Erro ao decodificar token", error);
+            return true; // Na dúvida, considera expirado para segurança
+        }
+    };
+
     // Verifica login ao carregar e escuta mudanças no localStorage
     useEffect(() => {
         const checkLogin = () => {
-            const token = localStorage.getItem('userToken');
+            const token = localStorage.getItem('userToken')?.replace(/"/g, '');
             const storedName = localStorage.getItem('userName');
-            const storedPic = localStorage.getItem('userPic'); 
+            const storedPic = localStorage.getItem('userPic');
 
             if (token) {
-                setIsLoggedIn(true);
-                setUser({
-                    name: storedName || 'Visitante',
-                    profilePicture: storedPic 
-                });
+                const isExpired = checkTokenExpiration(token);
+
+                if (isExpired) {
+                    console.log("Token expirado interceptado pelo Header. Deslogando...");
+                    handleLogout(); // Se expirou, força o logout imediato
+                } else {
+                    setIsLoggedIn(true);
+                    setUser({
+                        name: storedName || 'Visitante',
+                        profilePicture: storedPic
+                    });
+                }
             } else {
                 setIsLoggedIn(false);
                 setUser(null);
@@ -33,9 +65,18 @@ export default function Header() {
         };
 
         checkLogin();
+
+        // Fica checando o localStorage (se o usuário logar em outra aba)
         window.addEventListener('storage', checkLogin);
-        return () => window.removeEventListener('storage', checkLogin);
-    }, []);
+
+        // Robô silencioso que roda a cada 2 minutos para ver se o tempo do token acabou
+        const intervalId = setInterval(checkLogin, 2 * 60 * 1000);
+
+        return () => {
+            window.removeEventListener('storage', checkLogin);
+            clearInterval(intervalId);
+        };
+    }, [router]); // Router como dependência porque usamos no handleLogout
 
     // Fecha o dropdown ao clicar fora
     useEffect(() => {
@@ -83,8 +124,8 @@ export default function Header() {
                     {/* Área do Usuário */}
                     {isLoggedIn ? (
                         <div className="user-menu-container" ref={dropdownRef}>
-                            <button 
-                                className={`user-profile-trigger ${showDropdown ? 'active' : ''}`} 
+                            <button
+                                className={`user-profile-trigger ${showDropdown ? 'active' : ''}`}
                                 onClick={() => setShowDropdown(!showDropdown)}
                                 aria-label="Menu do usuário"
                             >
@@ -98,7 +139,7 @@ export default function Header() {
                                 <div className="dropdown-header-mobile">
                                     <strong>{user?.name}</strong>
                                 </div>
-                                
+
                                 <button className="dropdown-item" onClick={() => router.push('/dashboard')}>
                                     <FaTicketAlt /> Painel do Organizador
                                 </button>
@@ -111,9 +152,9 @@ export default function Header() {
                                 <button className="dropdown-item" onClick={() => router.push('/perfil')}>
                                     <FaUser /> Meu Perfil
                                 </button>
-                                
+
                                 <div className="dropdown-divider"></div>
-                                
+
                                 <button className="dropdown-item logout" onClick={handleLogout}>
                                     <FaSignOutAlt /> Sair
                                 </button>

@@ -13,24 +13,24 @@ export default function Login() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
+
   const router = useRouter();
 
   const realizarLoginNoNavegador = useCallback((data) => {
     if (typeof window !== 'undefined') {
-        const tokenValue = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
-        localStorage.setItem('userToken', tokenValue);
-        
-        if (data.user) {
-            localStorage.setItem('userId', data.user.id);
-            localStorage.setItem('userName', data.user.name);
-        }
-        
-        setMessage('Login realizado! Redirecionando...');
-        
-        setTimeout(() => {
-             window.location.replace('/');
-        }, 100);
+      const tokenValue = typeof data.token === 'string' ? data.token : JSON.stringify(data.token);
+      localStorage.setItem('userToken', tokenValue);
+
+      if (data.user) {
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userName', data.user.name);
+      }
+
+      setMessage('Login realizado! Redirecionando...');
+
+      setTimeout(() => {
+        window.location.replace('/');
+      }, 100);
     }
   }, []);
 
@@ -40,17 +40,17 @@ export default function Login() {
     setMessage('Autenticando com Google...');
     try {
       const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
       });
       const data = await response.json();
       if (response.ok) {
-          realizarLoginNoNavegador(data);
+        realizarLoginNoNavegador(data);
       } else {
-          setMessage(data.msg || 'Falha na autenticação com Google.');
-          setIsLoading(false);
-          setIsCheckingAuth(false);
+        setMessage(data.msg || 'Falha na autenticação com Google.');
+        setIsLoading(false);
+        setIsCheckingAuth(false);
       }
     } catch (error) {
       console.error("Erro ao processar callback do Google:", error);
@@ -62,17 +62,17 @@ export default function Login() {
 
   useEffect(() => {
     const checkAuthAndParams = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
 
-        if (code) {
-            handleGoogleCallback(code);
-        } else if (token) {
-            window.location.replace('/');
-        } else {
-            setIsCheckingAuth(false);
-        }
+      if (code) {
+        handleGoogleCallback(code);
+      } else if (token) {
+        window.location.replace('/');
+      } else {
+        setIsCheckingAuth(false);
+      }
     };
     checkAuthAndParams();
   }, [handleGoogleCallback]);
@@ -88,7 +88,7 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
 
       if (response.ok) {
@@ -119,73 +119,73 @@ export default function Login() {
   };
 
   if (isCheckingAuth) {
-      return (
-        <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-            <div className="skeleton-pulse" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#4C01B5', opacity: 0.6 }}></div>
-        </div>
-      );
+    return (
+      <div className="auth-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <div className="skeleton-pulse" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#4C01B5', opacity: 0.6 }}></div>
+      </div>
+    );
   }
 
   return (
     <div className="auth-container">
-      <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo"/>
+      <img src="/img/vibe_site.png" alt="Logo da Vibz" className="logo" />
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <h2 className="auth-title">Bem-vindo de volta!</h2>
         <p className="auth-description">Acesse sua conta para continuar.</p>
 
         <div className="input-spacer">
-            <input 
-                type="email" 
-                placeholder="Email" 
-                required 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-            />
+          <input
+            type="email"
+            placeholder="Email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
         <div className="input-spacer">
-            <input 
-                type="password" 
-                placeholder="Senha" 
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-            />
+          <input
+            type="password"
+            placeholder="Senha"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
-        
+
         <div>
-          <button 
-              type="button" 
-              className="forgot-password-link"
-              onClick={handleForgotPassword}
+          <button
+            type="button"
+            className="forgot-password-link"
+            onClick={handleForgotPassword}
           >
-              Esqueceu sua senha?
+            Esqueceu sua senha?
           </button>
         </div>
 
         <button type="submit" className="auth-button" disabled={isLoading}>
-            {isLoading ? 'Entrando...' : 'Entrar'}
+          {isLoading ? 'Entrando...' : 'Entrar'}
         </button>
 
         <button type="button" className="google-button" onClick={() => googleLogin()} disabled={isLoading}>
-            <img src="/img/icon_google.svg" alt="Google Logo" className="google-logo"/>
-            {isLoading ? 'Aguarde...' : 'Continue com Google'}
+          <img src="/img/icon_google.svg" alt="Google Logo" className="google-logo" />
+          {isLoading ? 'Aguarde...' : 'Continue com Google'}
         </button>
 
         <p>Ainda não tem uma conta?</p>
-        
-        <button 
-            type="button" 
-            className="small-button" 
-            onClick={handleGoToRegister}
+
+        <button
+          type="button"
+          className="small-button"
+          onClick={handleGoToRegister}
         >
-            Cadastre-se
+          Cadastre-se
         </button>
-        
+
         {message && (
-            <div className="message-container">
-                <p className="auth-message">{message}</p>
-            </div>
+          <div className="message-container">
+            <p className="auth-message">{message}</p>
+          </div>
         )}
       </form>
     </div>

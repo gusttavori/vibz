@@ -44,19 +44,19 @@ const getAdminStats = async (req, res) => {
         const totalUsers = await prisma.user.count();
         const pendingEvents = await prisma.event.count({ where: { status: 'pending' } });
         const pendingHighlights = await prisma.event.count({ where: { highlightStatus: 'pending' } });
-        
+
         const financials = await prisma.order.aggregate({
             where: { status: 'paid' },
             _sum: {
-                platformFee: true 
+                platformFee: true
             }
         });
 
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
+
         const recentOrders = await prisma.order.findMany({
-            where: { 
+            where: {
                 status: 'paid',
                 createdAt: { gte: sevenDaysAgo }
             },
@@ -68,7 +68,7 @@ const getAdminStats = async (req, res) => {
             pendingEvents,
             pendingHighlights,
             revenue: financials._sum.platformFee || 0,
-            chartData: recentOrders 
+            chartData: recentOrders
         });
     } catch (error) {
         res.status(500).json({ message: 'Erro ao buscar estatísticas.' });
@@ -79,7 +79,7 @@ const getEventsList = async (req, res) => {
     try {
         const { status, highlightStatus } = req.query;
         let where = {};
-        
+
         if (status) where.status = status;
         if (highlightStatus) where.highlightStatus = highlightStatus;
 
@@ -124,7 +124,7 @@ const updateHighlightStatus = async (req, res) => {
         if (highlightStatus === 'rejected') {
             const updated = await prisma.event.update({
                 where: { id },
-                data: { 
+                data: {
                     highlightStatus: 'rejected',
                     isFeaturedRequested: false,
                     isFeatured: false
@@ -137,11 +137,11 @@ const updateHighlightStatus = async (req, res) => {
         if (highlightStatus === 'approved') {
             // 1. Pega preço atual do banco
             const config = await prisma.systemConfig.findFirst();
-            
+
             // Standard agora é diária (R$ 2.00 por padrão), Premium é fixo (R$ 100.00)
             const standardDailyRate = config?.standardPrice || 2.00;
             const premiumFixedPrice = config?.premiumPrice || 100.00;
-            
+
             let finalPrice = 0;
             let description = '';
 
@@ -190,10 +190,10 @@ const updateHighlightStatus = async (req, res) => {
                 }
             });
 
-            return res.json({ 
-                message: "Aprovado! Link de pagamento gerado.", 
+            return res.json({
+                message: "Aprovado! Link de pagamento gerado.",
                 event: updated,
-                paymentLink: session.url 
+                paymentLink: session.url
             });
         }
 
@@ -218,12 +218,12 @@ const getSystemSettings = async (req, res) => {
 const updateSystemSettings = async (req, res) => {
     try {
         const { platformFee, premiumPrice, standardPrice } = req.body;
-        
+
         const config = await prisma.systemConfig.findFirst();
-        
+
         const updated = await prisma.systemConfig.update({
             where: { id: config.id },
-            data: { 
+            data: {
                 platformFee: parseFloat(platformFee),
                 premiumPrice: parseFloat(premiumPrice),
                 standardPrice: parseFloat(standardPrice)
@@ -233,6 +233,52 @@ const updateSystemSettings = async (req, res) => {
         res.json(updated);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao salvar configurações.' });
+    }
+};
+
+// --- NOVAS FUNÇÕES PARA GERENCIAMENTO GERAL ---
+const getAllEventsAdmin = async (req, res) => {
+    try {
+        const events = await prisma.event.findMany({
+            include: {
+                organizer: { select: { name: true, email: true } },
+                ticketTypes: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.status(200).json(events);
+    } catch (error) {
+        console.error("Erro ao buscar todos os eventos (Admin):", error);
+        res.status(500).json({ message: "Erro ao buscar eventos." });
+    }
+};
+
+const deleteEventAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1. Verifica se o evento tem ingressos vendidos
+        const ticketsSold = await prisma.ticket.count({
+            where: { eventId: id }
+        });
+
+        if (ticketsSold > 0) {
+            // Se já vendeu ingresso, NÃO podemos apagar do banco (Soft Delete)
+            await prisma.event.update({
+                where: { id },
+                data: { status: 'archived' }
+            });
+            return res.status(200).json({ message: "Evento arquivado com sucesso (possui vendas)." });
+        } else {
+            // Se não vendeu ingresso nenhum, podemos apagar do banco (Hard Delete)
+            await prisma.ticketType.deleteMany({ where: { eventId: id } });
+            await prisma.event.delete({ where: { id } });
+
+            return res.status(200).json({ message: "Evento excluído permanentemente." });
+        }
+    } catch (error) {
+        console.error("Erro ao excluir evento (Admin):", error);
+        res.status(500).json({ message: "Erro interno ao excluir evento." });
     }
 };
 
@@ -299,6 +345,8 @@ module.exports = {
     updateHighlightStatus,
     getSystemSettings,
     updateSystemSettings,
+    getAllEventsAdmin,
+    deleteEventAdmin,
     listCoupons,
     createCoupon,
     deleteCoupon

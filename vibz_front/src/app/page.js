@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
+import {
     FaMagic, FaBullhorn, FaMoneyBillWave, FaArrowRight, FaSearch, FaTimes, FaLayerGroup,
-    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher // Trocado FaFutbol por FaTrophy
-} from 'react-icons/fa'; 
-import toast, { Toaster } from 'react-hot-toast'; 
+    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher
+} from 'react-icons/fa';
+import toast, { Toaster } from 'react-hot-toast';
 
 import Header from '@/components/Header';
 import Carousel from '@/components/Carousel';
 import EventCard from '@/components/EventCard';
-import Footer from '@/components/Footer'; 
+import Footer from '@/components/Footer';
 
 import './Home.css';
 
@@ -19,28 +19,28 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 
 // Lista de categorias para sugestão no autocomplete
 const SYSTEM_CATEGORIES = [
-    'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura', 
+    'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura',
     'Esportes', 'Gastronomia', 'Cursos e Workshops'
 ];
 
 export default function Home() {
-    const router = useRouter(); 
-    
+    const router = useRouter();
+
     const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
     const [currentUserId, setCurrentUserId] = useState(null);
 
     const [showCityMenu, setShowCityMenu] = useState(false);
     const [cities, setCities] = useState([]);
     const [selectedCity, setSelectedCity] = useState('');
-    
+
     const [searchTerm, setSearchTerm] = useState('');
-    const [suggestions, setSuggestions] = useState([]); 
-    const [matchedCategory, setMatchedCategory] = useState(null); 
-    const [showSuggestions, setShowSuggestions] = useState(false); 
-    
+    const [suggestions, setSuggestions] = useState([]);
+    const [matchedCategory, setMatchedCategory] = useState(null);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
-    
+
     const [categoryEvents, setCategoryEvents] = useState({
         academico: [], festas: [], teatro: [], esportes: [], gastronomia: [], cursos: []
     });
@@ -54,8 +54,8 @@ export default function Home() {
     });
 
     const [favoritedEventIds, setFavoritedEventIds] = useState([]);
-    
-    const searchWrapperRef = useRef(null); 
+
+    const searchWrapperRef = useRef(null);
 
     const academicoRef = useRef(null);
     const festasRef = useRef(null);
@@ -67,23 +67,29 @@ export default function Home() {
     // --- AUTOCOMPLETE COM LÓGICA DE CATEGORIA ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
-            if (searchTerm.length >= 1) { 
+            if (searchTerm.length >= 1) {
                 try {
-                    // 1. Verifica se o termo bate com o nome de uma categoria
-                    const catFound = SYSTEM_CATEGORIES.find(cat => 
+                    const catFound = SYSTEM_CATEGORIES.find(cat =>
                         cat.toLowerCase().includes(searchTerm.toLowerCase())
                     );
                     setMatchedCategory(catFound || null);
 
-                    // 2. Busca eventos no servidor
                     const params = new URLSearchParams();
                     params.append('query', searchTerm);
                     if (selectedCity) params.append('city', selectedCity);
-                    
+
                     const response = await fetch(`${API_BASE_URL}/events/search?${params.toString()}`);
                     if (response.ok) {
                         const data = await response.json();
-                        setSuggestions(data.slice(0, 5)); 
+                        // Filtro 1: Não sugerir eventos passados na busca
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const validSuggestions = data.filter(event => {
+                            const eventDate = new Date(event.date);
+                            return eventDate >= today;
+                        });
+
+                        setSuggestions(validSuggestions.slice(0, 5));
                         setShowSuggestions(true);
                     }
                 } catch (error) {
@@ -94,7 +100,7 @@ export default function Home() {
                 setMatchedCategory(null);
                 setShowSuggestions(false);
             }
-        }, 300); 
+        }, 300);
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm, selectedCity]);
@@ -110,16 +116,14 @@ export default function Home() {
     }, []);
 
     const handleSuggestionClick = (eventId) => {
-        router.push(`/evento/${eventId}`); 
+        router.push(`/evento/${eventId}`);
         setShowSuggestions(false);
     };
 
-    // --- CORREÇÃO DO CLIQUE NA CATEGORIA DA BUSCA ---
     const handleCategorySuggestionClick = (catName) => {
-        setShowSuggestions(false); // Fecha o menu
-        setSearchTerm(''); // Limpa a barra de busca
-        
-        // Mapeia o nome da categoria para a sua referência (Ref) na página
+        setShowSuggestions(false);
+        setSearchTerm('');
+
         let targetRef = null;
         if (catName === 'Acadêmico / Congresso') targetRef = academicoRef;
         else if (catName === 'Festas e Shows') targetRef = festasRef;
@@ -128,7 +132,6 @@ export default function Home() {
         else if (catName === 'Gastronomia') targetRef = gastronomiaRef;
         else if (catName === 'Cursos e Workshops') targetRef = cursosRef;
 
-        // Faz o scroll suave até a sessão correspondente
         if (targetRef && targetRef.current) {
             setTimeout(() => {
                 targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -137,9 +140,9 @@ export default function Home() {
     };
 
     const handleClearCity = (e) => {
-        e.stopPropagation(); 
-        setSelectedCity(''); 
-        setShowCityMenu(false); 
+        e.stopPropagation();
+        setSelectedCity('');
+        setShowCityMenu(false);
     };
 
     const handleClearSearch = () => {
@@ -175,7 +178,7 @@ export default function Home() {
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const endOfWeek = new Date(today);
         endOfWeek.setDate(today.getDate() + 7);
         endOfWeek.setHours(23, 59, 59, 999);
@@ -199,13 +202,24 @@ export default function Home() {
         });
     };
 
+    // --- FILTRO GLOBAL DE DATA PARA OCULTAR EVENTOS PASSADOS ---
     const fetchCategory = async (categoryName, key) => {
         try {
             const url = `${API_BASE_URL}/events/category/${encodeURIComponent(categoryName)}`;
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-                setCategoryEvents(prev => ({ ...prev, [key]: data }));
+
+                // Filtro para ocultar eventos passados (anteriores a hoje)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Zera as horas para comparar apenas os dias
+
+                const validEvents = data.filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate >= today; // Só mantém se for hoje ou no futuro
+                });
+
+                setCategoryEvents(prev => ({ ...prev, [key]: validEvents }));
             } else {
                 setCategoryEvents(prev => ({ ...prev, [key]: [] }));
             }
@@ -221,12 +235,12 @@ export default function Home() {
         fetchCategory('Acadêmico / Congresso', 'academico');
         fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro e Cultura', 'teatro');
-        fetchCategory('Esportes', 'esportes'); 
+        fetchCategory('Esportes', 'esportes');
         fetchCategory('Gastronomia', 'gastronomia');
         fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
 
-    // --- LOGIN & FAVORITOS ---
+    // --- LOGIN E FAVORITOS ---
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
@@ -244,7 +258,7 @@ export default function Home() {
         };
         checkLoginStatus();
         window.addEventListener('storage', checkLoginStatus);
-        window.addEventListener('authChange', checkLoginStatus); 
+        window.addEventListener('authChange', checkLoginStatus);
         return () => {
             window.removeEventListener('storage', checkLoginStatus);
             window.removeEventListener('authChange', checkLoginStatus);
@@ -267,12 +281,12 @@ export default function Home() {
                 }
             } catch (error) { console.error("Erro favoritos:", error); }
         };
-        
+
         if (currentUserId) {
             fetchFavoritedEvents();
         }
     }, [currentUserId]);
-    
+
     useEffect(() => {
         const fetchCities = async () => {
             try {
@@ -287,7 +301,19 @@ export default function Home() {
         const fetchFeatured = async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/events/featured`);
-                if (response.ok) setFeaturedEvents(await response.json());
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Filtro de data também para o Carrossel de Destaques
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const validFeatured = data.filter(event => {
+                        const eventDate = new Date(event.date);
+                        return eventDate >= today;
+                    });
+
+                    setFeaturedEvents(validFeatured);
+                }
             } catch (error) { console.error("Erro destaques:", error); }
             finally { setLoadingFeatured(false); }
         };
@@ -296,10 +322,10 @@ export default function Home() {
 
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         const token = localStorage.getItem('userToken');
-        if (!currentUserId) { 
+        if (!currentUserId) {
             toast.error("Faça login para favoritar.");
-            router.push('/login'); 
-            return; 
+            router.push('/login');
+            return;
         }
 
         setFavoritedEventIds(prev => {
@@ -318,7 +344,7 @@ export default function Home() {
             });
 
             if (response.status === 404) {
-                 response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
+                response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ userId: currentUserId, isFavoriting })
@@ -335,7 +361,7 @@ export default function Home() {
                 const data = await response.json();
                 toast.success(data.message || (isFavoriting ? "Adicionado aos favoritos!" : "Removido dos favoritos."));
             }
-        } catch (error) { 
+        } catch (error) {
             console.error('Erro favorito:', error);
             setFavoritedEventIds(prev => {
                 if (isFavoriting) return prev.filter(id => id !== eventId);
@@ -349,17 +375,16 @@ export default function Home() {
         setActiveFilters(prev => ({ ...prev, [categoryKey]: filterType }));
     };
 
-    // --- ÍCONES DE CATEGORIA ATUALIZADOS ---
     const categoriesConfig = [
         { name: 'Acadêmico', icon: <FaGraduationCap size={28} />, ref: academicoRef, key: 'academico' },
         { name: 'Festas e Shows', icon: <FaMusic size={28} />, ref: festasRef, key: 'festas' },
         { name: 'Teatro', icon: <FaTheaterMasks size={28} />, ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes', icon: <FaTrophy size={28} />, ref: esportesRef, key: 'esportes' }, // Ícone Troféu
+        { name: 'Esportes', icon: <FaTrophy size={28} />, ref: esportesRef, key: 'esportes' },
         { name: 'Gastronomia', icon: <FaUtensils size={28} />, ref: gastronomiaRef, key: 'gastronomia' },
         { name: 'Cursos', icon: <FaChalkboardTeacher size={28} />, ref: cursosRef, key: 'cursos' }
     ];
 
-    const categoriesToShowInNavigation = categoriesConfig.filter(cat => 
+    const categoriesToShowInNavigation = categoriesConfig.filter(cat =>
         categoryEvents[cat.key] && categoryEvents[cat.key].length > 0
     );
 
@@ -383,13 +408,13 @@ export default function Home() {
                 <div className="event-list">
                     {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
-                            <EventCard 
-                                key={event._id || event.id} 
-                                event={event} 
-                                isUserLoggedIn={isUserLoggedIn} 
-                                currentUserId={currentUserId} 
-                                onToggleFavorite={handleToggleFavorite} 
-                                isFavorited={favoritedEventIds.includes(event._id || event.id)} 
+                            <EventCard
+                                key={event._id || event.id}
+                                event={event}
+                                isUserLoggedIn={isUserLoggedIn}
+                                currentUserId={currentUserId}
+                                onToggleFavorite={handleToggleFavorite}
+                                isFavorited={favoritedEventIds.includes(event._id || event.id)}
                             />
                         ))
                     ) : (
@@ -424,15 +449,15 @@ export default function Home() {
                             </div>
                         )}
                     </button>
-                    
+
                     <div className="input-wrapper-relative" style={{ flexGrow: 1, position: 'relative', height: '100%' }}>
-                        <input 
-                            type="text" 
-                            placeholder="Busque por eventos ou categorias" 
-                            value={searchTerm} 
-                            onChange={(e) => setSearchTerm(e.target.value)} 
-                            onFocus={() => { if(suggestions.length > 0) setShowSuggestions(true); }}
-                            className="search-input-field" 
+                        <input
+                            type="text"
+                            placeholder="Busque por eventos ou categorias"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                            className="search-input-field"
                         />
                         {searchTerm && (
                             <button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa">

@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
-import { 
-    FaChartPie, FaList, FaCheck, FaTimes, FaCog, 
+import {
+    FaChartPie, FaList, FaCheck, FaTimes, FaCog,
     FaMoneyBillWave, FaUsers, FaStar, FaEye, FaSignOutAlt,
-    FaTicketAlt, FaTrash, FaPlus, FaHandshake, FaInbox
+    FaTicketAlt, FaTrash, FaPlus, FaHandshake, FaInbox, FaDatabase
 } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import './AdminDashboard.css';
@@ -18,22 +18,23 @@ const getApiBaseUrl = () => {
 export default function AdminDashboard() {
     const router = useRouter();
     const API_BASE_URL = getApiBaseUrl();
-    
-    const [activeTab, setActiveTab] = useState('overview'); 
+
+    const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
-    
+
     const [stats, setStats] = useState(null);
     const [pendingEvents, setPendingEvents] = useState([]);
     const [pendingHighlights, setPendingHighlights] = useState([]);
-    const [coupons, setCoupons] = useState([]); 
+    const [allEvents, setAllEvents] = useState([]); // Novo estado para todos os eventos
+    const [coupons, setCoupons] = useState([]);
     const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 2 });
-    
+
     const [selectedEvent, setSelectedEvent] = useState(null);
 
     const [newCoupon, setNewCoupon] = useState({
         code: '',
-        discountType: 'percentage_fee', 
+        discountType: 'percentage_fee',
         value: '',
         partner: '',
         maxUses: '',
@@ -65,7 +66,7 @@ export default function AdminDashboard() {
             if (activeTab === 'overview') {
                 const res = await fetch(`${API_BASE_URL}/admin/stats`, { headers });
                 if (res.ok) setStats(await res.json());
-            } 
+            }
             else if (activeTab === 'events') {
                 const res = await fetch(`${API_BASE_URL}/admin/events?status=pending`, { headers });
                 if (res.ok) setPendingEvents(await res.json());
@@ -73,6 +74,10 @@ export default function AdminDashboard() {
             else if (activeTab === 'highlights') {
                 const res = await fetch(`${API_BASE_URL}/admin/events?highlightStatus=pending`, { headers });
                 if (res.ok) setPendingHighlights(await res.json());
+            }
+            else if (activeTab === 'manage_events') { // Nova chamada para a aba de gerenciamento
+                const res = await fetch(`${API_BASE_URL}/admin/all-events`, { headers });
+                if (res.ok) setAllEvents(await res.json());
             }
             else if (activeTab === 'coupons') {
                 const res = await fetch(`${API_BASE_URL}/admin/coupons`, { headers });
@@ -82,10 +87,10 @@ export default function AdminDashboard() {
                 const res = await fetch(`${API_BASE_URL}/admin/settings`, { headers });
                 if (res.ok) setConfig(await res.json());
             }
-        } catch (error) { 
-            console.error(error); 
-        } finally { 
-            setLoading(false); 
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -105,11 +110,33 @@ export default function AdminDashboard() {
                 toast.success('Atualizado com sucesso!');
                 checkAdminAndFetch();
                 setSelectedEvent(null);
-            } else { 
-                toast.error("Erro ao atualizar."); 
+            } else {
+                toast.error("Erro ao atualizar.");
             }
-        } catch (e) { 
-            toast.error("Erro de conexão."); 
+        } catch (e) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    // --- NOVA FUNÇÃO PARA EXCLUIR EVENTO ---
+    const handleDeleteEvent = async (id) => {
+        if (!confirm("CUIDADO: Tem certeza que deseja apagar este evento? Se houver vendas, ele será apenas ocultado (arquivado) para preservar o histórico financeiro.")) return;
+
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/events/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success("Evento excluído/arquivado com sucesso.");
+                setAllEvents(allEvents.filter(ev => ev.id !== id));
+            } else {
+                toast.error("Erro ao excluir evento.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
         }
     };
 
@@ -128,13 +155,13 @@ export default function AdminDashboard() {
             if (res.ok) {
                 toast.success("Cupom criado!");
                 setNewCoupon({ code: '', discountType: 'percentage_fee', value: '', partner: '', maxUses: '', expiresAt: '' });
-                checkAdminAndFetch(); 
+                checkAdminAndFetch();
             } else {
                 const err = await res.json();
                 toast.error(err.message || "Erro ao criar cupom.");
             }
-        } catch (error) { 
-            toast.error("Erro de conexão."); 
+        } catch (error) {
+            toast.error("Erro de conexão.");
         }
     };
 
@@ -149,11 +176,11 @@ export default function AdminDashboard() {
             if (res.ok) {
                 toast.success("Cupom excluído.");
                 setCoupons(coupons.filter(c => (c.id || c._id) !== id));
-            } else { 
-                toast.error("Erro ao excluir."); 
+            } else {
+                toast.error("Erro ao excluir.");
             }
-        } catch (error) { 
-            toast.error("Erro de conexão."); 
+        } catch (error) {
+            toast.error("Erro de conexão.");
         }
     };
 
@@ -166,13 +193,13 @@ export default function AdminDashboard() {
                 body: JSON.stringify(config)
             });
             toast.success("Configurações Salvas!");
-        } catch (e) { 
-            toast.error("Erro ao salvar."); 
+        } catch (e) {
+            toast.error("Erro ao salvar.");
         }
     };
 
     const chartData = stats?.chartData?.map(item => ({
-        date: new Date(item.createdAt).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}),
+        date: new Date(item.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         amount: item.platformFeeFinal || 0
     })) || [];
 
@@ -182,7 +209,7 @@ export default function AdminDashboard() {
     return (
         <div className="admin-layout">
             <Toaster position="top-right" />
-            
+
             <aside className="admin-sidebar">
                 <div className="admin-logo">
                     <img src="/img/vibe_site.png" alt="Vibz Admin" className="logo-img" />
@@ -192,6 +219,10 @@ export default function AdminDashboard() {
                     <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}><FaChartPie /> <span>Visão Geral</span></button>
                     <button className={activeTab === 'events' ? 'active' : ''} onClick={() => setActiveTab('events')}><FaList /> <span>Moderação</span> {pendingEvents.length > 0 && <span className="badge">{pendingEvents.length}</span>}</button>
                     <button className={activeTab === 'highlights' ? 'active' : ''} onClick={() => setActiveTab('highlights')}><FaStar /> <span>Destaques</span> {pendingHighlights.length > 0 && <span className="badge">{pendingHighlights.length}</span>}</button>
+
+                    {/* NOVA ABA ADICIONADA */}
+                    <button className={activeTab === 'manage_events' ? 'active' : ''} onClick={() => setActiveTab('manage_events')}><FaDatabase /> <span>Gerenciar Eventos</span></button>
+
                     <p className="nav-label">FINANCEIRO</p>
                     <button className={activeTab === 'coupons' ? 'active' : ''} onClick={() => setActiveTab('coupons')}><FaTicketAlt /> <span>Cupons</span></button>
                     <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}><FaCog /> <span>Configurações</span></button>
@@ -226,8 +257,8 @@ export default function AdminDashboard() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis dataKey="date" stroke="#94a3b8" axisLine={false} tickLine={false} dy={10} fontSize={12} />
                                             <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} dx={-10} fontSize={12} />
-                                            <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '13px'}} />
-                                            <Line type="monotone" dataKey="amount" stroke="#4C01B5" strokeWidth={3} dot={{r:4, fill: '#4C01B5'}} activeDot={{r:6}} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '13px' }} />
+                                            <Line type="monotone" dataKey="amount" stroke="#4C01B5" strokeWidth={3} dot={{ r: 4, fill: '#4C01B5' }} activeDot={{ r: 6 }} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -253,7 +284,7 @@ export default function AdminDashboard() {
                                             <th>Evento</th>
                                             <th>{activeTab === 'events' ? 'Organizador' : 'Plano & Valor'}</th>
                                             <th>Status</th>
-                                            <th style={{textAlign: 'right'}}>Ações</th>
+                                            <th style={{ textAlign: 'right' }}>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -261,31 +292,81 @@ export default function AdminDashboard() {
                                             <tr key={ev.id}>
                                                 <td>
                                                     <div className="event-info-cell">
-                                                        <div className="event-thumb" style={{backgroundImage: `url(${ev.imageUrl})`}}></div>
+                                                        <div className="event-thumb" style={{ backgroundImage: `url(${ev.imageUrl})` }}></div>
                                                         <div><strong>{ev.title}</strong><small>{ev.city}</small></div>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    {activeTab === 'events' 
+                                                    {activeTab === 'events'
                                                         ? <span>{ev.organizer?.name}</span>
-                                                        : <div style={{display:'flex', flexDirection:'column'}}>
-                                                            <strong style={{color: ev.highlightTier === 'PREMIUM' ? '#B45309' : '#4C01B5'}}>
+                                                        : <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <strong style={{ color: ev.highlightTier === 'PREMIUM' ? '#B45309' : '#4C01B5' }}>
                                                                 {ev.highlightTier === 'PREMIUM' ? 'PREMIUM (Fixo)' : 'STANDARD (Diária)'}
                                                             </strong>
-                                                            <small style={{color:'#64748b'}}>
-                                                                {ev.highlightTier === 'STANDARD' 
+                                                            <small style={{ color: '#64748b' }}>
+                                                                {ev.highlightTier === 'STANDARD'
                                                                     ? `${ev.highlightDuration} dias x R$ ${config.standardPrice.toFixed(2)} = R$ ${(ev.highlightDuration * config.standardPrice).toFixed(2)}`
                                                                     : `Fixo: R$ ${config.premiumPrice.toFixed(2)}`
                                                                 }
                                                             </small>
-                                                          </div>
+                                                        </div>
                                                     }
                                                 </td>
                                                 <td><span className="status-badge pending">Pendente</span></td>
                                                 <td className="actions-cell">
-                                                    <button className="btn-icon view" title="Ver" onClick={() => setSelectedEvent(ev)}><FaEye/></button>
-                                                    <button className="btn-icon approve" title="Aprovar" onClick={() => handleAction(ev.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck/></button>
-                                                    <button className="btn-icon reject" title="Rejeitar" onClick={() => handleAction(ev.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes/></button>
+                                                    <button className="btn-icon view" title="Ver" onClick={() => setSelectedEvent(ev)}><FaEye /></button>
+                                                    <button className="btn-icon approve" title="Aprovar" onClick={() => handleAction(ev.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck /></button>
+                                                    <button className="btn-icon reject" title="Rejeitar" onClick={() => handleAction(ev.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    )}
+
+                    {/* NOVA TELA DE GERENCIAMENTO GERAL */}
+                    {activeTab === 'manage_events' && (
+                        <div className="table-card">
+                            <div className="card-header">
+                                <h3>Todos os Eventos</h3>
+                            </div>
+                            {allEvents.length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-icon-bg"><FaDatabase /></div>
+                                    <h3>Nenhum evento encontrado</h3>
+                                </div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Organizador</th>
+                                            <th>Data</th>
+                                            <th>Status</th>
+                                            <th style={{ textAlign: 'right' }}>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allEvents.map(ev => (
+                                            <tr key={ev.id}>
+                                                <td>
+                                                    <div className="event-info-cell">
+                                                        <div className="event-thumb" style={{ backgroundImage: `url(${ev.imageUrl})` }}></div>
+                                                        <div><strong>{ev.title}</strong><small>{ev.city}</small></div>
+                                                    </div>
+                                                </td>
+                                                <td>{ev.organizer?.name || 'Desconhecido'}</td>
+                                                <td>{new Date(ev.eventDate || ev.createdAt).toLocaleDateString('pt-BR')}</td>
+                                                <td>
+                                                    <span className={`status-badge ${ev.status === 'approved' ? 'approved' : ev.status === 'rejected' || ev.status === 'archived' ? 'rejected' : 'pending'}`}>
+                                                        {ev.status === 'approved' ? 'Aprovado' : ev.status === 'rejected' ? 'Rejeitado' : ev.status === 'archived' ? 'Arquivado' : 'Pendente'}
+                                                    </span>
+                                                </td>
+                                                <td className="actions-cell">
+                                                    <button className="btn-icon view" title="Ver Detalhes" onClick={() => setSelectedEvent(ev)}><FaEye /></button>
+                                                    <button className="btn-icon reject" title="Excluir/Arquivar" onClick={() => handleDeleteEvent(ev.id)}><FaTrash /></button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -298,13 +379,13 @@ export default function AdminDashboard() {
                     {activeTab === 'coupons' && (
                         <div className="coupon-layout">
                             <div className="form-card">
-                                <h4><FaPlus size={12}/> Criar Novo Cupom</h4>
+                                <h4><FaPlus size={12} /> Criar Novo Cupom</h4>
                                 <form onSubmit={handleCreateCoupon} className="admin-form">
-                                    <div className="form-group"><label>Código</label><input className="admin-input" value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} placeholder="Ex: VIBZ10" required /></div>
-                                    <div className="form-group"><label>Parceiro</label><div className="input-icon-wrapper"><FaHandshake className="input-icon" /><input className="admin-input pl-icon" value={newCoupon.partner} onChange={e => setNewCoupon({...newCoupon, partner: e.target.value})} placeholder="Nome do parceiro" required /></div></div>
+                                    <div className="form-group"><label>Código</label><input className="admin-input" value={newCoupon.code} onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })} placeholder="Ex: VIBZ10" required /></div>
+                                    <div className="form-group"><label>Parceiro</label><div className="input-icon-wrapper"><FaHandshake className="input-icon" /><input className="admin-input pl-icon" value={newCoupon.partner} onChange={e => setNewCoupon({ ...newCoupon, partner: e.target.value })} placeholder="Nome do parceiro" required /></div></div>
                                     <div className="form-row">
-                                        <div className="form-group"><label>Tipo</label><select className="admin-select" value={newCoupon.discountType} onChange={e => setNewCoupon({...newCoupon, discountType: e.target.value})}><option value="percentage_fee">% na Taxa (Split)</option><option value="fixed">R$ Fixo</option></select></div>
-                                        <div className="form-group"><label>Valor</label><input className="admin-input" type="number" value={newCoupon.value} onChange={e => setNewCoupon({...newCoupon, value: e.target.value})} placeholder="5" required /></div>
+                                        <div className="form-group"><label>Tipo</label><select className="admin-select" value={newCoupon.discountType} onChange={e => setNewCoupon({ ...newCoupon, discountType: e.target.value })}><option value="percentage_fee">% na Taxa (Split)</option><option value="fixed">R$ Fixo</option></select></div>
+                                        <div className="form-group"><label>Valor</label><input className="admin-input" type="number" value={newCoupon.value} onChange={e => setNewCoupon({ ...newCoupon, value: e.target.value })} placeholder="5" required /></div>
                                     </div>
                                     <button type="submit" className="btn-primary full">Criar Cupom</button>
                                 </form>
@@ -320,7 +401,7 @@ export default function AdminDashboard() {
                                                     <td><span className="code-badge">{c.code}</span></td><td>{c.partner}</td>
                                                     <td>{c.discountType === 'percentage_fee' ? <span className="benefit-tag fee">-{c.value}% Taxa</span> : <span className="benefit-tag fixed">-R$ {c.value}</span>}</td>
                                                     <td>{c.usedCount || 0}</td>
-                                                    <td style={{textAlign: 'right'}}><button className="btn-icon reject" onClick={() => handleDeleteCoupon(c.id)}><FaTrash/></button></td>
+                                                    <td style={{ textAlign: 'right' }}><button className="btn-icon reject" onClick={() => handleDeleteCoupon(c.id)}><FaTrash /></button></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -338,18 +419,18 @@ export default function AdminDashboard() {
                                 <div className="admin-form">
                                     <div className="form-group">
                                         <label>Taxa da Plataforma (Decimal)</label>
-                                        <input className="admin-input" type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({...config, platformFee: e.target.value})} />
+                                        <input className="admin-input" type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({ ...config, platformFee: e.target.value })} />
                                         <small>Ex: 0.08 equivale a 8% por venda de ingresso.</small>
                                     </div>
                                     <div className="form-row">
                                         <div className="form-group">
                                             <label>Preço Destaque Premium (Fixo)</label>
-                                            <input className="admin-input" type="number" value={config.premiumPrice} onChange={e => setConfig({...config, premiumPrice: e.target.value})} />
+                                            <input className="admin-input" type="number" value={config.premiumPrice} onChange={e => setConfig({ ...config, premiumPrice: e.target.value })} />
                                             <small>Valor único cobrado até o dia do evento.</small>
                                         </div>
                                         <div className="form-group">
                                             <label>Valor Diária Standard (R$)</label>
-                                            <input className="admin-input" type="number" value={config.standardPrice} onChange={e => setConfig({...config, standardPrice: e.target.value})} />
+                                            <input className="admin-input" type="number" value={config.standardPrice} onChange={e => setConfig({ ...config, standardPrice: e.target.value })} />
                                             <small>Valor cobrado por dia selecionado.</small>
                                         </div>
                                     </div>
@@ -363,13 +444,13 @@ export default function AdminDashboard() {
                 {selectedEvent && (
                     <div className="admin-modal-overlay" onClick={() => setSelectedEvent(null)}>
                         <div className="admin-modal" onClick={e => e.stopPropagation()}>
-                            <button className="close-modal-btn" onClick={() => setSelectedEvent(null)}><FaTimes/></button>
+                            <button className="close-modal-btn" onClick={() => setSelectedEvent(null)}><FaTimes /></button>
                             <div className="modal-content-wrapper">
-                                <div className="modal-img-col" style={{backgroundImage: `url(${selectedEvent.imageUrl})`}}></div>
+                                <div className="modal-img-col" style={{ backgroundImage: `url(${selectedEvent.imageUrl})` }}></div>
                                 <div className="modal-info-col">
                                     <div className="modal-header"><h2>{selectedEvent.title}</h2><span className="modal-category">{selectedEvent.category}</span></div>
                                     <p className="modal-meta">{selectedEvent.city} • {new Date(selectedEvent.eventDate).toLocaleDateString()}</p>
-                                    
+
                                     <div className="modal-desc-box"><label>Descrição</label><p>{selectedEvent.description}</p></div>
 
                                     <div className="modal-organizer">
@@ -378,16 +459,23 @@ export default function AdminDashboard() {
                                     </div>
 
                                     {selectedEvent.isFeaturedRequested && (
-                                        <div className="modal-organizer" style={{backgroundColor: '#FFFBEB', border: '1px solid #FEF3C7'}}>
-                                            <label style={{color: '#B45309'}}>Solicitação de Destaque</label>
+                                        <div className="modal-organizer" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FEF3C7' }}>
+                                            <label style={{ color: '#B45309' }}>Solicitação de Destaque</label>
                                             <p>Plano: <strong>{selectedEvent.highlightTier}</strong></p>
                                             {selectedEvent.highlightTier === 'STANDARD' && <p>Duração: <strong>{selectedEvent.highlightDuration} dias</strong></p>}
                                         </div>
                                     )}
 
                                     <div className="modal-actions-row">
-                                        <button className="btn-action approve" onClick={() => handleAction(selectedEvent.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck /> Aprovar</button>
-                                        <button className="btn-action reject" onClick={() => handleAction(selectedEvent.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes /> Rejeitar</button>
+                                        {/* Condição para não mostrar Aprovar/Rejeitar na aba de gerenciamento geral */}
+                                        {activeTab !== 'manage_events' ? (
+                                            <>
+                                                <button className="btn-action approve" onClick={() => handleAction(selectedEvent.id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck /> Aprovar</button>
+                                                <button className="btn-action reject" onClick={() => handleAction(selectedEvent.id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes /> Rejeitar</button>
+                                            </>
+                                        ) : (
+                                            <button className="btn-action reject" onClick={() => { handleDeleteEvent(selectedEvent.id); setSelectedEvent(null); }}><FaTrash /> Apagar Evento</button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
