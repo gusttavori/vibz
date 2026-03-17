@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
-import { 
+import {
     FaCalendarAlt, FaEdit, FaList, FaQrcode, FaCog, FaTimes,
     FaMoneyBillWave, FaTicketAlt, FaStar, FaBolt, FaUsers, FaArrowUp, FaPlus, FaExclamationCircle, FaCheckCircle
 } from 'react-icons/fa';
@@ -19,9 +19,9 @@ const DashboardSkeleton = () => (
     <div className="dashboard-container">
         <Header />
         <div className="dashboard-content">
-            <div className="skeleton-box skeleton-pulse" style={{height: '100px', borderRadius: '16px', marginBottom: '30px'}}></div>
+            <div className="skeleton-box skeleton-pulse" style={{ height: '100px', borderRadius: '16px', marginBottom: '30px' }}></div>
             <div className="stats-grid">
-                {[1, 2, 3].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{height: '120px', borderRadius: '16px'}}></div>)}
+                {[1, 2, 3].map(i => <div key={i} className="skeleton-box skeleton-pulse" style={{ height: '120px', borderRadius: '16px' }}></div>)}
             </div>
         </div>
         <Footer />
@@ -47,9 +47,9 @@ const ManageSalesModal = ({ event, onClose, onUpdate }) => {
             if (res.ok) {
                 setTickets(tickets.map(t => (t.id === ticketId || t._id === ticketId) ? { ...t, status: newStatus } : t));
                 toast.success(newStatus === 'active' ? 'Vendas Ativadas!' : 'Vendas Pausadas');
-                if (onUpdate) onUpdate(); 
+                if (onUpdate) onUpdate();
             }
-        } catch (error) { toast.error('Erro de conexão.'); } 
+        } catch (error) { toast.error('Erro de conexão.'); }
         finally { setLoadingId(null); }
     };
 
@@ -81,7 +81,7 @@ const DashboardContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [userData, setUserData] = useState(null);
-    const [myEvents, setMyEvents] = useState([]); 
+    const [myEvents, setMyEvents] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedEventForManage, setSelectedEventForManage] = useState(null);
@@ -107,7 +107,7 @@ const DashboardContent = () => {
                 const data = await eventsRes.json();
                 setMyEvents(data.myEvents || []);
             }
-        } catch (e) { console.error(e); } 
+        } catch (e) { console.error(e); }
         finally { setLoading(false); }
     }, [router]);
 
@@ -116,6 +116,10 @@ const DashboardContent = () => {
         if (searchParams.get('success') === 'highlight') {
             toast.success("Destaque Ativado! 🌟");
             confetti({ particleCount: 150, spread: 70 });
+            router.replace('/dashboard');
+        }
+        if (searchParams.get('success_stripe') === 'true') {
+            toast.success("Conta Stripe conectada com sucesso!");
             router.replace('/dashboard');
         }
     }, [fetchAllData, searchParams, router]);
@@ -129,6 +133,26 @@ const DashboardContent = () => {
         return { revenue: rev, sold };
     }, [myEvents]);
 
+    const handleStripeConnect = async () => {
+        const toastId = toast.loading("Gerando ambiente seguro...");
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+        try {
+            const res = await fetch(`${API_BASE_URL}/payments/connect-account`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (res.ok && data.url) {
+                window.location.href = data.url;
+            } else {
+                toast.error(data.message || "Erro ao conectar conta.", { id: toastId });
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.", { id: toastId });
+        }
+    };
+
     if (loading && !stats) return <DashboardSkeleton />;
 
     const isStripeReady = userData?.stripeAccountId && userData?.stripeOnboardingComplete;
@@ -140,13 +164,12 @@ const DashboardContent = () => {
             <Header />
 
             <main className="dashboard-content">
-                {/* --- HEADER PRINCIPAL --- */}
                 <div className="dashboard-main-header">
                     <div className="header-titles">
                         <h1>Painel do Organizador</h1>
                         <p className="sub-greeting">Olá, {firstName}</p>
                     </div>
-                    
+
                     <div className="header-status-actions">
                         <div className="online-badge-container">
                             <div className="dot-pulse-wrapper">
@@ -161,7 +184,6 @@ const DashboardContent = () => {
                     </div>
                 </div>
 
-                {/* --- KPI GRID --- */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon revenue-bg"><FaMoneyBillWave /></div>
@@ -177,7 +199,6 @@ const DashboardContent = () => {
                     </div>
                 </div>
 
-                {/* --- STRIPE BANNER (PROFISSIONAL) --- */}
                 <div className={`stripe-setup-banner ${isStripeReady ? 'is-ready' : 'is-pending'}`}>
                     <div className="stripe-banner-left">
                         <div className="stripe-icon-wrapper">
@@ -188,12 +209,11 @@ const DashboardContent = () => {
                             <p>{isStripeReady ? 'Sua conta está pronta para receber os repasses das vendas.' : 'Conecte sua conta Stripe para começar a receber o valor das suas vendas.'}</p>
                         </div>
                     </div>
-                    <button className="btn-stripe-cta">
+                    <button className="btn-stripe-cta" onClick={isStripeReady ? undefined : handleStripeConnect}>
                         {isStripeReady ? 'Ver Extrato' : 'Conectar Banco'}
                     </button>
                 </div>
 
-                {/* --- SEÇÃO GERENCIAR EVENTOS --- */}
                 <div className="section-header-flex">
                     <h2><FaList className="purple-icon" /> Gerenciar Eventos</h2>
                     <button className="btn-create-event-top" onClick={() => router.push('/admin/new')}>
@@ -215,7 +235,7 @@ const DashboardContent = () => {
                                             {event.highlightStatus === 'paid' && <FaStar className="star-highlight-icon" />}
                                         </div>
                                         <p className="event-item-meta">{new Date(event.date).toLocaleDateString()} • {event.city}</p>
-                                        
+
                                         <div className="badge-flex-row">
                                             <span className={`badge-pill status-${event.status}`}>
                                                 {event.status === 'approved' ? 'APROVADO' : 'EM ANÁLISE'}

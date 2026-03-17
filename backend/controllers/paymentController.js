@@ -2,11 +2,49 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateAndSendTickets } = require('./ticketController');
-const { sendNewSaleEmail } = require('../services/emailService'); // IMPORTADO AQUI
+const { sendNewSaleEmail } = require('../services/emailService');
 const crypto = require('crypto');
 
-const STRIPE_PERCENTAGE = 0.0399; 
-const STRIPE_FIXED = 0.39;        
+const STRIPE_PERCENTAGE = 0.0399;
+const STRIPE_FIXED = 0.39;
+
+const connectStripeAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
+
+        let accountId = user.stripeAccountId;
+
+        if (!accountId) {
+            const account = await stripe.accounts.create({
+                type: 'standard',
+                email: user.email,
+            });
+            accountId = account.id;
+
+            await prisma.user.update({
+                where: { id: userId },
+                data: { stripeAccountId: accountId }
+            });
+        }
+
+        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+
+        const accountLink = await stripe.accountLinks.create({
+            account: accountId,
+            refresh_url: `${origin}/dashboard?refresh_stripe=true`,
+            return_url: `${origin}/dashboard?success_stripe=true`,
+            type: 'account_onboarding',
+        });
+
+        res.json({ url: accountLink.url });
+    } catch (error) {
+        console.error("Erro ao gerar link Stripe:", error);
+        res.status(500).json({ message: 'Erro ao conectar com o banco.' });
+    }
+};
 
 const validateCoupon = async (req, res) => {
     try {
@@ -39,11 +77,11 @@ const validateCoupon = async (req, res) => {
             }
         }
 
-        return res.json({ 
-            valid: true, 
+        return res.json({
+            valid: true,
             code: coupon.code,
             discountType: coupon.discountType,
-            message: 'Cupom aplicado com sucesso!' 
+            message: 'Cupom aplicado com sucesso!'
         });
 
     } catch (error) {
@@ -71,7 +109,6 @@ const createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
         }
 
-        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO (SUA LÓGICA ORIGINAL) ---
         const ticketIdsToCheck = Object.keys(tickets).filter(tid => tickets[tid] > 0);
         if (ticketIdsToCheck.length > 1) {
             const dbTickets = await prisma.ticketType.findMany({
@@ -79,7 +116,7 @@ const createCheckoutSession = async (req, res) => {
             });
 
             const toMinutes = (t) => {
-                if(!t) return 0;
+                if (!t) return 0;
                 const [h, m] = t.split(':').map(Number);
                 return h * 60 + m;
             };
@@ -100,8 +137,8 @@ const createCheckoutSession = async (req, res) => {
                             const end2 = toMinutes(t2.endTime);
 
                             if (Math.max(start1, start2) < Math.min(end1, end2)) {
-                                return res.status(400).json({ 
-                                    message: `Conflito de horário: "${t1.name}" e "${t2.name}" ocorrem simultaneamente.` 
+                                return res.status(400).json({
+                                    message: `Conflito de horário: "${t1.name}" e "${t2.name}" ocorrem simultaneamente.`
                                 });
                             }
                         }
@@ -109,10 +146,9 @@ const createCheckoutSession = async (req, res) => {
                 }
             }
         }
-        // ---------------------------------------------
 
         let validCoupon = null;
-        let platformRate = 0.08; 
+        let platformRate = 0.08;
         let partnerRate = 0.00;
 
         if (couponCode) {
@@ -126,16 +162,16 @@ const createCheckoutSession = async (req, res) => {
                 }
 
                 if (validCoupon.discountType === 'PERCENTAGE') {
-                    const totalFee = Math.max(0, 8 - validCoupon.discountValue) / 100; 
-                    platformRate = totalFee / 2; 
-                    partnerRate = totalFee / 2;  
+                    const totalFee = Math.max(0, 8 - validCoupon.discountValue) / 100;
+                    platformRate = totalFee / 2;
+                    partnerRate = totalFee / 2;
                 }
             }
         }
 
         const line_items = [];
         const orderItemsData = [];
-        
+
         let totalBaseAmount = 0;
         let totalPlatformFee = 0;
         let totalPartnerCommission = 0;
@@ -145,15 +181,14 @@ const createCheckoutSession = async (req, res) => {
             if (quantity <= 0) continue;
 
             const tType = await prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
-            
+
             if (!tType || tType.eventId !== eventId) continue;
-            
+
             const available = tType.quantity - tType.sold;
             if (available < quantity) {
                 return res.status(400).json({ message: `O ingresso "${tType.name}" esgotou ou não tem quantidade suficiente.` });
             }
 
-            // --- VALIDAÇÃO DE LIMITE POR USUÁRIO ---
             const userBoughtCount = await prisma.ticket.count({
                 where: {
                     userId: userId,
@@ -162,16 +197,15 @@ const createCheckoutSession = async (req, res) => {
                 }
             });
 
-            const maxAllowed = tType.maxPerUser || 4; 
-            
+            const maxAllowed = tType.maxPerUser || 4;
+
             if ((userBoughtCount + quantity) > maxAllowed) {
-                return res.status(400).json({ 
-                    message: `Limite excedido para "${tType.name}". Você já possui ${userBoughtCount} e o limite é ${maxAllowed} por pessoa.` 
+                return res.status(400).json({
+                    message: `Limite excedido para "${tType.name}". Você já possui ${userBoughtCount} e o limite é ${maxAllowed} por pessoa.`
                 });
             }
-            // ----------------------------------------
 
-            const unitPrice = parseFloat(tType.price); 
+            const unitPrice = parseFloat(tType.price);
             let unitPlatformFee = 0;
             let unitPartnerFee = 0;
             let grossUnitTotal = 0;
@@ -193,7 +227,7 @@ const createCheckoutSession = async (req, res) => {
             orderItemsData.push({
                 ticketTypeId: tType.id,
                 quantity: quantity,
-                unitPrice: unitPrice 
+                unitPrice: unitPrice
             });
 
             if (grossUnitTotal > 0) {
@@ -208,7 +242,6 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
-        // --- LÓGICA DE EVENTO GRATUITO ---
         if (totalPaid === 0) {
             const order = await prisma.order.create({
                 data: {
@@ -222,7 +255,7 @@ const createCheckoutSession = async (req, res) => {
                     paymentIntentId: `free_${crypto.randomUUID()}`,
                     items: { create: orderItemsData }
                 },
-                include: { items: true } 
+                include: { items: true }
             });
 
             for (const item of order.items) {
@@ -263,35 +296,20 @@ const createCheckoutSession = async (req, res) => {
                 console.error("Erro ao enviar email grátis:", emailError);
             }
 
-            // --- NOVA NOTIFICAÇÃO AO ORGANIZADOR (GRÁTIS) ---
             if (event.organizer && event.organizer.email) {
                 const totalTickets = order.items.reduce((acc, item) => acc + item.quantity, 0);
                 await sendNewSaleEmail(
-                    event.organizer.email, 
-                    event.organizer.name, 
-                    event.title, 
-                    totalTickets, 
+                    event.organizer.email,
+                    event.organizer.name,
+                    event.title,
+                    totalTickets,
                     0
                 );
             }
-            // ------------------------------------------------
 
-            return res.json({ 
-                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true` 
+            return res.json({
+                url: `${process.env.CLIENT_URL}/sucesso?session_id=${order.paymentIntentId}&is_free=true`
             });
-        }
-
-        // --- FLUXO PAGO (STRIPE) ---
-        let paymentIntentData = {};
-        const organizerStripeId = event.organizer?.stripeAccountId;
-        const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
-
-        if (isOrganizerReady) {
-            const applicationFeeAmount = Math.round((totalPlatformFee + totalPartnerCommission) * 100);
-            paymentIntentData = {
-                application_fee_amount: applicationFeeAmount,
-                transfer_data: { destination: organizerStripeId },
-            };
         }
 
         const order = await prisma.order.create({
@@ -307,20 +325,30 @@ const createCheckoutSession = async (req, res) => {
             }
         });
 
-        const participantsJSON = JSON.stringify(participantData || []).substring(0, 499); 
+        let paymentIntentData = undefined;
+        const organizerStripeId = event.organizer?.stripeAccountId;
+        const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
+
+        if (isOrganizerReady) {
+            paymentIntentData = {
+                transfer_group: order.id
+            };
+        }
+
+        const participantsJSON = JSON.stringify(participantData || []).substring(0, 499);
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'payment',
             line_items,
-            payment_intent_data: isOrganizerReady ? paymentIntentData : undefined,
+            payment_intent_data: paymentIntentData,
             success_url: `${process.env.CLIENT_URL}/sucesso?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.CLIENT_URL}/evento/${eventId}`,
-            metadata: { 
-                type: 'TICKET_SALE', 
+            metadata: {
+                type: 'TICKET_SALE',
                 orderId: order.id,
                 eventId: eventId,
-                participantsPreview: participantsJSON 
+                participantsPreview: participantsJSON
             }
         });
 
@@ -353,10 +381,10 @@ const createHighlightCheckoutSession = async (req, res) => {
             }],
             success_url: `${process.env.CLIENT_URL}/dashboard`,
             cancel_url: `${process.env.CLIENT_URL}/dashboard`,
-            metadata: { 
-                type: 'EVENT_HIGHLIGHT', 
-                eventId, 
-                highlightType 
+            metadata: {
+                type: 'EVENT_HIGHLIGHT',
+                eventId,
+                highlightType
             }
         });
 
@@ -386,7 +414,7 @@ const handleStripeWebhook = async (req, res) => {
         let participantsData = [];
         try {
             participantsData = JSON.parse(session.metadata.participantsPreview || '[]');
-        } catch (e) {}
+        } catch (e) { }
 
         if (type === 'TICKET_SALE') {
             try {
@@ -405,7 +433,7 @@ const handleStripeWebhook = async (req, res) => {
                     for (let i = 0; i < item.quantity; i++) {
                         const cleanQrCode = crypto.randomUUID();
                         const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
-                        
+
                         await prisma.ticket.create({
                             data: {
                                 ticketType: { connect: { id: item.ticketTypeId } },
@@ -415,19 +443,17 @@ const handleStripeWebhook = async (req, res) => {
                                 qrCodeData: cleanQrCode,
                                 price: item.unitPrice,
                                 status: 'valid',
-                                participantData: pData ? pData.data : {} 
+                                participantData: pData ? pData.data : {}
                             }
                         });
                     }
                 }
-                
-                // Envia ingresso ao comprador
+
                 const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
                 if (user) {
                     generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
                 }
 
-                // --- NOVA NOTIFICAÇÃO AO ORGANIZADOR (PAGO) ---
                 const eventData = await prisma.event.findUnique({
                     where: { id: updatedOrder.eventId },
                     include: { organizer: true }
@@ -435,7 +461,6 @@ const handleStripeWebhook = async (req, res) => {
 
                 if (eventData && eventData.organizer) {
                     const totalTickets = updatedOrder.items.reduce((acc, item) => acc + item.quantity, 0);
-                    // Aqui pegamos o valor da Order no banco para precisão
                     const totalValue = Number(updatedOrder.totalAmount);
 
                     await sendNewSaleEmail(
@@ -446,7 +471,6 @@ const handleStripeWebhook = async (req, res) => {
                         totalValue
                     );
                 }
-                // ----------------------------------------------
 
             } catch (err) {
                 console.error("Erro webhook ticket:", err);
@@ -457,8 +481,8 @@ const handleStripeWebhook = async (req, res) => {
             try {
                 await prisma.event.update({
                     where: { id: eventId },
-                    data: { 
-                        isFeatured: true, 
+                    data: {
+                        isFeatured: true,
                         highlightStatus: 'approved',
                         isFeaturedRequested: false
                     }
@@ -468,12 +492,37 @@ const handleStripeWebhook = async (req, res) => {
             }
         }
     }
+
+    if (event.type === 'account.updated') {
+        const account = event.data.object;
+        if (account.charges_enabled) {
+            try {
+                await prisma.user.updateMany({
+                    where: { stripeAccountId: account.id },
+                    data: { stripeOnboardingComplete: true }
+                });
+            } catch (err) {
+                console.error("Erro ao atualizar status da conta Stripe:", err);
+            }
+        } else {
+            try {
+                await prisma.user.updateMany({
+                    where: { stripeAccountId: account.id },
+                    data: { stripeOnboardingComplete: false }
+                });
+            } catch (err) {
+                console.error("Erro ao atualizar status da conta Stripe:", err);
+            }
+        }
+    }
+
     res.json({ received: true });
 };
 
-module.exports = { 
-    createCheckoutSession, 
-    createHighlightCheckoutSession, 
-    handleStripeWebhook, 
-    validateCoupon 
+module.exports = {
+    createCheckoutSession,
+    createHighlightCheckoutSession,
+    handleStripeWebhook,
+    validateCoupon,
+    connectStripeAccount
 };

@@ -7,8 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// --- ENUMS ---
-
 enum EventStatus {
   pending
   approved
@@ -35,282 +33,203 @@ enum OrderStatus {
 }
 
 enum DiscountType {
-  PERCENTAGE      // Ex: 10% OFF no valor total
-  FIXED           // Ex: R$ 20,00 OFF no valor total
-  PERCENTAGE_FEE  // Ex: 5% OFF na taxa de serviço (Split com parceiro)
+  PERCENTAGE
+  FIXED
+  PERCENTAGE_FEE
 }
-
-// --- MODELS ---
 
 model SystemConfig {
   id            String   @id @default(uuid())
-  platformFee   Float    @default(0.08) // 8% padrão
-  minFee        Float    @default(2.00) // Taxa mínima em R$
+  platformFee   Float    @default(0.08)
+  minFee        Float    @default(2.00)
   premiumPrice  Float    @default(100.00)
-  standardPrice Float    @default(2.00) // ATUALIZADO: R$ 2,00 por dia
+  standardPrice Float    @default(2.00)
   updatedAt     DateTime @updatedAt
 
   @@map("system_config")
 }
 
 model User {
-  id        String  @id @default(uuid())
-  name      String
-  email     String  @unique
-  password  String?
-  isAdmin   Boolean @default(false)
-
-  // Stripe Data
+  id                       String   @id @default(uuid())
+  name                     String
+  email                    String   @unique
+  password                 String?
+  isAdmin                  Boolean  @default(false)
   stripeAccountId          String?
-  stripeOnboardingComplete Boolean @default(false)
-
-  // Profile
-  profilePicture String?
-  coverPicture   String?
-  bio            String?
-
-  // Reset de Senha
-  resetPasswordToken   String?
-  resetPasswordExpires DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  eventsOrganized Event[]  @relation("EventOrganizer")
-  favoritedEvents Event[]  @relation("UserFavorites")
-  orders          Order[]
-  tickets         Ticket[]
+  stripeOnboardingComplete Boolean  @default(false)
+  profilePicture           String?
+  coverPicture             String?
+  bio                      String?
+  resetPasswordToken       String?
+  resetPasswordExpires     DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  eventsOrganized          Event[]  @relation("EventOrganizer")
+  favoritedEvents          Event[]  @relation("UserFavorites")
+  orders                   Order[]
+  tickets                  Ticket[]
 
   @@map("users")
 }
 
 model Partner {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   instagram   String?
-
-  // Relations
-  coupons Coupon[] // Cupons gerados por este parceiro
-  events  Event[] // Eventos associados a este parceiro
-
-  createdAt DateTime @default(now())
+  coupons     Coupon[]
+  events      Event[]
+  createdAt   DateTime @default(now())
 
   @@map("partners")
 }
 
 model Event {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  imageUrl    String
-  city        String
-  location    String
-  category    String
-  ageRating   String? // Ex: "Livre", "18+"
-  status      EventStatus @default(pending)
-
-  // Link externo (para eventos informativos)
-  externalUrl String? 
-   
-  // Flag Informativo
-  isInformational Boolean @default(false)
-
-  // Configurações Financeiras e Destaque
-  priceFrom            Float?   // Pode ser nulo se for informativo
+  id                   String      @id @default(uuid())
+  title                String
+  description          String
+  imageUrl             String
+  city                 String
+  location             String
+  category             String
+  ageRating            String?
+  status               EventStatus @default(pending)
+  externalUrl          String? 
+  isInformational      Boolean     @default(false)
+  priceFrom            Float?  
   refundPolicy         String
   termsAndConditions   String?
-  
-  // --- LÓGICA DE DESTAQUE ---
-  isFeatured           Boolean @default(false) // Só fica true após pagamento
-  isFeaturedRequested  Boolean @default(false)
-  highlightStatus      String  @default("none") // none, pending, approved_waiting_payment, paid, rejected
-  highlightFee         Float   @default(0)
-  highlightTier        String? // 'STANDARD' ou 'PREMIUM'
-  highlightPaymentLink String? // Link da Stripe para pagar o destaque
-  highlightDuration    Int?    // Dias contratados (Standard)
+  isFeatured           Boolean     @default(false)
+  isFeaturedRequested  Boolean     @default(false)
+  highlightStatus      String      @default("none")
+  highlightFee         Float       @default(0)
+  highlightTier        String?
+  highlightPaymentLink String?
+  highlightDuration    Int?
   highlightExpiresAt   DateTime?
+  eventDate            DateTime
+  sessions             Json?
+  formSchema           Json?
+  organizerInfo        Json?
+  organizerId          String
+  organizer            User        @relation("EventOrganizer", fields: [organizerId], references: [id])
+  favoritedBy          User[]      @relation("UserFavorites")
+  partnerId            String?
+  partner              Partner?    @relation(fields: [partnerId], references: [id])
+  ticketTypes          TicketType[]
+  coupons              Coupon[]
+  orders               Order[]
+  tickets              Ticket[]
 
-  // Datas
-  eventDate DateTime
-  sessions  Json? // Para eventos com múltiplas datas/sessões
-
-  // Formulário Personalizado (FASE 2)
-  formSchema Json? // Estrutura das perguntas
-
-  // Relations
-  organizerInfo Json? // Dados extras do organizador
-  organizerId   String
-  organizer     User    @relation("EventOrganizer", fields: [organizerId], references: [id])
-
-  favoritedBy User[] @relation("UserFavorites")
-
-  partnerId String?
-  partner   Partner? @relation(fields: [partnerId], references: [id])
-
-  ticketTypes TicketType[]
-  coupons     Coupon[] // Cupons exclusivos deste evento
-  orders      Order[]
-  tickets     Ticket[] // Ingressos gerados
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   @@map("events")
 }
 
 model TicketType {
-  id      String @id @default(uuid())
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  name        String  @default("Ingresso")
-  description String?
-  price       Float // Se 0.00, é Cortesia/Gratuito
-
-  // Controle de Lote e Estoque
-  quantity Int // Quantidade total disponibilizada
-  sold     Int @default(0) // Quantidade vendida
-
-  // Lógica de Lotes (Batch)
-  batchName  String? // Ex: "1º Lote"
-  salesStart DateTime?
-  salesEnd   DateTime?
-
-  // --- NOVOS CAMPOS PARA HORÁRIO ---
+  id           String       @id @default(uuid())
+  eventId      String
+  event        Event        @relation(fields: [eventId], references: [id])
+  name         String       @default("Ingresso")
+  description  String?
+  price        Float
+  quantity     Int
+  sold         Int          @default(0)
+  batchName    String?
+  salesStart   DateTime?
+  salesEnd     DateTime?
   activityDate DateTime?
   startTime    String?
   endTime      String?
-  // ---------------------------------
-
-  isHalfPrice Boolean @default(false) // Meia-entrada
-  category    String? // Agrupamento
-
-  maxPerUser Int @default(4)
-  minPerUser Int @default(1)
-
-  status TicketStatus @default(active)
-
-  // Relations
-  tickets    Ticket[]
-  orderItems OrderItem[]
+  isHalfPrice  Boolean      @default(false)
+  category     String?
+  maxPerUser   Int          @default(4)
+  minPerUser   Int          @default(1)
+  status       TicketStatus @default(active)
+  tickets      Ticket[]
+  orderItems   OrderItem[]
 
   @@map("ticket_types")
 }
 
 model Coupon {
-  id          String  @id @default(uuid())
-  code        String  @unique
-  description String?
-
-  // Configuração do Desconto
-  discountType  String // PERCENTAGE, FIXED ou PERCENTAGE_FEE (salvo como string para flexibilidade)
-  discountValue Float  // Valor do desconto (ex: 5 para 5%)
-
-  // Dados do Parceiro (Obrigatório para split)
-  partner       String // Nome do parceiro (ex: "Gustavo")
-  
-  // Regras de Uso
-  maxUses           Int?      // Null = ilimitado
-  usedCount         Int       @default(0)
-  usageLimitPerUser Int       @default(1)
+  id                String   @id @default(uuid())
+  code              String   @unique
+  description       String?
+  discountType      String
+  discountValue     Float
+  partner           String
+  maxUses           Int?
+  usedCount         Int      @default(0)
+  usageLimitPerUser Int      @default(1)
   minPurchaseAmount Float?
-
-  validFrom  DateTime?
-  validUntil DateTime?
-  isActive   Boolean   @default(true)
-  expiresAt  DateTime? // Data de expiração simples
-
-  // Vínculos Opcionais (se for cupom específico de evento/parceiro do banco)
-  eventId String?
-  event   Event?  @relation(fields: [eventId], references: [id])
-
-  partnerId String?
-  partnerRef Partner? @relation(fields: [partnerId], references: [id]) // Relação com tabela Partner se existir
-
-  orders Order[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  validFrom         DateTime?
+  validUntil        DateTime?
+  isActive          Boolean  @default(true)
+  expiresAt         DateTime?
+  eventId           String?
+  event             Event?   @relation(fields: [eventId], references: [id])
+  partnerId         String?
+  partnerRef        Partner? @relation(fields: [partnerId], references: [id])
+  orders            Order[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("coupons")
 }
 
 model Order {
-  id      String @id @default(uuid())
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
-
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  // Cupom aplicado
-  couponId String?
-  coupon   Coupon? @relation(fields: [couponId], references: [id])
-
-  items OrderItem[]
-   
-  // Um pedido gera vários ingressos
-  tickets Ticket[] 
-
-  // Valores Financeiros
-  subtotal       Float
-  discountAmount Float       @default(0)
-  platformFee    Float
-  totalAmount    Float
-
-  // Status e Pagamento
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  eventId         String
+  event           Event       @relation(fields: [eventId], references: [id])
+  couponId        String?
+  coupon          Coupon?     @relation(fields: [couponId], references: [id])
+  items           OrderItem[]
+  tickets         Ticket[]
+  subtotal        Float
+  discountAmount  Float       @default(0)
+  platformFee     Float
+  totalAmount     Float
   status          OrderStatus @default(pending)
-  paymentIntentId String? // ID do pagamento no Stripe (ou "free_xyz" se grátis)
-  paymentMethod   String? // Ex: "credit_card", "pix"
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  paymentIntentId String?
+  paymentMethod   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@map("orders")
 }
 
 model OrderItem {
-  id      String @id @default(uuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id])
-
+  id           String     @id @default(uuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id])
   ticketTypeId String
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
-
-  quantity  Int
-  unitPrice Float
+  quantity     Int
+  unitPrice    Float
 
   @@map("order_items")
 }
 
 model Ticket {
-  id String @id @default(uuid())
-
-  ticketTypeId String
-  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
-
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  // O ingresso pertence a um pedido
-  orderId String
-  order   Order @relation(fields: [orderId], references: [id])
-
-  qrCodeData String @unique
-
-  price  Float // Preço pago (pode ser 0)
-  status String @default("valid") // valid, used, cancelled
-
-  // Dados do Participante (FASE 2)
-  participantData Json? // Ex: { matricula: "123" }
-
-  usedAt    DateTime? // Data do Check-in
-  createdAt DateTime  @default(now())
+  id              String     @id @default(uuid())
+  ticketTypeId    String
+  ticketType      TicketType @relation(fields: [ticketTypeId], references: [id])
+  eventId         String
+  event           Event      @relation(fields: [eventId], references: [id])
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  orderId         String
+  order           Order      @relation(fields: [orderId], references: [id])
+  qrCodeData      String     @unique
+  price           Float
+  status          String     @default("valid")
+  participantData Json?
+  usedAt          DateTime?
+  createdAt       DateTime   @default(now())
 
   @@map("tickets")
 }
