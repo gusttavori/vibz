@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation"; 
-import { 
-    FaTicketAlt, FaMinus, FaPlus, FaShoppingCart, 
-    FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag, 
-    FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay, 
+import { useParams, useRouter } from "next/navigation";
+import {
+    FaTicketAlt, FaMinus, FaPlus, FaShoppingCart,
+    FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaTag,
+    FaCheckCircle, FaPercentage, FaInstagram, FaCalendarDay,
     FaUserAlt, FaExternalLinkAlt, FaTimes, FaClipboardList,
     FaInfoCircle, FaClock, FaLock, FaCalendarAlt
-} from 'react-icons/fa'; 
+} from 'react-icons/fa';
 import Header from '@/components/Header';
 import toast, { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
-import './EventoDetalhes.css'; 
+import './EventoDetalhes.css';
 
 const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -26,14 +26,14 @@ const SkeletonLoader = () => (
             <div className="event-details-body">
                 <div className="event-details-left-column">
                     <div className="content-box">
-                        <div className="skeleton-line" style={{width: '40%', height: '30px', marginBottom: '20px'}}></div>
-                        <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
-                        <div className="skeleton-line" style={{width: '100%', height: '15px'}}></div>
+                        <div className="skeleton-line" style={{ width: '40%', height: '30px', marginBottom: '20px' }}></div>
+                        <div className="skeleton-line" style={{ width: '100%', height: '15px' }}></div>
+                        <div className="skeleton-line" style={{ width: '100%', height: '15px' }}></div>
                     </div>
                 </div>
                 <div className="event-details-right-column">
                     <div className="content-box">
-                        <div className="skeleton-line" style={{width: '100%', height: '200px'}}></div>
+                        <div className="skeleton-line" style={{ width: '100%', height: '200px' }}></div>
                     </div>
                 </div>
             </div>
@@ -47,11 +47,11 @@ const formatDateSelector = (dateStr) => {
         const date = new Date(dateStr);
         const userTimezoneOffset = date.getTimezoneOffset() * 60000;
         const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-        
+
         const week = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(adjustedDate).replace('.', '');
         const dayMonth = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(adjustedDate);
         const weekCap = week.charAt(0).toUpperCase() + week.slice(1);
-        
+
         return `${weekCap}, ${dayMonth}`;
     } catch (e) {
         return dateStr;
@@ -61,15 +61,15 @@ const formatDateSelector = (dateStr) => {
 const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function EventoDetalhes() {
-    const params = useParams(); 
+    const params = useParams();
     const router = useRouter();
     const id = params?.id;
     const API_BASE_URL = getApiBaseUrl();
 
     const [evento, setEvento] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [ticketQuantities, setTicketQuantities] = useState({}); 
-    const [isTicketsOpen, setIsTicketsOpen] = useState(true); 
+    const [ticketQuantities, setTicketQuantities] = useState({});
+    const [isTicketsOpen, setIsTicketsOpen] = useState(true);
     const [couponCode, setCouponCode] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [displayDate, setDisplayDate] = useState(null);
@@ -83,7 +83,7 @@ export default function EventoDetalhes() {
     const [availableDates, setAvailableDates] = useState([]);
 
     useEffect(() => {
-        if (!id) return; 
+        if (!id) return;
         const loadData = async () => {
             setLoading(true);
             try {
@@ -92,7 +92,7 @@ export default function EventoDetalhes() {
 
                 if (fetchEvent.ok && eventData) {
                     setEvento(eventData);
-                    
+
                     // --- 1. Lógica de Data Principal ---
                     let eventDate = null;
                     if (eventData.eventDate) eventDate = new Date(eventData.eventDate);
@@ -117,21 +117,21 @@ export default function EventoDetalhes() {
                     if (uniqueDates.length > 0) setSelectedDate(uniqueDates[0]);
 
                     // --- 3. Lógica do Organizador ---
-                    let orgName = "Organizador"; 
+                    let orgName = "Organizador";
                     let orgInsta = "";
 
                     if (eventData.organizerInfo) {
                         try {
-                            const info = typeof eventData.organizerInfo === 'string' 
-                                ? JSON.parse(eventData.organizerInfo) 
+                            const info = typeof eventData.organizerInfo === 'string'
+                                ? JSON.parse(eventData.organizerInfo)
                                 : eventData.organizerInfo;
-                            
+
                             if (info.name && info.name.trim() !== "") orgName = info.name;
                             if (info.instagram) orgInsta = info.instagram;
                         } catch (e) {
                             console.error("Erro parse organizerInfo", e);
                         }
-                    } 
+                    }
                     else if (eventData.organizer && eventData.organizer.name) {
                         orgName = eventData.organizer.name;
                         if (eventData.organizer.instagram) orgInsta = eventData.organizer.instagram;
@@ -152,19 +152,20 @@ export default function EventoDetalhes() {
         loadData();
     }, [id, API_BASE_URL]);
 
-    // Cálculo do Total
+    // Cálculo do Total com conversão segura (parseFloat)
     const { totalValue, totalQty } = useMemo(() => {
         if (!evento) return { totalValue: 0, totalQty: 0 };
         let total = 0;
         let qty = 0;
-        const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08; 
+        const rate = appliedCoupon ? appliedCoupon.feeRate : 0.08;
         const allTickets = evento.tickets || evento.ticketTypes || [];
 
         allTickets.forEach(ticket => {
             const tId = ticket.id || ticket._id;
             const quantity = ticketQuantities[tId] || 0;
             if (quantity > 0) {
-                total += ((ticket.price + (ticket.price * rate)) * quantity);
+                const basePrice = parseFloat(ticket.price) || 0;
+                total += ((basePrice + (basePrice * rate)) * quantity);
                 qty += quantity;
             }
         });
@@ -172,8 +173,9 @@ export default function EventoDetalhes() {
     }, [evento, ticketQuantities, appliedCoupon]);
 
     const handleQuantityChange = (ticketId, delta) => {
-        const ticket = evento.tickets.find(t => t.id === ticketId || t._id === ticketId);
-        const maxPerUser = ticket?.maxPerUser || 4; 
+        const allTickets = evento.tickets || evento.ticketTypes || [];
+        const ticket = allTickets.find(t => t.id === ticketId || t._id === ticketId);
+        const maxPerUser = ticket?.maxPerUser || 4;
 
         setTicketQuantities(prev => {
             const currentQty = prev[ticketId] || 0;
@@ -198,7 +200,7 @@ export default function EventoDetalhes() {
             });
             const data = await response.json();
             if (response.ok && data.valid) {
-                setAppliedCoupon({ code: data.code, feeRate: 0.03 }); 
+                setAppliedCoupon({ code: data.code, feeRate: 0.03 });
                 toast.success(data.message, { id: toastId });
             } else {
                 setAppliedCoupon(null);
@@ -265,16 +267,17 @@ export default function EventoDetalhes() {
     const validateParticipants = () => {
         if (!evento.formSchema || evento.formSchema.length === 0) return true;
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
+        const allTickets = evento.tickets || evento.ticketTypes || [];
 
         for (const [ticketId, qty] of Object.entries(ticketQuantities)) {
             if (qty > 0) {
-                const ticketName = evento.tickets.find(t => t.id === ticketId || t._id === ticketId)?.name;
+                const ticketName = allTickets.find(t => t.id === ticketId || t._id === ticketId)?.name;
                 for (let i = 0; i < qty; i++) {
                     const key = `${ticketId}_${i}`;
                     const data = participantsData[key] || {};
                     for (const q of schema) {
                         if (q.required && (!data[q.label] || data[q.label].trim() === '')) {
-                            toast.error(`Preencha "${q.label}" para o ${ticketName} #${i+1}`);
+                            toast.error(`Preencha "${q.label}" para o ${ticketName} #${i + 1}`);
                             return false;
                         }
                     }
@@ -291,7 +294,7 @@ export default function EventoDetalhes() {
             router.push('/login');
             return;
         }
-        
+
         if (totalQty === 0) return toast.error("Selecione pelo menos um ingresso.");
 
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
@@ -315,27 +318,27 @@ export default function EventoDetalhes() {
         try {
             const response = await fetch(`${API_BASE_URL}/payments/create-checkout-session`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token.replace(/"/g, '')}` 
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token.replace(/"/g, '')}`
                 },
-                body: JSON.stringify({ 
-                    eventId: id, 
-                    tickets: ticketQuantities, 
-                    couponCode: appliedCoupon?.code, 
-                    participantData: formattedParticipants 
+                body: JSON.stringify({
+                    eventId: id,
+                    tickets: ticketQuantities,
+                    couponCode: appliedCoupon?.code,
+                    participantData: formattedParticipants
                 })
             });
-            
+
             const data = await response.json();
             toast.dismiss(toastId);
 
             if (response.ok) {
                 if (data.url) {
-                    window.location.href = data.url; 
+                    window.location.href = data.url;
                 } else {
                     toast.success("Ingresso garantido com sucesso! 🎟️");
-                    router.push('/dashboard'); 
+                    router.push('/dashboard');
                 }
             } else {
                 toast.error(data.message || "Erro ao processar pedido.");
@@ -351,23 +354,24 @@ export default function EventoDetalhes() {
         const inputs = [];
         const schema = typeof evento.formSchema === 'string' ? JSON.parse(evento.formSchema) : evento.formSchema;
         let globalIndex = 0;
+        const allTickets = evento.tickets || evento.ticketTypes || [];
 
         Object.entries(ticketQuantities).forEach(([ticketId, qty]) => {
             if (qty > 0) {
-                const ticketInfo = evento.tickets.find(t => t.id === ticketId || t._id === ticketId);
+                const ticketInfo = allTickets.find(t => t.id === ticketId || t._id === ticketId);
                 for (let i = 0; i < qty; i++) {
                     const key = `${ticketId}_${i}`;
                     const currentData = participantsData[key] || {};
-                    const isFirst = globalIndex === 0; 
-                    
+                    const isFirst = globalIndex === 0;
+
                     inputs.push(
                         <div key={key} className="participant-card">
                             <span className="participant-badge">
-                                <FaUserAlt style={{marginRight: '6px'}}/>
+                                <FaUserAlt style={{ marginRight: '6px' }} />
                                 {ticketInfo?.name} - Participante #{i + 1}
-                                {isFirst && replicateData && <span style={{marginLeft: '10px', fontSize: '0.7em', color: '#0369a1'}}>(Principal - Dados serão copiados)</span>}
+                                {isFirst && replicateData && <span style={{ marginLeft: '10px', fontSize: '0.7em', color: '#0369a1' }}>(Principal - Dados serão copiados)</span>}
                             </span>
-                            
+
                             {schema.map((q, qIdx) => (
                                 <div key={qIdx} className="form-group">
                                     <label className="form-label">{q.label} {q.required && <span className="required-mark">*</span>}</label>
@@ -376,9 +380,9 @@ export default function EventoDetalhes() {
                                             <option value="">Selecione...</option>{q.options.split(',').map(opt => <option key={opt} value={opt.trim()}>{opt.trim()}</option>)}
                                         </select>
                                     ) : q.type === 'checkbox' ? (
-                                        <div style={{display:'flex', gap:'10px'}}><label><input type="radio" name={`${key}_${q.label}`} value="Sim" onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)}/> Sim</label><label><input type="radio" name={`${key}_${q.label}`} value="Não" onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)}/> Não</label></div>
+                                        <div style={{ display: 'flex', gap: '10px' }}><label><input type="radio" name={`${key}_${q.label}`} value="Sim" onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)} /> Sim</label><label><input type="radio" name={`${key}_${q.label}`} value="Não" onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)} /> Não</label></div>
                                     ) : (
-                                        <input type="text" className="form-input" placeholder="Sua resposta" value={currentData[q.label] || ""} onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)}/>
+                                        <input type="text" className="form-input" placeholder="Sua resposta" value={currentData[q.label] || ""} onChange={(e) => handleInputChange(ticketId, i, q.label, e.target.value)} />
                                     )}
                                 </div>
                             ))}
@@ -391,45 +395,43 @@ export default function EventoDetalhes() {
         return inputs;
     };
 
-    const getGoogleMapsLink = () => { 
-        if (!evento) return "#"; 
-        const query = encodeURIComponent(`${evento.location}, ${evento.city}`); 
-        return `https://maps.google.com/?q=${query}`; 
+    const getGoogleMapsLink = () => {
+        if (!evento) return "#";
+        const query = encodeURIComponent(`${evento.location}, ${evento.city}`);
+        return `https://maps.google.com/?q=${query}`;
     };
-    
+
     if (loading) return <SkeletonLoader />;
     if (!evento) return <div className="error-screen">Evento não encontrado.</div>;
 
     const allTickets = evento.tickets || evento.ticketTypes || [];
-    
+
     const filteredTickets = allTickets.filter(ticket => {
-        if (!ticket.activityDate) return true; 
+        if (!ticket.activityDate) return true;
         const tDate = ticket.activityDate.includes('T') ? ticket.activityDate.split('T')[0] : ticket.activityDate;
         return tDate === selectedDate;
     });
 
-    // --- CORREÇÃO DO BLOQUEIO DE DATA AQUI ---
     let isEventEnded = false;
-    
     if (selectedDate) {
-        // Cria uma data para o dia selecionado considerando meia-noite (UTC) e converte para evitar bug de fuso horário
-        const selectedDateObj = new Date(`${selectedDate}T23:59:59`); // Dá até o final do dia para comprar
+        const selectedDateObj = new Date(`${selectedDate}T23:59:59`);
         const now = new Date();
         isEventEnded = now > selectedDateObj;
     } else if (evento.eventDate) {
-        // Se o evento não tiver datas múltiplas (tabs), usa a lógica antiga, mas dando até o fim do dia
         const eventDateObj = new Date(evento.eventDate);
         eventDateObj.setHours(23, 59, 59);
         const now = new Date();
         isEventEnded = now > eventDateObj;
     }
-    // ----------------------------------------
+
+    // Lógica para definir se o evento é estritamente gratuito (todos os ingressos custam 0)
+    const isStrictlyFree = allTickets.length > 0 && allTickets.every(t => (parseFloat(t.price) || 0) === 0);
 
     return (
         <div className="event-details-page-container">
             <Toaster position="top-center" />
-            <Header/>
-            
+            <Header />
+
             <div className="hero-banner">
                 <div className="hero-background" style={{ backgroundImage: `url(${evento.imageUrl})` }}></div>
                 <div className="hero-content">
@@ -438,7 +440,7 @@ export default function EventoDetalhes() {
                         <div className="hero-badges"><span className="hero-category">{evento.category}</span>{evento.ageRating && <span className="hero-rating">{evento.ageRating}</span>}</div>
                         <h1 className="hero-title">{evento.title}</h1>
                         <div className="hero-compact-row">
-                            {displayDate && <div className="compact-item"><FaCalendarDay className="compact-icon" /><span>{displayDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}<span className="compact-separator"> às </span><span className="compact-time">{displayDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}h</span></span></div>}
+                            {displayDate && <div className="compact-item"><FaCalendarDay className="compact-icon" /><span>{displayDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}<span className="compact-separator"> às </span><span className="compact-time">{displayDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h</span></span></div>}
                             <a href={getGoogleMapsLink()} target="_blank" rel="noopener noreferrer" className="compact-item location-link"><FaMapMarkerAlt className="compact-icon location-color" /><span className="location-text">{evento.location} - {evento.city}</span><FaExternalLinkAlt className="external-icon" /></a>
                         </div>
                     </div>
@@ -466,16 +468,16 @@ export default function EventoDetalhes() {
                                 <div className="tickets-header" onClick={() => setIsTicketsOpen(!isTicketsOpen)}>
                                     <h3><FaTicketAlt /> Ingressos</h3>{isTicketsOpen ? <FaChevronUp /> : <FaChevronDown />}
                                 </div>
-                                
+
                                 {isTicketsOpen && (
                                     <div className="tickets-content">
-                                        
+
                                         {availableDates.length > 1 && (
                                             <div className="date-selector-container">
                                                 <p className="date-selector-label"><FaCalendarAlt /> Escolha a data:</p>
                                                 <div className="date-selector-grid">
                                                     {availableDates.map(dateStr => (
-                                                        <button 
+                                                        <button
                                                             key={dateStr}
                                                             className={`date-chip ${selectedDate === dateStr ? 'active' : ''}`}
                                                             onClick={() => setSelectedDate(dateStr)}
@@ -489,7 +491,7 @@ export default function EventoDetalhes() {
 
                                         {isEventEnded ? (
                                             <div className="sales-ended-msg">
-                                                <FaLock size={24} style={{marginBottom:'10px', color: '#94a3b8'}}/>
+                                                <FaLock size={24} style={{ marginBottom: '10px', color: '#94a3b8' }} />
                                                 <h3>Vendas Encerradas</h3>
                                                 <p>Este evento já aconteceu ou as vendas foram finalizadas.</p>
                                             </div>
@@ -498,9 +500,10 @@ export default function EventoDetalhes() {
                                                 filteredTickets.map(ticket => {
                                                     const tId = ticket.id || ticket._id;
                                                     const qty = ticketQuantities[tId] || 0;
-                                                    const fee = ticket.price * 0.08; 
+                                                    const basePrice = parseFloat(ticket.price) || 0;
+                                                    const fee = basePrice * 0.08;
                                                     const available = ticket.quantity - (ticket.sold || 0);
-                                                    
+
                                                     const now = new Date();
                                                     const isSoldOut = available <= 0;
                                                     const isPaused = ticket.status !== 'active';
@@ -516,23 +519,23 @@ export default function EventoDetalhes() {
                                                                 <span className="ticket-name">{ticket.name}</span>
                                                                 <div className="ticket-meta-row">
                                                                     <span className="ticket-batch">{ticket.batch || ticket.batchName || 'Lote Único'}</span>
-                                                                    {ticket.startTime && <span className="ticket-time-badge"><FaClock size={10} style={{marginRight:'3px'}}/> {ticket.startTime}</span>}
+                                                                    {ticket.startTime && <span className="ticket-time-badge"><FaClock size={10} style={{ marginRight: '3px' }} /> {ticket.startTime}</span>}
                                                                 </div>
                                                                 <div>
-                                                                    <span className="ticket-price">{ticket.price === 0 ? 'Grátis' : formatCurrency(ticket.price)}</span>
-                                                                    {ticket.price > 0 && <span className="ticket-fee">+ {formatCurrency(fee)} taxa</span>}
+                                                                    <span className="ticket-price">{basePrice === 0 ? 'Grátis' : formatCurrency(basePrice)}</span>
+                                                                    {basePrice > 0 && <span className="ticket-fee">+ {formatCurrency(fee)} taxa</span>}
                                                                 </div>
                                                                 <div className="ticket-status-row">
                                                                     {isSoldOut && !isSalesExpired && <span className="sold-out-badge">ESGOTADO</span>}
-                                                                    {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{background:'#64748b'}}>INDISPONÍVEL</span>}
-                                                                    {isSalesExpired && <span className="sold-out-badge" style={{background:'#ef4444'}}>ENCERRADO</span>}
+                                                                    {isPaused && !isSoldOut && !isSalesExpired && <span className="sold-out-badge" style={{ background: '#64748b' }}>INDISPONÍVEL</span>}
+                                                                    {isSalesExpired && <span className="sold-out-badge" style={{ background: '#ef4444' }}>ENCERRADO</span>}
                                                                 </div>
                                                             </div>
 
                                                             <div className="ticket-controls">
-                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty===0 || isUnavailable}><FaMinus size={8}/></button>
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, -1)} disabled={qty === 0 || isUnavailable}><FaMinus size={8} /></button>
                                                                 <span className="qty-display">{qty}</span>
-                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={8}/></button>
+                                                                <button className="qty-btn" onClick={() => handleQuantityChange(tId, 1)} disabled={disablePlus}><FaPlus size={8} /></button>
                                                             </div>
                                                         </div>
                                                     );
@@ -541,14 +544,15 @@ export default function EventoDetalhes() {
                                                 <p className="no-tickets-msg">Nenhum ingresso disponível para esta data.</p>
                                             )
                                         )}
-                                        
+
                                         {!isEventEnded && allTickets.length > 0 && (
                                             <>
+                                                {/* O Cupom agora aparece automaticamente assim que o totalValue é > 0 */}
                                                 {totalValue > 0 && (
                                                     <div className="coupon-section">
                                                         {!appliedCoupon ? (
                                                             <div className="coupon-input-group">
-                                                                <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input"/>
+                                                                <input type="text" placeholder="Tem um cupom?" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="coupon-input" />
                                                                 <button onClick={handleApplyCoupon} className="coupon-btn"><FaTag /></button>
                                                             </div>
                                                         ) : (
@@ -561,11 +565,14 @@ export default function EventoDetalhes() {
                                                 )}
 
                                                 <div className="tickets-footer">
-                                                    <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? {color:'#2f855a'} : {}}>{formatCurrency(totalValue)}</span></div></div>
+                                                    <div className="total-row"><span>Total</span><div className="total-values"><span className="total-price" style={appliedCoupon ? { color: '#2f855a' } : {}}>{formatCurrency(totalValue)}</span></div></div>
                                                     <button className="buy-now-button" onClick={handleBuyClick}>
-                                                        {totalValue === 0 ? <><FaCheckCircle /> Resgatar Ingresso Grátis</> : <><FaShoppingCart /> Comprar Ingressos</>}
+                                                        {totalQty === 0
+                                                            ? (isStrictlyFree ? <><FaCheckCircle /> Resgatar Ingresso</> : <><FaShoppingCart /> Comprar Ingressos</>)
+                                                            : (totalValue === 0 ? <><FaCheckCircle /> Finalizar Resgate Grátis</> : <><FaShoppingCart /> Comprar Agora</>)
+                                                        }
                                                     </button>
-                                                    <div className="secure-checkout-text"><FaCheckCircle size={10}/> 100% Seguro</div>
+                                                    <div className="secure-checkout-text"><FaCheckCircle size={10} /> 100% Seguro</div>
                                                 </div>
                                             </>
                                         )}
@@ -576,22 +583,22 @@ export default function EventoDetalhes() {
                     </div>
                 </div>
             </section>
-            
+
             {showParticipantModal && (
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header"><h3>Dados dos Participantes</h3><button className="close-modal-btn" onClick={() => setShowParticipantModal(false)}><FaTimes /></button></div>
                         <div className="modal-body">
-                             <div className="replicate-container" style={{backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center'}}>
-                                <input type="checkbox" id="replicateCheck" checked={replicateData} onChange={handleReplicateDataToggle} style={{width: '18px', height: '18px', marginRight: '10px', cursor: 'pointer'}} />
-                                <label htmlFor="replicateCheck" style={{fontSize: '0.9rem', color: '#0369a1', cursor: 'pointer', fontWeight: '600'}}>Repetir dados do primeiro participante para todos</label>
+                            <div className="replicate-container" style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+                                <input type="checkbox" id="replicateCheck" checked={replicateData} onChange={handleReplicateDataToggle} style={{ width: '18px', height: '18px', marginRight: '10px', cursor: 'pointer' }} />
+                                <label htmlFor="replicateCheck" style={{ fontSize: '0.9rem', color: '#0369a1', cursor: 'pointer', fontWeight: '600' }}>Repetir dados do primeiro participante para todos</label>
                             </div>
 
-                            <p style={{marginBottom: '20px', color: '#64748b', fontSize: '0.95rem'}}>O organizador solicitou as seguintes informações para a gestão do evento.</p>
-                             {renderParticipantInputs()}
-                             
-                             <div style={{marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b'}}>
-                                <FaInfoCircle style={{marginRight: '5px', verticalAlign: 'middle'}}/>
+                            <p style={{ marginBottom: '20px', color: '#64748b', fontSize: '0.95rem' }}>O organizador solicitou as seguintes informações para a gestão do evento.</p>
+                            {renderParticipantInputs()}
+
+                            <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b' }}>
+                                <FaInfoCircle style={{ marginRight: '5px', verticalAlign: 'middle' }} />
                                 <strong>Privacidade:</strong> Os dados acima serão compartilhados com o organizador (<strong>{organizerInfo.name}</strong>) exclusivamente para a realização deste evento.
                             </div>
                         </div>

@@ -12,21 +12,21 @@ const AddressSchema = new mongoose.Schema({
 // --- SCHEMA DO INGRESSO (Atualizado para Legislação) ---
 const TicketSchema = new mongoose.Schema({
     name: { type: String, required: true }, // Ex: "Pista Premium", "Camarote"
-    
+
     // Preço do ingresso
     price: { type: Number, required: true, default: 0 },
-    
+
     // Quantidade total disponibilizada neste lote/tipo
     quantity: { type: Number, required: true, default: 0 },
-    
+
     description: String, // Regras específicas deste ingresso
-    
+
     sold: { type: Number, default: 0 },
 
     // --- NOVOS CAMPOS LEGAIS ---
-    isHalfPrice: { 
-        type: Boolean, 
-        default: false 
+    isHalfPrice: {
+        type: Boolean,
+        default: false
     }, // Identifica se é meia-entrada (Obrigatório para Lei 12.933/2013)
 
     category: {
@@ -35,14 +35,14 @@ const TicketSchema = new mongoose.Schema({
         default: 'Inteira'
     }, // Ajuda a categorizar no relatório final
 
-    batch: { 
-        type: String, 
-        default: 'Lote Único' 
+    batch: {
+        type: String,
+        default: 'Lote Único'
     }, // Ex: "1º Lote", "2º Lote" (Útil para virada de preço)
 
-    maxPerUser: { 
-        type: Number, 
-        default: 4 
+    maxPerUser: {
+        type: Number,
+        default: 4
     }, // Limite de compra por CPF (Comum para evitar cambistas)
 
     status: {
@@ -70,7 +70,6 @@ const OnlineSalesPointSchema = new mongoose.Schema({
     price: Number,
 });
 
-// --- SCHEMA DA SESSÃO ---
 const SessionSchema = new mongoose.Schema({
     date: { type: Date, required: true },     // Data/Hora de início
     endDate: { type: Date },                  // Data/Hora de fim
@@ -81,10 +80,10 @@ const EventSchema = new mongoose.Schema({
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     imageUrl: { type: String, required: true },
-    
+
     // --- DATAS (Híbrido) ---
-    sessions: [SessionSchema], 
-    date: { type: Date, required: true }, 
+    sessions: [SessionSchema],
+    date: { type: Date, required: true },
     endDate: Date,
 
     location: { type: String, required: true, trim: true },
@@ -96,7 +95,7 @@ const EventSchema = new mongoose.Schema({
         enum: ['Música e entretenimento', 'Esportes e Lazer', 'Teatro', 'Infantil', 'Educação e Negócios', 'Religiosos'],
     },
     classificacaoEtaria: String, // Ex: "Livre", "18+" (Importante legalmente)
-    
+
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected', 'finished', 'cancelled'],
@@ -115,19 +114,19 @@ const EventSchema = new mongoose.Schema({
 
     isFeatured: { type: Boolean, default: false },
     isFeaturedRequested: { type: Boolean, default: false },
-    highlightStatus: { 
-        type: String, 
-        enum: ['none', 'pending', 'approved', 'rejected'], 
-        default: 'none' 
+    highlightStatus: {
+        type: String,
+        enum: ['none', 'pending', 'approved', 'rejected'],
+        default: 'none'
     },
     highlightFee: { type: Number, default: 0 },
 
     price: { type: Number, required: true, min: 0 }, // Preço "A partir de"
-    
+
     tickets: [TicketSchema],
     physicalSalesPoints: [PhysicalSalesPointSchema],
     onlineSalesPoints: [OnlineSalesPointSchema],
-    
+
     organizer: {
         name: String,
         description: String,
@@ -135,10 +134,10 @@ const EventSchema = new mongoose.Schema({
         email: String, // Contato obrigatório para suporte
         phone: String  // Contato opcional
     },
-    
+
     latitude: { type: Number, required: false },
     longitude: { type: Number, required: false },
-    
+
     favoritesCount: { type: Number, default: 0 },
 
     creator: {
