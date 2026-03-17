@@ -22,7 +22,7 @@ const generateToken = (id) => {
 
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
-    port: 2525, 
+    port: 2525,
     secure: false,
     auth: {
         user: process.env.EMAIL_USER,
@@ -31,7 +31,7 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 10000, 
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000
 });
@@ -92,13 +92,11 @@ const googleLogin = async (req, res) => {
             return res.status(400).json({ msg: "Código de autorização não fornecido." });
         }
 
-        const REDIRECT_URI = process.env.NODE_ENV === 'production' 
-            ? 'https://vibzeventos.vercel.app/login' 
-            : 'http://localhost:3000/login';
-
+        // CORREÇÃO AQUI: Como o googleClient foi inicializado com 'postmessage',
+        // o getToken também DEVE receber 'postmessage', não importa se é Vercel, localhost ou Domínio Oficial.
         const { tokens } = await googleClient.getToken({
             code: code,
-            redirect_uri: REDIRECT_URI
+            redirect_uri: 'postmessage'
         });
 
         const ticket = await googleClient.verifyIdToken({
@@ -152,12 +150,12 @@ const forgotPassword = async (req, res) => {
             where: { email },
             data: {
                 resetPasswordToken: code,
-                resetPasswordExpires: new Date(Date.now() + 3600000) 
+                resetPasswordExpires: new Date(Date.now() + 3600000)
             }
         });
         const mailOptions = {
             to: user.email,
-            from: `"Vibz" <vibzeventos@gmail.com>`, 
+            from: `"Vibz" <vibzeventos@gmail.com>`,
             subject: 'Redefinir Senha - Vibz',
             html: `
                 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -171,7 +169,7 @@ const forgotPassword = async (req, res) => {
         await transporter.sendMail(mailOptions);
         res.status(200).json({ msg: 'Código enviado!' });
     } catch (error) {
-        console.error("Erro no envio:", error); 
+        console.error("Erro no envio:", error);
         res.status(500).json({ msg: 'Erro ao enviar email.' });
     }
 };
@@ -233,10 +231,10 @@ const getMe = async (req, res) => {
             where: { organizerId: req.user.id },
             orderBy: { createdAt: 'desc' }
         });
-        res.json({ 
-            user: { ...user, _id: user.id }, 
-            myEvents: myEvents.map(e => ({ ...e, _id: e.id })), 
-            metrics: { activeEvents: myEvents.length } 
+        res.json({
+            user: { ...user, _id: user.id },
+            myEvents: myEvents.map(e => ({ ...e, _id: e.id })),
+            metrics: { activeEvents: myEvents.length }
         });
     } catch (error) {
         console.error("Erro getMe:", error);
