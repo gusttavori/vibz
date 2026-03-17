@@ -7,8 +7,7 @@ const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    'postmessage'
+    process.env.GOOGLE_CLIENT_SECRET
 );
 
 const generateToken = (id) => {
@@ -92,11 +91,12 @@ const googleLogin = async (req, res) => {
             return res.status(400).json({ msg: "Código de autorização não fornecido." });
         }
 
-        // CORREÇÃO AQUI: Como o googleClient foi inicializado com 'postmessage',
-        // o getToken também DEVE receber 'postmessage', não importa se é Vercel, localhost ou Domínio Oficial.
+        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+        const REDIRECT_URI = `${origin}/login`;
+
         const { tokens } = await googleClient.getToken({
             code: code,
-            redirect_uri: 'postmessage'
+            redirect_uri: REDIRECT_URI
         });
 
         const ticket = await googleClient.verifyIdToken({
