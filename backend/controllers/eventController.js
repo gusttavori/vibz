@@ -1,17 +1,17 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const cloudinary = require('../config/cloudinary');
+
 const { 
     sendEventStatusEmail, 
     sendEventReceivedEmail, 
     sendAdminNotificationEmail 
 } = require('../services/emailService');
 
-// --- MAPPER PARA O FRONTEND ---
+// --- MAPPER PARA O FRONTEND (Agenda Cultural) ---
 const mapEventToFrontend = (event) => {
     const safeDate = event.eventDate ? new Date(event.eventDate).toISOString() : new Date(event.createdAt).toISOString();
     
-    // 1. Sessões
     let parsedSessions = [];
     if (event.sessions) {
         parsedSessions = typeof event.sessions === 'string' ? JSON.parse(event.sessions) : event.sessions;
@@ -19,8 +19,7 @@ const mapEventToFrontend = (event) => {
         parsedSessions = [{ date: safeDate, endDate: safeDate }];
     }
 
-    // 2. Lógica Robusta de Organizador
-    let organizerNameFinal = "Organizador";
+    let organizerNameFinal = "Curador Vibz";
     let organizerInstaFinal = "";
 
     if (event.organizerInfo) {
@@ -33,7 +32,7 @@ const mapEventToFrontend = (event) => {
         }
     }
 
-    if (organizerNameFinal === "Organizador" && event.organizer && event.organizer.name) {
+    if (organizerNameFinal === "Curador Vibz" && event.organizer && event.organizer.name) {
         organizerNameFinal = event.organizer.name;
     }
 
@@ -44,30 +43,18 @@ const mapEventToFrontend = (event) => {
         address: { street: event.location || '', city: event.city || '', number: 'S/N', state: 'BA' },
         sessions: parsedSessions,
         date: safeDate,
-        tickets: event.ticketTypes ? event.ticketTypes.map(t => ({
-            ...t,
-            _id: t.id,
-            batch: t.batchName, 
-            price: t.price,
-            quantity: t.quantity, 
-            sold: t.sold || 0,
-            status: t.status, 
-            salesEnd: t.salesEnd ? new Date(t.salesEnd).toISOString() : null,
-            activityDate: t.activityDate ? new Date(t.activityDate).toISOString().split('T')[0] : '',
-            startTime: t.startTime || '',
-            endTime: t.endTime || '',
-            maxPerUser: t.maxPerUser || 4
-        })) : [],
+        tickets: [], // Mantido como array vazio para evitar erros no frontend antigo
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
         organizer: { name: organizerNameFinal, instagram: organizerInstaFinal },
         organizerName: organizerNameFinal,
         organizerInstagram: organizerInstaFinal,
-        isInformational: event.isInformational,
+        isInformational: true, // Forçamos como informativo na Agenda
         highlightStatus: event.highlightStatus,
         highlightPaymentLink: event.highlightPaymentLink 
     };
 };
 
+// --- CRIAÇÃO E ATUALIZAÇÃO ---
 const createEvent = async (req, res) => {
     try {
         if (!req.user || !req.user.id) {
@@ -76,45 +63,30 @@ const createEvent = async (req, res) => {
 
         const { 
             title, description, category, ageRating, date, sessions, 
-            location, city, address, tickets, organizerInfo, 
-            isFeaturedRequested, highlightTier, formSchema, refundPolicy, isInformational 
+            location, city, address, organizerInfo, 
+            isFeaturedRequested, formSchema, externalUrl
         } = req.body;
 
         const userId = req.user.id;
         
-        let finalOrganizerName = "Organizador";
+        let finalOrganizerName = "Curador Vibz";
         let finalOrganizerInsta = "";
-        let parsedOrganizerInfo = {};
 
         if (organizerInfo) {
             try {
-                parsedOrganizerInfo = JSON.parse(organizerInfo);
+                let parsedOrganizerInfo = JSON.parse(organizerInfo);
                 if (parsedOrganizerInfo.name) finalOrganizerName = parsedOrganizerInfo.name;
                 if (parsedOrganizerInfo.instagram) finalOrganizerInsta = parsedOrganizerInfo.instagram;
             } catch (e) {
-                console.error("Erro ao ler organizerInfo no create:", e);
+                console.error("Erro ao ler organizerInfo:", e);
             }
-        } else {
-            finalOrganizerName = req.user.name || "Organizador";
         }
 
-        const isInfoBool = isInformational === 'true' || isInformational === true;
-        const tier = highlightTier ? highlightTier.toUpperCase() : null;
-        const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true) || !!tier;
+        const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true);
 
-        let parsedAddress = {};
-        let parsedTicketsFlat = [];
-        let parsedSessions = [];
-        let parsedFormSchema = [];
-
-        try {
-            parsedAddress = address ? JSON.parse(address) : {};
-            parsedTicketsFlat = tickets ? JSON.parse(tickets) : [];
-            parsedSessions = sessions ? JSON.parse(sessions) : [];
-            parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
-        } catch (parseError) {
-            return res.status(400).json({ message: "Dados JSON inválidos." });
-        }
+        let parsedAddress = address ? JSON.parse(address) : {};
+        let parsedSessions = sessions ? JSON.parse(sessions) : [];
+        let parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
 
         let imageUrl = '';
         if (req.file) {
@@ -133,40 +105,20 @@ const createEvent = async (req, res) => {
                 title, description, imageUrl, city,
                 location: location || parsedAddress.street,
                 category: category ? category.trim() : "Geral",
-                ageRating, priceFrom: 0, status: 'pending',
+                ageRating, status: 'approved', // Eventos criados pelo curador já nascem aprovados
                 organizerId: userId, 
                 isFeaturedRequested: isFeaturedBool,
-                highlightStatus: isFeaturedBool ? 'pending' : 'none',
-                highlightTier: tier, 
-                refundPolicy: refundPolicy || "7 dias após a compra",
+                isFeatured: isFeaturedBool, // Como curador, se você marcar destaque, já ativa
+                externalUrl: externalUrl || null,
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
                 organizerInfo: { name: finalOrganizerName, instagram: finalOrganizerInsta },
                 formSchema: parsedFormSchema,
-                isInformational: isInfoBool,
-                ticketTypes: {
-                    create: parsedTicketsFlat.map(t => ({
-                        name: t.name, batchName: t.batch, price: parseFloat(t.price),
-                        quantity: parseInt(t.quantity), maxPerUser: parseInt(t.maxPerUser) || 4,
-                        status: 'active',
-                        activityDate: t.activityDate ? new Date(t.activityDate) : null,
-                        startTime: t.startTime || null, endTime: t.endTime || null
-                    }))
-                }
-            },
-            include: { ticketTypes: true }
+                isInformational: true
+            }
         });
 
-        sendEventReceivedEmail(req.user.email, finalOrganizerName, title).catch(err => console.error("[Email] Erro organizador:", err));
-        
-        sendAdminNotificationEmail({ 
-            title, 
-            organizerName: finalOrganizerName, 
-            city, 
-            date: mainEventDate.toLocaleDateString('pt-BR') 
-        }).catch(err => console.error("[Email] Erro admin:", err));
-
-        res.status(201).json({ message: 'Evento enviado para análise.', event: mapEventToFrontend(event) });
+        res.status(201).json({ message: 'Evento publicado com sucesso.', event: mapEventToFrontend(event) });
     } catch (error) {
         console.error("Erro no createEvent:", error);
         if (!res.headersSent) res.status(500).json({ message: 'Erro interno ao criar evento.' });
@@ -180,10 +132,9 @@ const updateEvent = async (req, res) => {
         const existingEvent = await prisma.event.findUnique({ where: { id } });
 
         if (!existingEvent) return res.status(404).json({ message: 'Evento não encontrado.' });
-        if (existingEvent.organizerId !== userId) return res.status(403).json({ message: 'Sem permissão.' });
+        if (existingEvent.organizerId !== userId && !req.user.isAdmin) return res.status(403).json({ message: 'Sem permissão.' });
 
-        const { title, description, category, ageRating, refundPolicy, location, city, sessions, tickets, organizerInfo, formSchema, isInformational } = req.body;
-        let isInfoBool = isInformational !== undefined ? (isInformational === 'true' || isInformational === true) : existingEvent.isInformational;
+        const { title, description, category, ageRating, location, city, sessions, organizerInfo, formSchema, externalUrl } = req.body;
 
         let imageUrl = existingEvent.imageUrl;
         if (req.file) {
@@ -206,125 +157,33 @@ const updateEvent = async (req, res) => {
             where: { id },
             data: {
                 title, description, category: category ? category.trim() : existingEvent.category,
-                ageRating, refundPolicy, imageUrl, location, city,
+                ageRating, imageUrl, location, city,
                 eventDate: mainEventDate, sessions: parsedSessions,
                 organizerInfo: parsedOrgInfo,
+                externalUrl: externalUrl || existingEvent.externalUrl,
                 formSchema: typeof formSchema === 'string' ? JSON.parse(formSchema) : formSchema,
-                isInformational: isInfoBool 
             }
         });
 
-        // --- NOVA LÓGICA DE ATUALIZAÇÃO E EXCLUSÃO DE INGRESSOS ---
-        if (tickets) {
-            const ticketsData = typeof tickets === 'string' ? JSON.parse(tickets) : tickets;
-            
-            // 1. Extrai todos os IDs que vieram do Frontend (que o usuário manteve)
-            const incomingTicketIds = ticketsData.filter(t => t.id).map(t => t.id);
-
-            // 2. Exclui do banco de dados todos os ingressos deste evento que NÃO estão nessa lista
-            await prisma.ticketType.deleteMany({
-                where: {
-                    eventId: id,
-                    id: { notIn: incomingTicketIds }
-                }
-            });
-
-            // 3. Atualiza os existentes ou cria os novos
-            for (const t of ticketsData) {
-                const payload = {
-                    name: t.name, price: parseFloat(t.price), quantity: parseInt(t.quantity), 
-                    batchName: t.batch, category: t.category, isHalfPrice: t.isHalfPrice,
-                    activityDate: t.activityDate ? new Date(t.activityDate) : null, 
-                    startTime: t.startTime || null, endTime: t.endTime || null, maxPerUser: parseInt(t.maxPerUser) || 4
-                };
-                
-                if (t.id) { 
-                    await prisma.ticketType.update({ where: { id: t.id }, data: payload }); 
-                } else { 
-                    await prisma.ticketType.create({ data: { ...payload, eventId: id } }); 
-                }
-            }
-        }
-        
-        // Busca o evento completo atualizado para retornar
-        const finalEvent = await prisma.event.findUnique({
-            where: { id },
-            include: { ticketTypes: true }
-        });
-
-        res.json(mapEventToFrontend(finalEvent));
+        res.json(mapEventToFrontend(updatedEvent));
     } catch (error) {
         console.error("Erro updateEvent:", error);
         res.status(500).json({ message: 'Erro ao atualizar evento.' });
     }
 };
 
+// --- BUSCAS DE EVENTOS (TOTALMENTE LIMPAS) ---
 const getMyEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             where: { organizerId: req.user.id },
-            include: { _count: { select: { tickets: true } }, ticketTypes: true },
             orderBy: { createdAt: 'desc' }
         });
         const formattedEvents = events.map(mapEventToFrontend);
-        const totalTicketsSold = events.reduce((acc, ev) => acc + (ev.ticketTypes ? ev.ticketTypes.reduce((sum, t) => sum + (t.sold || 0), 0) : 0), 0);
-        res.json({ myEvents: formattedEvents, metrics: { activeEvents: events.length, totalRevenue: 0, ticketsSold: totalTicketsSold } });
+        res.json({ myEvents: formattedEvents, metrics: { activeEvents: events.filter(e => e.status === 'approved').length } });
     } catch (error) {
         console.error("Erro getMyEvents:", error);
-        res.status(500).json({ message: 'Erro dashboard.' });
-    }
-};
-
-const approveEvent = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const event = await prisma.event.update({
-            where: { id },
-            data: { status: 'approved' },
-            include: { organizer: true }
-        });
-
-        if (event.organizer && event.organizer.email) {
-            await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'approved', event.id);
-        }
-        res.json({ success: true, message: "Evento aprovado!" });
-    } catch (error) {
-        console.error("Erro na aprovação:", error.message);
-        res.status(500).json({ message: "Erro interno." });
-    }
-};
-
-const rejectEvent = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { reason } = req.body; 
-        const event = await prisma.event.update({
-            where: { id },
-            data: { status: 'rejected' },
-            include: { organizer: { select: { email: true, name: true } } }
-        });
-
-        if (event.organizer && event.organizer.email) {
-            await sendEventStatusEmail(event.organizer.email, event.organizer.name, event.title, 'rejected', event.id, reason);
-        }
-        res.json({ success: true, message: "Evento reprovado e organizador notificado." });
-    } catch (error) {
-        console.error("Erro ao reprovar evento:", error);
-        res.status(500).json({ message: "Erro ao reprovar evento." });
-    }
-};
-
-const toggleTicketStatus = async (req, res) => {
-    try {
-        const { ticketId } = req.params;
-        const { status } = req.body; 
-        const updatedTicket = await prisma.ticketType.update({
-            where: { id: ticketId },
-            data: { status: status }
-        });
-        res.json({ success: true, status: updatedTicket.status });
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao atualizar status.' });
+        res.status(500).json({ message: 'Erro ao buscar eventos do painel.' });
     }
 };
 
@@ -332,18 +191,18 @@ const getEvents = async (req, res) => {
     try {
         const events = await prisma.event.findMany({
             where: { status: 'approved' },
-            include: { ticketTypes: true, organizer: { select: { name: true, id: true } } },
-            orderBy: { createdAt: 'desc' }
+            include: { organizer: { select: { name: true, id: true } } },
+            orderBy: { eventDate: 'asc' }
         });
         res.status(200).json(events.map(mapEventToFrontend));
-    } catch (error) { res.status(500).json({ message: 'Erro ao buscar eventos.' }); }
+    } catch (error) { res.status(500).json({ message: 'Erro ao buscar eventos públicos.' }); }
 };
 
 const getEventById = async (req, res) => {
     try {
         const event = await prisma.event.findUnique({
             where: { id: req.params.id },
-            include: { organizer: { select: { name: true, id: true } }, ticketTypes: true }
+            include: { organizer: { select: { name: true, id: true } } }
         });
         if (!event) return res.status(404).json({ message: 'Evento não encontrado' });
         res.json(mapEventToFrontend(event));
@@ -352,7 +211,10 @@ const getEventById = async (req, res) => {
 
 const getFeaturedEvents = async (req, res) => {
     try {
-        const events = await prisma.event.findMany({ where: { isFeatured: true, status: 'approved' }, include: { ticketTypes: true } });
+        const events = await prisma.event.findMany({ 
+            where: { isFeatured: true, status: 'approved' },
+            orderBy: { eventDate: 'asc' }
+        });
         res.json(events.map(mapEventToFrontend));
     } catch (e) { res.status(500).json({ message: "Erro" }); }
 };
@@ -366,7 +228,6 @@ const getEventsByCategory = async (req, res) => {
                 category: { contains: decoded, mode: 'insensitive' },
                 status: 'approved' 
             },
-            include: { ticketTypes: true },
             orderBy: { eventDate: 'asc' }
         });
         res.json(events.map(mapEventToFrontend));
@@ -375,22 +236,21 @@ const getEventsByCategory = async (req, res) => {
 
 const searchEvents = async (req, res) => {
     const { query, city } = req.query;
-    if (!query) return res.json([]);
+    if (!query && !city) return res.json([]);
     
     try {
-        const decodedQuery = decodeURIComponent(query);
+        const decodedQuery = query ? decodeURIComponent(query) : "";
         const events = await prisma.event.findMany({
             where: { 
                 status: 'approved',
                 city: city ? { equals: city, mode: 'insensitive' } : undefined,
-                OR: [
+                OR: decodedQuery ? [
                     { title: { contains: decodedQuery, mode: 'insensitive' } },
                     { category: { contains: decodedQuery, mode: 'insensitive' } },
-                    { location: { contains: decodedQuery, mode: 'insensitive' } },
-                    { city: { contains: decodedQuery, mode: 'insensitive' } }
-                ]
+                    { location: { contains: decodedQuery, mode: 'insensitive' } }
+                ] : undefined
             },
-            include: { ticketTypes: true }
+            orderBy: { eventDate: 'asc' }
         });
         res.json(events.map(mapEventToFrontend));
     } catch (err) {
@@ -398,98 +258,40 @@ const searchEvents = async (req, res) => {
     }
 };
 
-const toggleFavorite = async (req, res) => { res.status(200).json({ success: true }); };
-
 const getEventCities = async (req, res) => {
     const cities = await prisma.event.findMany({ where: { status: 'approved' }, select: { city: true }, distinct: ['city'] });
     res.json(cities.map(c => c.city));
 };
 
-// --- FUNÇÃO ATUALIZADA: DADOS COMPLETOS PARA O EXCEL E O PAINEL ---
-const getEventParticipants = async (req, res) => {
+// --- APROVAÇÕES MANUAIS (Para eventos de terceiros, se você decidir abrir no futuro) ---
+const approveEvent = async (req, res) => {
     try {
         const { id } = req.params;
-        
-        // 1. Busca o evento para garantir que existe e que o usuário é dono dele
-        const event = await prisma.event.findUnique({ 
-            where: { id }, 
-            select: { title: true, organizerId: true, imageUrl: true, formSchema: true } 
+        const event = await prisma.event.update({
+            where: { id },
+            data: { status: 'approved' }
         });
-        
-        if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
-        
-        // Proteção de segurança: apenas o dono ou um admin pode ver a lista
-        if (event.organizerId !== req.user.id && !req.user.isAdmin) {
-            return res.status(403).json({ message: 'Sem permissão para visualizar participantes.' });
-        }
-
-        // 2. Busca todos os ingressos válidos e utilizados deste evento
-        const tickets = await prisma.ticket.findMany({
-            where: { 
-                eventId: id, 
-                status: { in: ['valid', 'used'] } 
-            },
-            include: { 
-                user: { select: { name: true, email: true } }, 
-                ticketType: { select: { name: true, batchName: true } } 
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        // 3. Formata os dados para o Frontend consumir sem erros
-        const formattedParticipants = tickets.map(t => {
-            let customData = {};
-            if (t.participantData) {
-                try {
-                    customData = typeof t.participantData === 'string' 
-                        ? JSON.parse(t.participantData) 
-                        : t.participantData;
-                } catch (e) {
-                    console.error("Erro ao dar parse no participantData:", e);
-                }
-            }
-
-            return {
-                id: t.id,
-                code: t.id, // O ID do ticket é o código validador
-                status: t.status,
-                buyerName: t.user?.name || 'Usuário Deletado',
-                buyerEmail: t.user?.email || 'Sem e-mail',
-                ticketType: t.ticketType?.name || 'Ingresso Padrão',
-                batch: t.ticketType?.batchName || 'Lote Único',
-                purchaseDate: t.createdAt, // Envia a data da compra
-                ...customData 
-            };
-        });
-
-        // 4. Devolve tudo redondinho para a tela do Organizador
-        res.json({ 
-            eventTitle: event.title,
-            eventImageUrl: event.imageUrl,
-            formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
-            participants: formattedParticipants 
-        });
-
-    } catch (error) { 
-        console.error("Erro no getEventParticipants:", error);
-        res.status(500).json({ message: 'Erro ao carregar lista de participantes.' }); 
-    }
+        res.json({ success: true, message: "Evento aprovado!" });
+    } catch (error) { res.status(500).json({ message: "Erro interno." }); }
 };
 
-const getPendingEvents = async (req, res) => { 
+const rejectEvent = async (req, res) => {
     try {
-        const events = await prisma.event.findMany({ where: { status: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
-        res.json(events.map(mapEventToFrontend));
-    } catch (error) { res.status(500).json({ message: "Erro ao buscar pendentes" }); }
+        const { id } = req.params;
+        await prisma.event.update({
+            where: { id },
+            data: { status: 'rejected' }
+        });
+        res.json({ success: true, message: "Evento ocultado." });
+    } catch (error) { res.status(500).json({ message: "Erro ao ocultar evento." }); }
 };
 
-const getPendingHighlights = async (req, res) => { 
-    try {
-        const events = await prisma.event.findMany({ where: { highlightStatus: 'pending' }, include: { organizer: { select: { name: true, email: true } } } });
-        res.json(events.map(mapEventToFrontend));
-    } catch (e) { res.status(500).json({ message: "Erro" }); }
-};
-
+// --- FUNÇÕES "FANTASMAS" (Para manter a compatibilidade do Routes sem quebrar a API) ---
+const getEventParticipants = async (req, res) => { res.json({ eventTitle: "Histórico", participants: [] }); };
+const toggleTicketStatus = async (req, res) => { res.json({ success: true }); };
+const toggleFavorite = async (req, res) => { res.status(200).json({ success: true }); };
+const getPendingEvents = async (req, res) => { res.json([]); };
+const getPendingHighlights = async (req, res) => { res.json([]); };
 const approveHighlight = async (req, res) => { res.json({}); };
 const rejectHighlight = async (req, res) => { res.json({}); };
 

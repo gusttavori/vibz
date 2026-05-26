@@ -12,15 +12,15 @@
     flex: 1;
 }
 
-/* --- HERO SECTION (Igual ao protótipo do Cristo) --- */
+/* --- HERO SECTION --- */
 .hero {
     position: relative;
-    height: 70vh; /* Altura grande para impacto */
+    height: 70vh; 
     min-height: 500px;
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Texto alinhado à esquerda */
-    padding: 0 5%;
+    justify-content: center;
+    text-align: center;
     color: white;
 }
 
@@ -32,11 +32,10 @@
     z-index: 0;
 }
 
-/* Degradê roxo sobre a foto para manter a marca e legibilidade */
 .overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(to right, rgba(76, 1, 181, 0.5), rgba(0,0,0,0.2));
+    background: linear-gradient(to bottom, rgba(11, 9, 20, 0.4), rgba(11, 9, 20, 0.8));
     z-index: 1;
 }
 
@@ -44,97 +43,182 @@
     position: relative;
     z-index: 2;
     max-width: 800px;
+    padding: 0 20px;
+}
+
+.topBadge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 8px 20px;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .heroTitle {
-    font-size: 5rem; /* Fonte GIGANTE como no protótipo */
-    font-weight: 900;
-    line-height: 0.9;
-    margin-bottom: 20px;
-    text-transform: uppercase;
+    font-size: 4rem; 
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 25px;
     letter-spacing: -2px;
 }
 
 .heroSubtitle {
-    font-size: 1.25rem;
-    font-weight: 400;
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.9);
     line-height: 1.6;
-    max-width: 600px;
-    opacity: 0.9;
+    margin: 0 auto;
 }
 
-/* --- CONTEÚDO (ZIG ZAG) --- */
+/* --- CONTENT SECTIONS --- */
 .contentSection {
-    padding: 50px 0;
+    padding: 100px 20px;
 }
+
+.bgLight { background-color: #f8fafc; }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 20px;
 }
 
-.row {
+.gridSplit {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+}
+
+.imageBox {
+    position: relative;
+}
+
+.sectionImg {
+    width: 100%;
+    height: 500px;
+    object-fit: cover;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.imgFloatingBadge {
+    position: absolute;
+    bottom: -20px;
+    right: 20px;
+    background: #4C01B5;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 16px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 80px; /* Espaço grande entre imagem e texto */
+    gap: 10px;
+    box-shadow: 0 10px 20px rgba(76, 1, 181, 0.3);
 }
 
-.reverseRow {
-    flex-direction: row-reverse;
-}
-
-.imageCol, .textCol {
-    flex: 1;
-}
-
-.contentImage {
-    width: 100%;
-    height: auto;
-    border-radius: 4px; /* Bordas levemente arredondadas ou retas */
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    object-fit: cover;
-    aspect-ratio: 4/3;
-}
-
-.textCol h2 {
+.textBox h2 {
     font-size: 2.5rem;
     font-weight: 800;
-    color: #1e293b;
-    margin-bottom: 25px;
-    line-height: 1.1;
-    text-transform: uppercase;
+    color: #0f172a;
+    margin-bottom: 30px;
+    letter-spacing: -1px;
 }
 
-.textCol p {
-    font-size: 1.1rem;
+.textBox p {
+    font-size: 1.15rem;
     color: #475569;
-    line-height: 1.8;
+    line-height: 1.7;
     margin-bottom: 20px;
-    text-align: justify; /* Justificado como no protótipo */
 }
 
 .textLink {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    margin-top: 10px;
     color: #4C01B5;
     font-weight: 700;
     text-decoration: none;
     font-size: 1.1rem;
+    margin-top: 10px;
     transition: gap 0.2s;
 }
 
-.textLink:hover {
-    gap: 15px;
-    text-decoration: underline;
+.textLink:hover { gap: 15px; }
+
+/* --- FEATURES --- */
+.featuresRow {
+    display: flex;
+    gap: 30px;
+    margin-top: 30px;
 }
 
-/* RESPONSIVIDADE */
+.featureMini {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 180px;
+}
+
+.featureIcon {
+    color: #4C01B5;
+    font-size: 1.5rem;
+}
+
+.featureMini span {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* --- CTA SECTION --- */
+.ctaSection {
+    padding: 100px 20px;
+    background: linear-gradient(135deg, #1e0a3c 0%, #0f0524 100%);
+    color: white;
+    text-align: center;
+}
+
+.ctaContent h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+}
+
+.ctaContent p {
+    font-size: 1.1rem;
+    color: #cbd5e1;
+    margin-bottom: 40px;
+}
+
+.btnPrimaryGlow {
+    background-color: #4C01B5;
+    color: white;
+    padding: 18px 40px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 20px rgba(76, 1, 181, 0.4);
+}
+
+.btnPrimaryGlow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 30px rgba(76, 1, 181, 0.6);
+}
+
+/* --- RESPONSIVIDADE --- */
 @media (max-width: 900px) {
-    .heroTitle { font-size: 3.5rem; }
-    .row, .reverseRow { flex-direction: column; gap: 40px; }
-    .textCol h2 { font-size: 2rem; }
-    .hero { height: auto; padding: 100px 20px; }
+    .heroTitle { font-size: 3rem; }
+    .gridSplit { grid-template-columns: 1fr; gap: 60px; text-align: center; }
+    .reverseMobile { direction: rtl; } 
+    .reverseMobile > div { direction: ltr; } 
+    .textBox h2 { font-size: 2rem; }
+    .sectionImg { height: 350px; }
+    .featuresRow { justify-content: center; }
 }

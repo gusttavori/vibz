@@ -4,7 +4,7 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { FaArrowRight } from 'react-icons/fa';
+import { FaArrowRight, FaStar, FaHeart, FaMapMarkerAlt } from 'react-icons/fa';
 import styles from './Sobre.module.css';
 
 export default function Sobre() {
@@ -13,82 +13,92 @@ export default function Sobre() {
             <Header />
             
             <main className={styles.main}>
-                {/* HERO SECTION - Estilo "Vitrine Cultural" */}
+                {/* HERO SECTION - Premium */}
                 <section className={styles.hero}>
-                    {/* Substitua '/img/hero-vca.jpg' pela foto do Cristo ou da cidade */}
-                    <div className={styles.heroBackground} style={{ backgroundImage: "url('/img/hero-bg.jpg')" }}>
-                        <div className={styles.overlay}></div>
-                    </div>
+                    <div className={styles.heroBackground} style={{ backgroundImage: "url('/img/hero-bg.jpg')" }}></div>
+                    <div className={styles.overlay}></div>
                     
                     <div className={styles.heroContent}>
-                        <h1 className={styles.heroTitle}>VIBZ</h1>
+                        <span className={styles.topBadge}>Vitória da Conquista • BA</span>
+                        <h1 className={styles.heroTitle}>A pulsação cultural da cidade.</h1>
                         <p className={styles.heroSubtitle}>
-                            Nosso objetivo é conectar pessoas a experiências únicas, 
-                            tornando o entretenimento e o conhecimento acessíveis para todos.
+                            Nascemos para conectar pessoas a experiências únicas, transformando o entretenimento e a cultura em um pilar de acesso para todos.
                         </p>
                     </div>
                 </section>
 
-                {/* SEÇÃO 1: Foco no Produtor/Plataforma */}
+                {/* SEÇÃO 1: Foco na Curadoria */}
                 <section className={styles.contentSection}>
                     <div className={styles.container}>
-                        <div className={styles.row}>
-                            <div className={styles.imageCol}>
-                                {/* Coloque uma foto de alguém usando o computador ou um evento */}
+                        <div className={styles.gridSplit}>
+                            <div className={styles.imageBox}>
                                 <img 
                                     src="https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=1000&auto=format&fit=crop" 
-                                    alt="Gestão de Eventos" 
-                                    className={styles.contentImage} 
+                                    alt="Bastidores e Produção" 
+                                    className={styles.sectionImg} 
                                 />
+                                <div className={styles.imgFloatingBadge}>
+                                    <FaStar /> Curadoria Vibz
+                                </div>
                             </div>
-                            <div className={styles.textCol}>
-                                <h2>A ferramenta essencial para quem produz.</h2>
+                            <div className={styles.textBox}>
+                                <h2>Sua vitrine, nossa curadoria.</h2>
                                 <p>
-                                    A <strong>Vibz</strong> é a parceira ideal para produtores que desejam ampliar seu alcance em 
-                                    Vitória da Conquista e região. Nossa plataforma oferece um espaço dinâmico para 
-                                    divulgar shows, festivais, congressos e workshops.
+                                    Mais do que um guia, a <strong>Vibz</strong> é um selo de qualidade. Atuamos de forma estratégica para que os melhores eventos de Vitória da Conquista e região alcancem o público certo.
                                 </p>
                                 <p>
-                                    Além de fortalecer a cena local, ajudamos a impulsionar a economia criativa, 
-                                    promovendo maior visibilidade e controle financeiro para o seu evento. 
-                                    Faça parte dessa revolução.
+                                    Não somos apenas uma lista; somos o canal onde o produtor encontra visibilidade e o público encontra confiança. Selecionamos cada experiência com o rigor que a nossa cena cultural merece.
                                 </p>
-                                <Link href="/admin/new" className={styles.textLink}>
-                                    Começar agora <FaArrowRight />
-                                </Link>
+                                <a href="https://www.instagram.com/vibzeventos/" target="_blank" rel="noopener noreferrer" className={styles.textLink}>
+                                    Falar com a equipe <FaArrowRight />
+                                </a>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* SEÇÃO 2: Foco no Público (Invertido) */}
-                <section className={`${styles.contentSection}`}>
+                {/* SEÇÃO 2: Foco no Público (Fundo cinza claro) */}
+                <section className={`${styles.contentSection} ${styles.bgLight}`}>
                     <div className={styles.container}>
-                        <div className={`${styles.row} ${styles.reverseRow}`}>
-                            <div className={styles.imageCol}>
-                                {/* Coloque uma foto de público/show */}
-                                <img 
-                                    src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000&auto=format&fit=crop" 
-                                    alt="Público em evento" 
-                                    className={styles.contentImage} 
-                                />
-                            </div>
-                            <div className={styles.textCol}>
+                        <div className={`${styles.gridSplit} ${styles.reverseMobile}`}>
+                            <div className={styles.textBox}>
                                 <h2>Viva momentos inesquecíveis.</h2>
                                 <p>
-                                    Quer ficar por dentro de tudo o que acontece na cena de Conquista? 
-                                    A Vibz é a sua agenda oficial.
+                                    Onde você vai hoje? A resposta está aqui. Nossa missão é facilitar o acesso à cultura e ao lazer, reunindo em um só lugar tudo o que está acontecendo de relevante na cidade.
                                 </p>
                                 <p>
-                                    Nossa missão é facilitar o acesso à cultura e ao entretenimento. 
-                                    Aqui você descobre, participa e garante seu ingresso de forma 100% segura e digital.
-                                    Esqueça filas e burocracia. Explore, aproveite e viva a cidade com a Vibz!
+                                    Com uma interface intuitiva, a Vibz permite que você explore a agenda da cidade e seja direcionado para os canais oficiais de venda de forma rápida e segura.
                                 </p>
-                                <Link href="/" className={styles.textLink}>
-                                    Explorar agenda <FaArrowRight />
-                                </Link>
+                                <div className={styles.featuresRow}>
+                                    <div className={styles.featureMini}>
+                                        <FaHeart className={styles.featureIcon} />
+                                        <span>Feito por quem ama a cidade</span>
+                                    </div>
+                                    <div className={styles.featureMini}>
+                                        <FaMapMarkerAlt className={styles.featureIcon} />
+                                        <span>O melhor da região em um clique</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={styles.imageBox}>
+                                <img 
+                                    src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000&auto=format&fit=crop" 
+                                    alt="Público em Evento" 
+                                    className={styles.sectionImg} 
+                                />
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                {/* CTA FINAL - Fundo Escuro Premium */}
+                <section className={styles.ctaSection}>
+                    <div className={styles.ctaContent}>
+                        <h2>Pronto para viver a cidade?</h2>
+                        <p>Explore os eventos de hoje e descubra novas experiências.</p>
+                        <Link href="/" className={styles.btnPrimaryGlow}>
+                            Explorar Agenda <FaArrowRight />
+                        </Link>
                     </div>
                 </section>
             </main>

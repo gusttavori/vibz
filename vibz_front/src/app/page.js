@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-    FaMagic, FaBullhorn, FaMoneyBillWave, FaArrowRight, FaSearch, FaTimes, FaLayerGroup,
-    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher
+    FaBullhorn, FaSearch, FaTimes, FaLayerGroup,
+    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, 
+    FaUtensils, FaChalkboardTeacher, FaStar, FaLink, FaArrowRight, FaMapMarkerAlt
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -17,7 +18,6 @@ import './Home.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Lista de categorias para sugestão no autocomplete
 const SYSTEM_CATEGORIES = [
     'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura',
     'Esportes', 'Gastronomia', 'Cursos e Workshops'
@@ -64,7 +64,7 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE COM LÓGICA DE CATEGORIA ---
+    // --- AUTOCOMPLETE ---
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length >= 1) {
@@ -81,7 +81,6 @@ export default function Home() {
                     const response = await fetch(`${API_BASE_URL}/events/search?${params.toString()}`);
                     if (response.ok) {
                         const data = await response.json();
-                        // Filtro 1: Não sugerir eventos passados na busca
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const validSuggestions = data.filter(event => {
@@ -134,7 +133,9 @@ export default function Home() {
 
         if (targetRef && targetRef.current) {
             setTimeout(() => {
-                targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const yOffset = -80; 
+                const y = targetRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
             }, 100);
         }
     };
@@ -150,17 +151,6 @@ export default function Home() {
         setSuggestions([]);
         setMatchedCategory(null);
         setShowSuggestions(false);
-    };
-
-    const handleMktCreateEvent = () => {
-        if (isUserLoggedIn) {
-            router.push('/admin/new');
-        } else {
-            toast.error("Você precisa estar logado para criar um evento.");
-            setTimeout(() => {
-                router.push('/login');
-            }, 1500);
-        }
     };
 
     const getFilteredEvents = (events, filter) => {
@@ -202,23 +192,18 @@ export default function Home() {
         });
     };
 
-    // --- FILTRO GLOBAL DE DATA PARA OCULTAR EVENTOS PASSADOS ---
     const fetchCategory = async (categoryName, key) => {
         try {
             const url = `${API_BASE_URL}/events/category/${encodeURIComponent(categoryName)}`;
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-
-                // Filtro para ocultar eventos passados (anteriores a hoje)
                 const today = new Date();
-                today.setHours(0, 0, 0, 0); // Zera as horas para comparar apenas os dias
-
+                today.setHours(0, 0, 0, 0);
                 const validEvents = data.filter(event => {
                     const eventDate = new Date(event.date);
-                    return eventDate >= today; // Só mantém se for hoje ou no futuro
+                    return eventDate >= today;
                 });
-
                 setCategoryEvents(prev => ({ ...prev, [key]: validEvents }));
             } else {
                 setCategoryEvents(prev => ({ ...prev, [key]: [] }));
@@ -240,7 +225,6 @@ export default function Home() {
         fetchCategory('Cursos e Workshops', 'cursos');
     }, []);
 
-    // --- LOGIN E FAVORITOS ---
     useEffect(() => {
         const checkLoginStatus = () => {
             if (typeof window !== 'undefined') {
@@ -303,15 +287,12 @@ export default function Home() {
                 const response = await fetch(`${API_BASE_URL}/events/featured`);
                 if (response.ok) {
                     const data = await response.json();
-
-                    // Filtro de data também para o Carrossel de Destaques
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const validFeatured = data.filter(event => {
                         const eventDate = new Date(event.date);
                         return eventDate >= today;
                     });
-
                     setFeaturedEvents(validFeatured);
                 }
             } catch (error) { console.error("Erro destaques:", error); }
@@ -329,11 +310,8 @@ export default function Home() {
         }
 
         setFavoritedEventIds(prev => {
-            if (isFavoriting) {
-                return [...prev, eventId];
-            } else {
-                return prev.filter(id => id !== eventId);
-            }
+            if (isFavoriting) return [...prev, eventId];
+            return prev.filter(id => id !== eventId);
         });
 
         try {
@@ -362,7 +340,6 @@ export default function Home() {
                 toast.success(data.message || (isFavoriting ? "Adicionado aos favoritos!" : "Removido dos favoritos."));
             }
         } catch (error) {
-            console.error('Erro favorito:', error);
             setFavoritedEventIds(prev => {
                 if (isFavoriting) return prev.filter(id => id !== eventId);
                 return [...prev, eventId];
@@ -376,12 +353,12 @@ export default function Home() {
     };
 
     const categoriesConfig = [
-        { name: 'Acadêmico', icon: <FaGraduationCap size={28} />, ref: academicoRef, key: 'academico' },
-        { name: 'Festas e Shows', icon: <FaMusic size={28} />, ref: festasRef, key: 'festas' },
-        { name: 'Teatro', icon: <FaTheaterMasks size={28} />, ref: teatroRef, key: 'teatro' },
-        { name: 'Esportes', icon: <FaTrophy size={28} />, ref: esportesRef, key: 'esportes' },
-        { name: 'Gastronomia', icon: <FaUtensils size={28} />, ref: gastronomiaRef, key: 'gastronomia' },
-        { name: 'Cursos', icon: <FaChalkboardTeacher size={28} />, ref: cursosRef, key: 'cursos' }
+        { name: 'Festas e Shows', icon: <FaMusic size={24} />, ref: festasRef, key: 'festas' },
+        { name: 'Teatro e Cultura', icon: <FaTheaterMasks size={24} />, ref: teatroRef, key: 'teatro' },
+        { name: 'Acadêmico', icon: <FaGraduationCap size={24} />, ref: academicoRef, key: 'academico' },
+        { name: 'Gastronomia', icon: <FaUtensils size={24} />, ref: gastronomiaRef, key: 'gastronomia' },
+        { name: 'Cursos', icon: <FaChalkboardTeacher size={24} />, ref: cursosRef, key: 'cursos' },
+        { name: 'Esportes', icon: <FaTrophy size={24} />, ref: esportesRef, key: 'esportes' }
     ];
 
     const categoriesToShowInNavigation = categoriesConfig.filter(cat =>
@@ -406,7 +383,7 @@ export default function Home() {
                     ))}
                 </div>
                 <div className="event-list">
-                    {loading ? <p>Carregando...</p> : filteredEvents.length > 0 ? (
+                    {loading ? <p className="loading-text">Buscando os melhores eventos...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <EventCard
                                 key={event._id || event.id}
@@ -418,11 +395,9 @@ export default function Home() {
                             />
                         ))
                     ) : (
-                        <div className="no-events-container" style={{ width: '100%', padding: '30px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '12px' }}>
-                            <p style={{ color: '#666', fontSize: '1rem', margin: 0 }}>
-                                Nenhum evento encontrado para <strong>"{activeFilter}"</strong> nesta categoria.
-                            </p>
-                            <button onClick={() => handleFilterChange(categoryKey, 'Todos')} style={{ marginTop: '10px', background: 'none', border: 'none', color: '#4C01B5', cursor: 'pointer', textDecoration: 'underline', fontWeight: '600' }}>Ver todos os eventos</button>
+                        <div className="no-events-container">
+                            <p>Nenhum evento encontrado para <strong>"{activeFilter}"</strong> nesta categoria.</p>
+                            <button onClick={() => handleFilterChange(categoryKey, 'Todos')} className="clear-filter-btn">Ver todos os eventos</button>
                         </div>
                     )}
                 </div>
@@ -435,14 +410,11 @@ export default function Home() {
             <Toaster position="top-center" reverseOrder={false} />
             <Header />
 
-            {/* Barra de Busca */}
             <div className="search-bar-container">
                 <div className="search-outer-border-wrapper" ref={searchWrapperRef}>
                     <button className="location-button-styled" onClick={() => setShowCityMenu(!showCityMenu)}>
-                        <svg className="location-icon-styled" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z" />
-                        </svg>
-                        {selectedCity && <span className="selected-city-text">{selectedCity}</span>}
+                        <FaMapMarkerAlt size={16} />
+                        {selectedCity ? <span className="selected-city-text">{selectedCity}</span> : <span className="selected-city-text">Todas as cidades</span>}
                         {selectedCity && (
                             <div className="clear-icon-wrapper" onClick={handleClearCity} title="Limpar localização">
                                 <FaTimes size={12} />
@@ -450,18 +422,22 @@ export default function Home() {
                         )}
                     </button>
 
-                    <div className="input-wrapper-relative" style={{ flexGrow: 1, position: 'relative', height: '100%' }}>
+                    <div className="input-wrapper-relative">
                         <input
                             type="text"
-                            placeholder="Busque por eventos ou categorias"
+                            placeholder="Busque por eventos, artistas ou categorias"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
                             className="search-input-field"
                         />
-                        {searchTerm && (
+                        {searchTerm ? (
                             <button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa">
-                                <FaTimes size={14} color="#999" />
+                                <FaTimes size={14} color="#94a3b8" />
+                            </button>
+                        ) : (
+                            <button className="search-button-styled">
+                                <FaSearch size={14} />
                             </button>
                         )}
                     </div>
@@ -473,21 +449,19 @@ export default function Home() {
                             </div>
                             {cities.length > 0 ? cities.map((city, idx) => (
                                 <div key={idx} className="city-dropdown-item" onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}>{city}</div>
-                            )) : <div className="city-dropdown-item">Carregando...</div>}
+                            )) : <div className="city-dropdown-item">Carregando locais...</div>}
                         </div>
                     )}
 
                     {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
                         <div className="suggestions-dropdown">
-                            {/* Sugestão de Categoria */}
                             {matchedCategory && (
                                 <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
                                     <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
                                     <div className="suggestion-info">
-                                        <span className="suggestion-title">Ver todos em <strong>{matchedCategory}</strong></span>
+                                        <span className="suggestion-title">Ver tudo em <strong>{matchedCategory}</strong></span>
                                         <span className="suggestion-date">Explorar categoria completa</span>
                                     </div>
-                                    <FaArrowRight size={12} color="#4C01B5" />
                                 </div>
                             )}
 
@@ -516,7 +490,7 @@ export default function Home() {
                     <div className="categories-list">
                         {categoriesToShowInNavigation.map((cat, index) => (
                             <div key={index} className="category-item" onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                                <div className="category-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4C01B5' }}>
+                                <div className="category-icon">
                                     {cat.icon}
                                 </div>
                                 <span className="category-name">{cat.name}</span>
@@ -526,43 +500,58 @@ export default function Home() {
                 </div>
             </div>
 
-            {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
-            {renderSection("Festas e Shows", 'festas', festasRef)}
-            {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
-            {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
-            {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
-            {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
+            <div className="main-content-wrapper">
+                {renderSection("Festas e Shows", 'festas', festasRef)}
+                {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
+                {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
+                {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
+                {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
+                {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
+            </div>
 
-            <div className="mkt-container-modern">
-                <div className="mkt-content-modern">
-                    <div className="mkt-text-modern">
-                        <h2>Publique e venda seus eventos na Vibz</h2>
-                        <p className="mkt-subtitle">
-                            A plataforma completa para você gerenciar seus eventos, vender ingressos e acompanhar resultados em tempo real.
+            {/* SEÇÃO MARKETING REFORMULADA (Foco em Produtores - Design Premium) */}
+            <div className="mkt-premium-section">
+                <div className="mkt-premium-content">
+                    <div className="mkt-premium-text">
+                        <span className="mkt-premium-badge">Para Produtores</span>
+                        <h2 className="mkt-premium-title">A vitrine perfeita para o seu evento.</h2>
+                        <p className="mkt-premium-subtitle">
+                            Conecte-se com milhares de pessoas que buscam experiências em Vitória da Conquista e região. A Vibz é a ponte direta para o seu público.
                         </p>
-                        <div className="mkt-features-grid">
-                            <div className="feature-card">
-                                <div className="feature-icon-wrapper"><FaMagic className="feature-icon" /></div>
-                                <div><h4>Crie em minutos</h4><p>Cadastro simples e intuitivo. Seu evento no ar instantaneamente.</p></div>
+
+                        <div className="mkt-premium-list">
+                            <div className="mkt-list-item">
+                                <div className="mkt-list-icon"><FaBullhorn /></div>
+                                <div className="mkt-list-content">
+                                    <strong>Visibilidade Estratégica</strong>
+                                    <span>Apareça para quem realmente quer sair de casa.</span>
+                                </div>
                             </div>
-                            <div className="feature-card">
-                                <div className="feature-icon-wrapper"><FaBullhorn className="feature-icon" /></div>
-                                <div><h4>Divulgue fácil</h4><p>Ferramentas de marketing integradas para alcançar mais público.</p></div>
+                            <div className="mkt-list-item">
+                                <div className="mkt-list-icon"><FaStar /></div>
+                                <div className="mkt-list-content">
+                                    <strong>Curadoria e Destaque</strong>
+                                    <span>Ganhe o selo Vibz e esgote seus ingressos mais rápido.</span>
+                                </div>
                             </div>
-                            <div className="feature-card">
-                                <div className="feature-icon-wrapper"><FaMoneyBillWave className="feature-icon" /></div>
-                                <div><h4>Venda segura</h4><p>Receba pagamentos com segurança e saque direto na sua conta.</p></div>
+                            <div className="mkt-list-item">
+                                <div className="mkt-list-icon"><FaLink /></div>
+                                <div className="mkt-list-content">
+                                    <strong>Tráfego Direto</strong>
+                                    <span>Levamos o cliente pronto para comprar no seu site oficial.</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="mkt-cta-group">
-                            <button className="btn-primary-mkt" onClick={handleMktCreateEvent}>
-                                Criar meu evento <FaArrowRight />
+
+                        <div className="mkt-premium-cta">
+                            <button className="btn-premium-glow" onClick={() => window.open("https://www.instagram.com/vibzeventos/", "_blank")}>
+                                Divulgar Meu Evento <FaArrowRight />
                             </button>
-                            <button className="btn-secondary-mkt" onClick={() => window.open("https://www.instagram.com/vibzeventos/", "_blank")}>Saiba mais</button>
                         </div>
                     </div>
-                    <div className="mkt-image-modern">
-                        <img src="/img/mockup.png" alt="Dashboard Vibz no celular" />
+                    <div className="mkt-premium-visual">
+                        <div className="glow-effect"></div>
+                        <img src="/img/mockup.png" alt="App Vibz" className="mkt-mockup-img" />
                     </div>
                 </div>
             </div>
