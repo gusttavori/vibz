@@ -59,6 +59,7 @@
   gap: 8px;
   color: var(--primary-purple);
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .location-button-styled:hover {
@@ -106,7 +107,7 @@
   background: transparent;
   font-size: 1rem;
   color: var(--text-dark);
-  padding: 10px 50px 10px 20px;
+  padding: 10px 85px 10px 20px; 
   font-family: inherit;
 }
 
@@ -116,7 +117,7 @@
 
 .clear-search-btn {
   position: absolute;
-  right: 15px;
+  right: 55px; 
   background: transparent;
   border: none;
   cursor: pointer;
@@ -145,6 +146,7 @@
   border-radius: 50%;
   color: white;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .search-button-styled:hover {
@@ -185,8 +187,8 @@
 }
 
 .suggestion-image { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; }
-.suggestion-info { display: flex; flex-direction: column; }
-.suggestion-title { font-weight: 700; color: var(--text-dark); }
+.suggestion-info { display: flex; flex-direction: column; overflow: hidden; }
+.suggestion-title { font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .suggestion-date { font-size: 0.8rem; color: var(--text-medium); margin-top: 2px; }
 
 .category-highlight {
@@ -290,7 +292,13 @@
   border-radius: 4px;
 }
 
-.filter-buttons { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+.filter-buttons { 
+  display: flex; 
+  gap: 10px; 
+  margin-bottom: 25px; 
+  flex-wrap: wrap; 
+}
+
 .filter-button {
   padding: 8px 20px;
   background: white;
@@ -303,10 +311,12 @@
   transition: all 0.2s;
   font-family: inherit;
 }
+
 .filter-button:hover {
   background: #f8fafc;
   border-color: #cbd5e1;
 }
+
 .filter-button.active { 
   background: var(--primary-purple); 
   color: white; 
@@ -348,7 +358,7 @@
   font-size: 0.95rem;
 }
 
-/* --- MKT PREMIUM SECTION (Fundo mais vibrante e Imagem suavizada) --- */
+/* --- MKT PREMIUM SECTION --- */
 .mkt-premium-section {
   background: linear-gradient(135deg, #1e0a3c 0%, #0f0524 100%);
   padding: 100px 20px;
@@ -483,7 +493,6 @@
   align-items: center;
 }
 
-/* Brilho reduzido e focado */
 .glow-effect {
   position: absolute;
   width: 250px;
@@ -499,10 +508,10 @@
   position: relative;
   z-index: 1;
   max-width: 100%;
-  width: 360px; /* Levemente menor para não dominar a tela */
+  width: 360px;
   transform: translateY(0);
-  filter: drop-shadow(0 15px 30px rgba(0,0,0,0.25)); /* Sombra mais elegante */
-  animation: floatMockup 8s ease-in-out infinite; /* Flutuação mais lenta e natural */
+  filter: drop-shadow(0 15px 30px rgba(0,0,0,0.25));
+  animation: floatMockup 8s ease-in-out infinite;
 }
 
 @keyframes floatMockup {
@@ -511,42 +520,136 @@
   100% { transform: translateY(0px); }
 }
 
-/* RESPONSIVO */
+/* =========================================
+   MEDIA QUERIES - RESPONSIVIDADE COMPLETA 
+   ========================================= */
+
+/* Dispositivos intermediários (Tablets) */
 @media (max-width: 900px) {
   .mkt-premium-content {
     grid-template-columns: 1fr;
     text-align: center;
+    gap: 40px;
   }
   .mkt-premium-badge {
     margin: 0 auto 20px auto;
   }
   .mkt-premium-title {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
   }
   .mkt-premium-subtitle {
     margin: 0 auto 40px auto;
   }
   .mkt-list-item {
     text-align: left;
+    max-width: 500px;
+    margin: 0 auto;
   }
   .btn-premium-glow {
     width: 100%;
+    max-width: 350px;
+    margin: 0 auto;
     justify-content: center;
-  }
-  .mkt-mockup-img {
-    width: 280px;
   }
 }
 
+/* Celulares padrão */
 @media (max-width: 768px) {
-  .search-outer-border-wrapper { max-width: 100%; border-radius: 12px; height: 50px; }
-  .location-button-styled { border-radius: 12px 0 0 12px; padding: 0 15px; }
-  .selected-city-text { max-width: 90px; }
-  .search-input-field { font-size: 16px; padding: 10px; }
+  /* Search Bar */
+  .search-bar-container { 
+    padding: 30px 15px 15px; 
+  }
+  .search-outer-border-wrapper { 
+    max-width: 100%; 
+    border-radius: 16px; 
+    height: 52px; 
+  }
+  .location-button-styled { 
+    border-radius: 16px 0 0 16px; 
+    padding: 0 10px; /* Reduzido para dar espaço ao input */
+  }
+  .selected-city-text { 
+    max-width: 70px; /* Reduzido de 90px */
+    font-size: 0.8rem;
+  }
+  .search-input-field { 
+    font-size: 16px; /* Evita zoom automático em iPhones */
+    padding: 10px 45px 10px 10px; 
+  }
+  .search-input-field::placeholder {
+    font-size: 0.85rem; /* Diminui o texto provisório */
+  }
+  .search-button-styled { 
+    width: 36px; 
+    height: 36px; 
+    right: 6px; 
+  }
+  .clear-search-btn {
+    right: 48px;
+    padding: 6px;
+  }
   
-  .categories-list { justify-content: flex-start; }
-  .event-list { grid-template-columns: 1fr; }
+  /* Categorias */
+  .categories-list { 
+    justify-content: flex-start; 
+    padding: 10px 15px; 
+    gap: 15px;
+  }
+  .category-item { 
+    min-width: 75px; 
+  }
+  .category-icon { 
+    width: 55px; 
+    height: 55px; 
+    border-radius: 16px; 
+  }
+
+  /* Filtros */
+  .filter-buttons { 
+    flex-wrap: nowrap; 
+    overflow-x: auto; 
+    padding-bottom: 5px; 
+    scrollbar-width: none; 
+  }
+  .filter-buttons::-webkit-scrollbar { 
+    display: none; 
+  }
+  .filter-button { 
+    white-space: nowrap; 
+    font-size: 0.85rem; 
+    padding: 6px 16px; 
+  }
+
+  /* Grid de Eventos */
+  .event-list { 
+    grid-template-columns: 1fr; 
+  }
   
-  .mkt-premium-section { padding: 60px 20px; }
-  .mkt-premium-title { font-size: 2rem; }
+  /* Marketing Premium */
+  .mkt-premium-section { 
+    padding: 60px 20px; 
+  }
+  .mkt-premium-title { 
+    font-size: 2.2rem; 
+  }
+  /* Remove totalmente a imagem e o container visual em telas mobile */
+  .mkt-premium-visual {
+    display: none;
+  }
+}
+
+/* Celulares pequenos (ex: iPhone SE) */
+@media (max-width: 480px) {
+  .mkt-premium-title { 
+    font-size: 1.8rem; 
+  }
+  .mkt-list-item {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .suggestion-info {
+    max-width: 200px;
+  }
 }

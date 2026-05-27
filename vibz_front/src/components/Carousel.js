@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { FaChevronLeft, FaChevronRight, FaTicketAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import './Carousel.css';
 
@@ -53,15 +54,26 @@ const Carousel = ({ events = [] }) => {
             <div 
               key={event._id || index}
               className={`hero-slide ${isActive ? 'active' : ''}`}
-              style={{ backgroundImage: `url(${event.imageUrl})` }}
               onClick={() => handleSlideClick(event._id)}
+              /* REMOVIDO: O position relative que estava quebrando o layout */
             >
-              <div className="hero-overlay"></div>
+              {/* Imagem Otimizada (Next.js) */}
+              {event.imageUrl && (
+                <Image 
+                  src={event.imageUrl}
+                  alt={event.title || "Evento em destaque"}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  priority={index === 0} 
+                />
+              )}
 
-              <div className="hero-content-wrapper">
+              {/* Overlay Escuro */}
+              <div className="hero-overlay" style={{ zIndex: 1 }}></div>
+
+              <div className="hero-content-wrapper" style={{ zIndex: 2 }}>
                 <div className="hero-glass-card">
                   
-                  {/* 1. Título e Localização no topo */}
                   <div className="hero-info-top">
                     <h2 className="hero-title">{event.title}</h2>
                     <div className="hero-meta">
@@ -70,7 +82,6 @@ const Carousel = ({ events = [] }) => {
                     </div>
                   </div>
 
-                  {/* 2. Rodapé do Card: Data + Botão na mesma linha */}
                   <div className="hero-card-footer">
                     <div className="hero-date-badge">
                       <span className="hero-day">{day}</span>
@@ -91,14 +102,14 @@ const Carousel = ({ events = [] }) => {
 
       {events.length > 1 && (
         <>
-          <button className="hero-nav prev" onClick={(e) => { e.stopPropagation(); prevSlide(); }}>
+          <button className="hero-nav prev" onClick={(e) => { e.stopPropagation(); prevSlide(); }} style={{ zIndex: 3 }}>
             <FaChevronLeft />
           </button>
-          <button className="hero-nav next" onClick={(e) => { e.stopPropagation(); nextSlide(); }}>
+          <button className="hero-nav next" onClick={(e) => { e.stopPropagation(); nextSlide(); }} style={{ zIndex: 3 }}>
             <FaChevronRight />
           </button>
 
-          <div className="hero-indicators">
+          <div className="hero-indicators" style={{ zIndex: 3 }}>
             {events.map((_, index) => (
               <span
                 key={index}

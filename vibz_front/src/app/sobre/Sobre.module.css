@@ -75,10 +75,10 @@
 
 /* --- CONTENT SECTIONS --- */
 .contentSection {
-    padding: 100px 20px;
+    padding: 50px 20px;
 }
 
-.bgLight { background-color: #f8fafc; }
+.bgLight { background-color: #fff; }
 
 .container {
     max-width: 1200px;

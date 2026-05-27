@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // <-- Importação do Image do Next.js
 import {
     FaBullhorn, FaSearch, FaTimes, FaLayerGroup,
     FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, 
@@ -275,7 +276,25 @@ export default function Home() {
         const fetchCities = async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/events/cities`);
-                if (response.ok) setCities(await response.json());
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        const uniqueCitiesMap = new Map();
+                        
+                        data.forEach(city => {
+                            if (typeof city === 'string' && city.trim() !== '') {
+                                const cleanCity = city.trim(); 
+                                const lowerCity = cleanCity.toLowerCase(); 
+                                
+                                if (!uniqueCitiesMap.has(lowerCity)) {
+                                    uniqueCitiesMap.set(lowerCity, cleanCity);
+                                }
+                            }
+                        });
+
+                        setCities(Array.from(uniqueCitiesMap.values()));
+                    }
+                }
             } catch (error) { console.error("Erro cidades:", error); }
         };
         fetchCities();
@@ -467,7 +486,13 @@ export default function Home() {
 
                             {suggestions.map((event) => (
                                 <div key={event._id || event.id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id || event.id)}>
-                                    <img src={event.imageUrl || 'https://placehold.co/40x40'} alt="" className="suggestion-image" />
+                                    <Image 
+                                        src={event.imageUrl || 'https://placehold.co/40x40/png'} 
+                                        alt={event.title} 
+                                        width={36} 
+                                        height={36} 
+                                        className="suggestion-image" 
+                                    />
                                     <div className="suggestion-info">
                                         <span className="suggestion-title">{event.title}</span>
                                         <span className="suggestion-date">{new Date(event.date).toLocaleDateString('pt-BR')} • {event.city}</span>
@@ -509,7 +534,6 @@ export default function Home() {
                 {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
             </div>
 
-            {/* SEÇÃO MARKETING REFORMULADA (Foco em Produtores - Design Premium) */}
             <div className="mkt-premium-section">
                 <div className="mkt-premium-content">
                     <div className="mkt-premium-text">
@@ -551,7 +575,14 @@ export default function Home() {
                     </div>
                     <div className="mkt-premium-visual">
                         <div className="glow-effect"></div>
-                        <img src="/img/mockup.png" alt="App Vibz" className="mkt-mockup-img" />
+                        <Image 
+                            src="/img/mockup.png" 
+                            alt="App Vibz" 
+                            width={360} 
+                            height={720} 
+                            className="mkt-mockup-img" 
+                            style={{ width: '100%', height: 'auto', maxWidth: '360px' }} 
+                        />
                     </div>
                 </div>
             </div>

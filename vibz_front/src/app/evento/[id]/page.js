@@ -24,7 +24,15 @@ export default function EventoDetalhes() {
             .catch(() => { toast.error("Erro ao carregar"); setLoading(false); });
     }, [id]);
 
-    if (loading) return <div className="loader">Carregando experiência...</div>;
+    if (loading) {
+    return (
+        <div className="vibz-loading-container">
+            <div className="vibz-spinner"></div>
+            <h2 className="vibz-loading-title">Preparando a Vibe...</h2>
+            <p className="vibz-loading-subtitle">Buscando os detalhes deste evento para você.</p>
+        </div>
+    );
+}
     if (!evento) return <div className="error-screen">Evento não encontrado.</div>;
 
     const displayDate = new Date(evento.date || evento.createdAt);
@@ -82,13 +90,18 @@ export default function EventoDetalhes() {
                         <div className="vibz-guide">
                             <FaInfoCircle className="guide-icon" />
                             <h3>Agenda Vibz</h3>
-                            <p>Curadoria oficial. Clique abaixo para acessar os ingressos no canal do produtor.</p>
+                            
                             {evento.externalUrl ? (
-                                <a href={evento.externalUrl} target="_blank" rel="noopener noreferrer" className="vibz-btn-primary">
-                                    <FaExternalLinkAlt /> Acessar Ingressos
-                                </a>
+                                <>
+                                    <p>Curadoria oficial. Clique abaixo para acessar os ingressos no canal do produtor.</p>
+                                    <a href={evento.externalUrl} target="_blank" rel="noopener noreferrer" className="vibz-btn-primary">
+                                        <FaExternalLinkAlt /> Acessar Ingressos
+                                    </a>
+                                </>
                             ) : (
-                                <p className="vibz-msg">Mais informações nas redes oficiais do produtor.</p>
+                                <p className="vibz-msg">
+                                    Curadoria oficial. Acesse as redes sociais da produção ou do evento para mais detalhes e informações sobre ingressos.
+                                </p>
                             )}
                         </div>
                     </aside>
