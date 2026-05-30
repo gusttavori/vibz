@@ -3,7 +3,8 @@ import "./globals.css";
 import "./Auth.css"; 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import InstallPrompt from '@/components/InstallPrompt';
-import PWACleaner from '@/components/PWACleaner'; // <--- Importe o novo componente
+import PWACleaner from '@/components/PWACleaner';
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,11 +30,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-br">
       <body className={inter.className}>
-        <PWACleaner /> {/* <--- Adicione o limpador aqui */}
+        <PWACleaner />
         <GoogleOAuthProvider clientId="433598857050-jrj1482ea6ea3kvvshrr711qolunsv48.apps.googleusercontent.com">
             {children}
             <InstallPrompt />
         </GoogleOAuthProvider>
+        
+        {/* Rastreamento do Google Analytics de forma otimizada */}
+        <GoogleAnalytics gaId="G-37B5HVWY8J" />
       </body>
     </html>
   );
