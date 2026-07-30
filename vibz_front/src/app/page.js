@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // <-- Importação do Image do Next.js
+import Image from 'next/image';
 import {
-    FaBullhorn, FaSearch, FaTimes, FaLayerGroup,
-    FaGraduationCap, FaMusic, FaTheaterMasks, FaTrophy, 
-    FaUtensils, FaChalkboardTeacher, FaStar, FaLink, FaArrowRight, FaMapMarkerAlt
+    FaBullhorn, FaLayerGroup, FaGraduationCap, FaMusic, 
+    FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher, 
+    FaStar, FaLink, FaArrowRight
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -19,25 +19,11 @@ import './Home.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-const SYSTEM_CATEGORIES = [
-    'Acadêmico / Congresso', 'Festas e Shows', 'Teatro e Cultura',
-    'Esportes', 'Gastronomia', 'Cursos e Workshops'
-];
-
 export default function Home() {
     const router = useRouter();
 
     const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
     const [currentUserId, setCurrentUserId] = useState(null);
-
-    const [showCityMenu, setShowCityMenu] = useState(false);
-    const [cities, setCities] = useState([]);
-    const [selectedCity, setSelectedCity] = useState('');
-
-    const [searchTerm, setSearchTerm] = useState('');
-    const [suggestions, setSuggestions] = useState([]);
-    const [matchedCategory, setMatchedCategory] = useState(null);
-    const [showSuggestions, setShowSuggestions] = useState(false);
 
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -56,8 +42,6 @@ export default function Home() {
 
     const [favoritedEventIds, setFavoritedEventIds] = useState([]);
 
-    const searchWrapperRef = useRef(null);
-
     const academicoRef = useRef(null);
     const festasRef = useRef(null);
     const teatroRef = useRef(null);
@@ -65,107 +49,9 @@ export default function Home() {
     const gastronomiaRef = useRef(null);
     const cursosRef = useRef(null);
 
-    // --- AUTOCOMPLETE ---
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(async () => {
-            if (searchTerm.length >= 1) {
-                try {
-                    const catFound = SYSTEM_CATEGORIES.find(cat =>
-                        cat.toLowerCase().includes(searchTerm.toLowerCase())
-                    );
-                    setMatchedCategory(catFound || null);
-
-                    const params = new URLSearchParams();
-                    params.append('query', searchTerm);
-                    if (selectedCity) params.append('city', selectedCity);
-
-                    const response = await fetch(`${API_BASE_URL}/events/search?${params.toString()}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const validSuggestions = data.filter(event => {
-                            const eventDate = new Date(event.date);
-                            return eventDate >= today;
-                        });
-
-                        setSuggestions(validSuggestions.slice(0, 5));
-                        setShowSuggestions(true);
-                    }
-                } catch (error) {
-                    console.error("Erro no autocomplete:", error);
-                }
-            } else {
-                setSuggestions([]);
-                setMatchedCategory(null);
-                setShowSuggestions(false);
-            }
-        }, 300);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm, selectedCity]);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target)) {
-                setShowSuggestions(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const handleSuggestionClick = (eventId) => {
-        router.push(`/evento/${eventId}`);
-        setShowSuggestions(false);
-    };
-
-    const handleCategorySuggestionClick = (catName) => {
-        setShowSuggestions(false);
-        setSearchTerm('');
-
-        let targetRef = null;
-        if (catName === 'Acadêmico / Congresso') targetRef = academicoRef;
-        else if (catName === 'Festas e Shows') targetRef = festasRef;
-        else if (catName === 'Teatro e Cultura') targetRef = teatroRef;
-        else if (catName === 'Esportes') targetRef = esportesRef;
-        else if (catName === 'Gastronomia') targetRef = gastronomiaRef;
-        else if (catName === 'Cursos e Workshops') targetRef = cursosRef;
-
-        if (targetRef && targetRef.current) {
-            setTimeout(() => {
-                const yOffset = -80; 
-                const y = targetRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }, 100);
-        }
-    };
-
-    const handleClearCity = (e) => {
-        e.stopPropagation();
-        setSelectedCity('');
-        setShowCityMenu(false);
-    };
-
-    const handleClearSearch = () => {
-        setSearchTerm('');
-        setSuggestions([]);
-        setMatchedCategory(null);
-        setShowSuggestions(false);
-    };
-
     const getFilteredEvents = (events, filter) => {
         if (!events || events.length === 0) return [];
-
-        let filteredByCity = events;
-        if (selectedCity) {
-            filteredByCity = events.filter(event => {
-                const eventCity = event.address?.city || event.city || event.location || "";
-                return eventCity.toLowerCase().includes(selectedCity.toLowerCase());
-            });
-        }
-
-        if (filter === 'Todos') return filteredByCity;
+        if (filter === 'Todos') return events;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -174,7 +60,7 @@ export default function Home() {
         endOfWeek.setDate(today.getDate() + 7);
         endOfWeek.setHours(23, 59, 59, 999);
 
-        return filteredByCity.filter(event => {
+        return events.filter(event => {
             const eventDate = new Date(event.date);
             const eventStartOfDay = new Date(eventDate);
             eventStartOfDay.setHours(0, 0, 0, 0);
@@ -271,34 +157,6 @@ export default function Home() {
             fetchFavoritedEvents();
         }
     }, [currentUserId]);
-
-    useEffect(() => {
-        const fetchCities = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/events/cities`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        const uniqueCitiesMap = new Map();
-                        
-                        data.forEach(city => {
-                            if (typeof city === 'string' && city.trim() !== '') {
-                                const cleanCity = city.trim(); 
-                                const lowerCity = cleanCity.toLowerCase(); 
-                                
-                                if (!uniqueCitiesMap.has(lowerCity)) {
-                                    uniqueCitiesMap.set(lowerCity, cleanCity);
-                                }
-                            }
-                        });
-
-                        setCities(Array.from(uniqueCitiesMap.values()));
-                    }
-                }
-            } catch (error) { console.error("Erro cidades:", error); }
-        };
-        fetchCities();
-    }, []);
 
     useEffect(() => {
         const fetchFeatured = async () => {
@@ -429,80 +287,7 @@ export default function Home() {
             <Toaster position="top-center" reverseOrder={false} />
             <Header />
 
-            <div className="search-bar-container">
-                <div className="search-outer-border-wrapper" ref={searchWrapperRef}>
-                    <button className="location-button-styled" onClick={() => setShowCityMenu(!showCityMenu)}>
-                        <FaMapMarkerAlt size={16} />
-                        {selectedCity ? <span className="selected-city-text">{selectedCity}</span> : <span className="selected-city-text">Todas as cidades</span>}
-                        {selectedCity && (
-                            <div className="clear-icon-wrapper" onClick={handleClearCity} title="Limpar localização">
-                                <FaTimes size={12} />
-                            </div>
-                        )}
-                    </button>
-
-                    <div className="input-wrapper-relative">
-                        <input
-                            type="text"
-                            placeholder="Busque por eventos, artistas ou categorias"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                            className="search-input-field"
-                        />
-                        {searchTerm ? (
-                            <button className="clear-search-btn" onClick={handleClearSearch} title="Limpar pesquisa">
-                                <FaTimes size={14} color="#94a3b8" />
-                            </button>
-                        ) : (
-                            <button className="search-button-styled">
-                                <FaSearch size={14} />
-                            </button>
-                        )}
-                    </div>
-
-                    {showCityMenu && (
-                        <div className="city-dropdown-menu">
-                            <div className="city-dropdown-item" onClick={() => { setSelectedCity(''); setShowCityMenu(false); }}>
-                                <strong>Todas as cidades</strong>
-                            </div>
-                            {cities.length > 0 ? cities.map((city, idx) => (
-                                <div key={idx} className="city-dropdown-item" onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}>{city}</div>
-                            )) : <div className="city-dropdown-item">Carregando locais...</div>}
-                        </div>
-                    )}
-
-                    {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
-                        <div className="suggestions-dropdown">
-                            {matchedCategory && (
-                                <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
-                                    <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
-                                    <div className="suggestion-info">
-                                        <span className="suggestion-title">Ver tudo em <strong>{matchedCategory}</strong></span>
-                                        <span className="suggestion-date">Explorar categoria completa</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {suggestions.map((event) => (
-                                <div key={event._id || event.id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id || event.id)}>
-                                    <Image 
-                                        src={event.imageUrl || 'https://placehold.co/40x40/png'} 
-                                        alt={event.title} 
-                                        width={36} 
-                                        height={36} 
-                                        className="suggestion-image" 
-                                    />
-                                    <div className="suggestion-info">
-                                        <span className="suggestion-title">{event.title}</span>
-                                        <span className="suggestion-date">{new Date(event.date).toLocaleDateString('pt-BR')} • {event.city}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* O Bloco gigante de busca foi removido daqui! */}
 
             {featuredEvents.length > 0 && (
                 <div className="featured-carousel-container">
@@ -540,7 +325,7 @@ export default function Home() {
                         <span className="mkt-premium-badge">Para Produtores</span>
                         <h2 className="mkt-premium-title">A vitrine perfeita para o seu evento.</h2>
                         <p className="mkt-premium-subtitle">
-                            Conecte-se com milhares de pessoas que buscam experiências em Vitória da Conquista e região. A Vibz é a ponte direta para o seu público.
+                            Conecte-se com milhares de pessoas que buscam experiências na região. A Vibz é a ponte direta para o seu público.
                         </p>
 
                         <div className="mkt-premium-list">

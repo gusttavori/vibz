@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { FaMapMarkerAlt, FaInstagram, FaCalendarDay, FaExternalLinkAlt, FaInfoCircle } from 'react-icons/fa';
+import { 
+    FaMapMarkerAlt, FaInstagram, FaCalendarDay, FaExternalLinkAlt, 
+    FaInfoCircle, FaUber, FaHamburger, FaGlassMartiniAlt, FaHotel 
+} from 'react-icons/fa';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
@@ -25,40 +28,57 @@ export default function EventoDetalhes() {
     }, [id]);
 
     if (loading) {
-    return (
-        <div className="vibz-loading-container">
-            <div className="vibz-spinner"></div>
-            <h2 className="vibz-loading-title">Preparando a Vibe...</h2>
-            <p className="vibz-loading-subtitle">Buscando os detalhes deste evento para você.</p>
-        </div>
-    );
-}
+        return (
+            <div className="vibz-loading-container">
+                <div className="vibz-spinner"></div>
+                <h2 className="vibz-loading-title">Preparando a Vibe...</h2>
+                <p className="vibz-loading-subtitle">Buscando os detalhes deste evento para você.</p>
+            </div>
+        );
+    }
+    
     if (!evento) return <div className="error-screen">Evento não encontrado.</div>;
 
     const displayDate = new Date(evento.date || evento.createdAt);
     const orgInfo = typeof evento.organizerInfo === 'string' ? JSON.parse(evento.organizerInfo || '{}') : (evento.organizerInfo || {});
+
+    // --- MÁGICA DOS DEEP LINKS ---
+    const addressQuery = encodeURIComponent(`${evento.location}, ${evento.city}`);
+    
+    const uberLink = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${addressQuery}`;
+    const hoteisLink = `https://www.google.com/maps/search/hoteis+perto+de+${addressQuery}`;
+    const baresLink = `https://www.google.com/maps/search/bares+perto+de+${addressQuery}`;
+    const restaurantesLink = `https://www.google.com/maps/search/restaurantes+perto+de+${addressQuery}`;
 
     return (
         <div className="vibz-details-page">
             <Toaster />
             <Header />
             
+{/* HERO: MINIMALISTA E SOFISTICADO */}
             <section className="vibz-hero">
-                <div className="vibz-hero-bg" style={{ backgroundImage: `url(${evento.imageUrl})` }}></div>
-                <div className="vibz-hero-overlay"></div>
-                
                 <div className="vibz-hero-container">
-                    <div className="vibz-cover-wrapper">
-                        <img src={evento.imageUrl} alt={evento.title} className="vibz-cover-img" />
-                    </div>
+                    
                     <div className="vibz-hero-info">
-                        <span className="vibz-pill">{evento.category}</span>
+                        <span className="vibz-category-pill">{evento.category}</span>
                         <h1 className="vibz-title">{evento.title}</h1>
-                        <div className="vibz-meta">
-                            <span><FaCalendarDay /> {displayDate.toLocaleDateString('pt-BR')}</span>
-                            <span><FaMapMarkerAlt /> {evento.location} - {evento.city}</span>
+                        
+                        <div className="vibz-meta-minimal">
+                            <span className="meta-item">
+                                <FaCalendarDay className="meta-icon" /> 
+                                {displayDate.toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="meta-item">
+                                <FaMapMarkerAlt className="meta-icon" /> 
+                                {evento.location} - {evento.city}
+                            </span>
                         </div>
                     </div>
+
+                    <div className="vibz-image-minimal">
+                        <img src={evento.imageUrl} alt={evento.title} />
+                    </div>
+
                 </div>
             </section>
 
@@ -89,7 +109,7 @@ export default function EventoDetalhes() {
                     <aside className="vibz-sidebar">
                         <div className="vibz-guide">
                             <FaInfoCircle className="guide-icon" />
-                            <h3>Agenda Vibz</h3>
+                            <h3>Ingressos Oficiais</h3>
                             
                             {evento.externalUrl ? (
                                 <>
@@ -104,6 +124,31 @@ export default function EventoDetalhes() {
                                 </p>
                             )}
                         </div>
+
+                        {/* --- NOVA SEÇÃO: TRANSPORTE E UTILIDADES --- */}
+                        <div className="vibz-guide mt-4"> 
+                            <h3>Planeje seu Rolê</h3>
+                            <p>Facilite sua chegada e descubra o que tem por perto.</p>
+                            
+                            <div className="vibz-utility-buttons">
+                                <a href={uberLink} target="_blank" rel="noopener noreferrer" className="vibz-btn-uber">
+                                    <FaUber /> Ir de Uber
+                                </a>
+                                
+                                <div className="vibz-places-list">
+                                    <a href={hoteisLink} target="_blank" rel="noopener noreferrer" className="vibz-btn-outline">
+                                        <FaHotel /> Hotéis próximos
+                                    </a>
+                                    <a href={baresLink} target="_blank" rel="noopener noreferrer" className="vibz-btn-outline">
+                                        <FaGlassMartiniAlt /> Bares próximos
+                                    </a>
+                                    <a href={restaurantesLink} target="_blank" rel="noopener noreferrer" className="vibz-btn-outline">
+                                        <FaHamburger /> Restaurantes próximos
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
                     </aside>
                 </div>
             </main>

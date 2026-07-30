@@ -1,285 +1,320 @@
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
 
-:root {
-    --header-bg: #4C01B5;
-    --header-height: 72px;
-    --text-white: #ffffff;
-    --hover-bg: rgba(255, 255, 255, 0.1);
-    --dropdown-shadow: 0 10px 40px -10px rgba(0,0,0,0.2);
-}
-
-/* Garante que o Header use border-box para evitar conflitos */
-.global-header, .global-header * {
+/* ==================================================
+   REGRA DE OURO: Impede que qualquer item vaze da tela
+   ================================================== */
+.vibz-header-full, .vibz-header-full * {
     box-sizing: border-box;
 }
 
-.global-header {
-    background-color: var(--header-bg);
-    height: var(--header-height);
-    width: 100%;
+/* --- HEADER FULL WIDTH (100% de largura) --- */
+.vibz-header-full {
     position: sticky;
     top: 0;
+    width: 100%;
     z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: #4C01B5; 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); 
 }
 
-.header-container {
-    max-width: 1280px;
+/* --- CONTAINER INTERNO --- */
+.vibz-header-container {
+    max-width: 1200px; 
     margin: 0 auto;
-    height: 100%;
-    padding: 0 24px;
+    height: 72px; 
+    width: 100%;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    padding: 0 24px; 
 }
 
 /* --- LOGO --- */
-.logo-link {
+.vibz-logo-area {
     display: flex;
     align-items: center;
+    flex: 1; 
+    justify-content: flex-start;
 }
 
-.header-logo {
-    height: 32px;
+.vibz-logo-area img {
+    height: 26px; 
     width: auto;
     filter: brightness(0) invert(1);
-    transition: transform 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
-.header-logo:hover {
-    transform: scale(1.05);
-}
+.vibz-logo-area:hover img { opacity: 0.8; }
 
-/* --- AÇÕES (LADO DIREITO) --- */
-.header-actions {
+
+/* ==================================================
+   ÁREA DIREITA (AÇÕES + BUSCA EXTREMA)
+   ================================================== */
+.vibz-right-area {
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: flex-end;
+    flex: 1; 
+    gap: 12px;
 }
 
-/* Botão Criar Evento (CTA) */
-.btn-create-event {
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Garante centralização */
-    gap: 8px;
-    background-color: rgba(255, 255, 255, 0.15);
-    color: var(--text-white);
-    padding: 10px 20px;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    white-space: nowrap; /* Evita quebra de texto */
-}
-
-.btn-create-event:hover {
-    background-color: var(--text-white);
-    color: var(--header-bg);
-    transform: translateY(-1px);
-}
-
-.icon-mobile { display: none; }
-.icon-desktop { display: block; font-size: 1rem; }
-
-/* Botão Login (Visitante) */
-.btn-login {
-    color: var(--text-white);
-    text-decoration: none;
-    font-weight: 600;
-    padding: 8px 24px;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.btn-login:hover {
-    background-color: var(--hover-bg);
-}
-
-/* --- MENU DO USUÁRIO --- */
-.user-menu-container {
-    position: relative;
-}
-
-.user-profile-trigger {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px 8px 4px 4px;
-    border-radius: 50px;
-    transition: background 0.2s;
-}
-
-.user-profile-trigger:hover, .user-profile-trigger.active {
-    background-color: var(--hover-bg);
-}
-
-.user-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    flex-shrink: 0; /* Impede achatamento */
-}
-
-.user-name {
-    color: var(--text-white);
-    font-weight: 600;
-    font-size: 0.95rem;
-    max-width: 100px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chevron-icon {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.8rem;
-    transition: transform 0.2s;
-}
-
-.user-profile-trigger.active .chevron-icon {
-    transform: rotate(180deg);
-}
-
-/* --- DROPDOWN --- */
-.dropdown-menu {
-    position: absolute;
-    top: calc(100% + 12px);
-    right: 0;
-    width: 220px;
-    background: white;
-    border-radius: 16px;
-    padding: 8px;
-    box-shadow: var(--dropdown-shadow);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(10px);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.dropdown-menu.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.dropdown-header-mobile {
-    display: none;
-    padding: 12px 16px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #1e293b;
-    margin-bottom: 4px;
-}
-
-.dropdown-item {
+.vibz-actions {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-shrink: 0; 
+}
+
+/* CÁPSULA DA BUSCA (Extremo direito) */
+.vibz-search-container {
+    display: flex;
+    justify-content: flex-end;
+    width: 42px; 
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vibz-search-container.open {
     width: 100%;
-    padding: 12px 16px;
+    max-width: 420px; 
+}
+
+/* Botão Lupa Fechada */
+.vibz-search-toggle-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.vibz-search-toggle-btn:hover {
+    background: #ffffff;
+    color: #4C01B5;
+    transform: scale(1.05);
+}
+
+/* Barra Branca Expandida */
+.vibz-search-expanded {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    height: 44px;
+    width: 100%;
+    border-radius: 50px;
+    padding: 0 16px 0 8px;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* --- ELEMENTOS DENTRO DA BUSCA --- */
+.location-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
     border: none;
-    background: none;
-    text-align: left;
+    padding: 6px 12px;
+    border-radius: 50px;
     color: #475569;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.location-btn:hover { background: #e2e8f0; }
+.city-text { max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+
+.clear-city {
+    background: #cbd5e1;
+    color: white;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #0f172a;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+    padding: 0 12px;
+    width: 100%;
+}
+
+.search-input::placeholder { color: #94a3b8; font-weight: 500; }
+
+.close-search-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+.close-search-btn:hover { color: #ef4444; }
+
+
+/* ==================================================
+   MENUS DROPDOWNS E BOTÕES PADRÃO
+   ================================================== */
+.header-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 16px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    z-index: 2000;
+}
+
+.city-dropdown { left: 0; width: 220px; }
+.suggestions-dropdown { left: 0; right: 0; width: 100%; }
+
+.dropdown-item {
+    padding: 12px 16px;
+    color: #334155;
+    font-size: 0.95rem;
+    font-weight: 600;
     cursor: pointer;
     border-radius: 10px;
-    transition: background 0.1s;
+    transition: all 0.15s ease;
 }
 
 .dropdown-item:hover {
     background-color: #f8fafc;
-    color: var(--header-bg);
+    color: #4C01B5;
 }
 
-.dropdown-item svg {
-    font-size: 1.1rem;
-    opacity: 0.8;
+.suggestion-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; cursor: pointer; border-radius: 12px;
+    transition: background 0.2s;
+}
+.suggestion-item:hover { background: #f8fafc; }
+.suggestion-image { border-radius: 8px; object-fit: cover; }
+.suggestion-icon {
+    width: 36px; height: 36px; background: #f1f5f9;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+}
+.suggestion-info { display: flex; flex-direction: column; }
+.suggestion-title { color: #0f172a; font-weight: 700; font-size: 0.9rem; }
+.suggestion-date { color: #64748b; font-size: 0.75rem; font-weight: 500; }
+
+/* Botão Novo Evento */
+.vibz-btn-new-event {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255, 255, 255, 0.15); 
+    color: #ffffff; 
+    padding: 10px 20px; border-radius: 50px; 
+    font-weight: 700; font-size: 0.9rem; text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+}
+.vibz-btn-new-event:hover {
+    background: #ffffff; color: #4C01B5; transform: scale(0.98); 
 }
 
-.dropdown-divider {
-    height: 1px;
-    background-color: #e2e8f0;
-    margin: 4px 8px;
+/* Avatar Menu */
+.vibz-user-capsule { position: relative; display: flex; align-items: center; }
+.vibz-avatar-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s ease;
+    flex-shrink: 0;
 }
+.vibz-avatar-btn:hover, .vibz-avatar-btn.active { background: #ffffff; color: #4C01B5; }
 
-.dropdown-item.logout {
-    color: #ef4444;
+.vibz-dropdown {
+    position: absolute; top: calc(100% + 16px); right: 0; width: 220px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 8px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); 
+    opacity: 0; visibility: hidden; transform: translateY(10px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column; gap: 4px; z-index: 2000;
 }
+.vibz-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.dropdown-user-info { padding: 12px 12px 8px; display: flex; flex-direction: column; }
+.dropdown-user-info .greeting { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+.dropdown-user-info strong { font-size: 1rem; color: #0f172a; }
+.dropdown-divider { height: 1px; background-color: #f1f5f9; margin: 4px 8px; }
+.dropdown-item.logout { color: #ef4444; }
+.dropdown-item.logout:hover { background-color: #fef2f2; color: #dc2626; }
 
-.dropdown-item.logout:hover {
-    background-color: #fef2f2;
-    color: #dc2626;
-}
 
-/* --- RESPONSIVIDADE (MOBILE) --- */
+/* ==================================================
+   RESPONSIVIDADE (MOBILE)
+   ================================================== */
 @media (max-width: 768px) {
-    .header-container {
-        padding: 0 16px;
+    .vibz-header-container { padding: 0 16px; height: 60px; }
+    
+    .vibz-btn-new-event span { display: none; }
+    .vibz-btn-new-event { padding: 0; width: 38px; height: 38px; justify-content: center; }
+    
+    .vibz-avatar-btn { width: 38px; height: 38px; }
+    
+    /* Ajuste de largura e altura da lupa no mobile */
+    .vibz-search-container { width: 38px; } 
+    .vibz-search-toggle-btn { width: 38px; height: 38px; }
+    
+    .vibz-dropdown { right: -10px; }
+
+    /* Quando a busca abrir no celular, esconde os botões */
+    .hide-on-mobile { display: none !important; }
+    
+    /* --- AJUSTES FINOS DA BUSCA EXPANDIDA NO MOBILE --- */
+    .vibz-search-container.open {
+        max-width: 250px; 
+        margin-left: auto; 
     }
 
-    /* Correção do botão + no mobile */
-    .btn-create-event {
-        padding: 0;
-        width: 36px !important; /* Força largura fixa */
-        height: 36px !important; /* Força altura fixa */
-        min-width: 36px; /* Impede encolhimento */
-        border-radius: 50%;
-        background-color: var(--text-white);
-        color: var(--header-bg);
-        border: none;
-        display: flex; /* Garante flexbox */
-        align-items: center;
-        justify-content: center;
+    .vibz-search-expanded {
+        height: 38px; 
+        padding: 0 12px 0 6px;
     }
 
-    .btn-create-event:hover {
-        background-color: #f0f0f0;
+    .location-btn { padding: 4px 8px; }
+    .location-btn svg { font-size: 12px; }
+    .city-text { display: none; } 
+
+    .search-input {
+        font-size: 0.85rem; 
+        padding: 0 8px;
     }
 
-    .btn-create-event .btn-text, 
-    .btn-create-event .icon-desktop {
-        display: none;
-    }
+    .close-search-btn svg { font-size: 12px; }
+}
 
-    .btn-create-event .icon-mobile {
-        display: block;
-        font-size: 1rem;
-        margin: 0; /* Remove margens que possam atrapalhar */
+/* Celulares muito pequenos (iPhone SE, etc) */
+@media (max-width: 400px) {
+    .vibz-search-container.open {
+        max-width: 200px; 
     }
-
-    /* Ajuste do Menu Usuário */
-    .user-name, .chevron-icon {
-        display: none;
-    }
-
-    .user-profile-trigger {
-        padding: 0;
-    }
-
-    .user-avatar {
-        width: 36px;
-        height: 36px;
-        border-width: 0;
-    }
-
-    .dropdown-menu {
-        right: -10px;
-        width: 260px;
-    }
-
-    .dropdown-header-mobile {
-        display: block;
+    .vibz-logo-area img {
+        height: 20px; 
     }
 }

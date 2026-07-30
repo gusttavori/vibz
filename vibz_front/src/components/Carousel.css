@@ -4,7 +4,7 @@
     width: 100%;
     max-width: 1200px;
     height: 480px; /* Altura Desktop */
-    margin: 0 auto 30px;
+    margin: 60px auto 30px;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 15px 35px -5px rgba(0,0,0,0.25);
@@ -199,7 +199,7 @@
         height: 400px;
         /* Centralização e Largura */
         width: 95%; 
-        margin: 0 auto 20px;
+        margin: 60px auto 20px;
         border-radius: 16px; 
     }
 

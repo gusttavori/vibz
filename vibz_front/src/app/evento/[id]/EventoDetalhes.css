@@ -1,9 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
 
+/* --- FUNDO CLARO PARA A PÁGINA --- */
 .vibz-details-page { 
-    background: #f8fafc; 
+    background: #f4f4f5; 
     min-height: 100vh; 
     font-family: 'Urbanist', sans-serif; 
+    color: #0f172a; 
 }
 
 /* --- TELA DE CARREGAMENTO (LOADING) --- */
@@ -12,8 +14,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 80vh; /* Ocupa quase toda a tela para ficar bem centralizado */
-    background-color: #f8fafc;
+    min-height: 80vh; 
+    background-color: #f4f4f5;
     font-family: 'Urbanist', sans-serif;
     text-align: center;
     padding: 20px;
@@ -22,8 +24,8 @@
 .vibz-spinner {
     width: 50px;
     height: 50px;
-    border: 4px solid rgba(76, 1, 181, 0.1); /* Anel de fundo clarinho */
-    border-left-color: #4C01B5; /* Cor principal da Vibz girando */
+    border: 4px solid rgba(76, 1, 181, 0.1); 
+    border-left-color: #4C01B5; 
     border-radius: 50%;
     animation: vibz-spin 1s linear infinite;
     margin-bottom: 24px;
@@ -47,120 +49,186 @@
     margin: 0;
 }
 
-/* --- HERO PREMIUM --- */
+/* --- HERO: MINIMALISTA E SOFISTICADO --- */
 .vibz-hero { 
     position: relative; 
-    padding: 80px 20px 150px; /* Adicionado padding lateral para telas menores não colarem na borda */
-    background: #0b0914; 
-    overflow: hidden; 
-}
-
-.vibz-hero-bg { 
-    position: absolute; 
-    inset: 0; 
-    background-size: cover; 
-    background-position: center; 
-    filter: blur(60px) brightness(0.2); 
-}
-
-.vibz-hero-overlay { 
-    position: absolute; 
-    inset: 0; 
-    background: linear-gradient(to top, rgba(11, 9, 20, 0.9), transparent); 
+    padding: 80px 20px 80px; 
+    background: #050408; /* Preto profundo e limpo */
 }
 
 .vibz-hero-container { 
-    position: relative; 
-    z-index: 2; 
-    max-width: 1000px; 
+    max-width: 900px; /* Levemente mais estreito para focar a leitura */
     margin: 0 auto; 
     display: flex; 
-    align-items: flex-end; 
-    gap: 40px; 
-    color: white; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 60px; 
 }
 
-.vibz-cover-wrapper { 
-    width: 260px; 
-    height: 260px; 
-    border-radius: 20px; 
-    overflow: hidden; 
-    border: 4px solid rgba(255,255,255,0.1); 
-    box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
-    flex-shrink: 0; /* Impede que a imagem seja esmagada pelo texto no flexbox */
+/* Informações (Esquerda) */
+.vibz-hero-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
 }
 
-.vibz-cover-img { 
+/* Detalhe Sutil: Pílula vazada em vez de cor sólida */
+.vibz-category-pill { 
+    display: inline-block;
+    padding: 6px 14px; 
+    border: 1px solid rgba(191, 170, 255, 0.75); 
+    color: #bfaaff; 
+    border-radius: 100px; 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+}
+
+.vibz-title { 
+    font-size: 3rem; /* Tamanho elegante, sem exageros */
+    margin: 0 0 24px 0; 
+    font-weight: 700; 
+    line-height: 1.15; 
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+/* Detalhe Sutil: Ícones e textos limpos, sem caixas em volta */
+.vibz-meta-minimal { 
+    display: flex; 
+    flex-direction: column; /* Empilhados para uma leitura mais limpa */
+    gap: 12px; 
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #94a3b8; /* Cinza claro suave */
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.meta-icon {
+    color: #64748b; /* Ícone bem neutro para não roubar a atenção */
+    font-size: 1.1rem;
+}
+
+/* Imagem (Direita) - Estilo App/Premium */
+.vibz-image-minimal { 
+    width: 320px; 
+    height: 320px; 
+    border-radius: 24px; /* Bordas arredondadas suaves (Squircle) */
+    overflow: hidden;
+    flex-shrink: 0; 
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); 
+    border: 1px solid rgba(255, 255, 255, 0.05); /* Linha de luz microscópica na borda */
+}
+
+.vibz-image-minimal img { 
     width: 100%; 
     height: 100%; 
     object-fit: cover; 
 }
 
-/* Container para agrupar as informações de texto no Hero */
-.vibz-hero-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+/* Responsividade do Hero Minimalista */
+@media (max-width: 900px) {
+    .vibz-hero-container { 
+        flex-direction: column-reverse; 
+        text-align: center; 
+        gap: 40px;
+    }
+    .vibz-hero-info { align-items: center; }
+    .vibz-meta-minimal { align-items: center; }
+}
+
+@media (max-width: 768px) {
+    .vibz-title { font-size: 2.2rem; }
+    .vibz-image-minimal { width: 260px; height: 260px; }
+}
+
+@media (max-width: 480px) {
+    .vibz-title { font-size: 1.8rem; }
+    .vibz-image-minimal { width: 200px; height: 200px; }
 }
 
 .vibz-pill { 
     display: inline-block;
     background: #4C01B5; 
+    color: #ffffff;
     padding: 6px 16px; 
-    border-radius: 50px; 
+    border-radius: 4px; 
     font-size: 0.75rem; 
     font-weight: 800; 
     text-transform: uppercase; 
     margin-bottom: 15px;
+    letter-spacing: 1px;
 }
 
-.vibz-title { 
-    font-size: 3rem; 
-    margin: 0 0 15px 0; 
-    font-weight: 800; 
-    line-height: 1.1; 
-}
-
+/* --- BADGES ESTILIZADAS DE LOCAL E DATA --- */
 .vibz-meta { 
     display: flex; 
-    gap: 20px; 
-    font-weight: 500; 
-    color: #cbd5e1; 
-    flex-wrap: wrap; /* Permite quebrar linha caso o endereço seja longo */
+    gap: 12px; 
+    flex-wrap: wrap; 
+}
+
+.vibz-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08); /* Fundo sutil */
+    border: 1px solid rgba(255, 255, 255, 0.15); /* Borda elegante */
+    padding: 8px 16px;
+    border-radius: 50px; /* Formato de pílula arredondada */
+    font-size: 0.9rem;
+    color: #f8fafc;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+}
+
+.vibz-meta span svg {
+    color: #a78bfa; /* Ícone roxo claro destacando no badge */
+    font-size: 1.1rem;
 }
 
 /* --- CONTEÚDO PRINCIPAL --- */
 .vibz-content { 
     max-width: 1000px; 
-    margin: -50px auto 50px; 
+    margin: 40px auto 80px; 
     padding: 0 20px; 
-    position: relative; 
-    z-index: 3; 
 }
 
 .vibz-grid { 
     display: grid; 
-    grid-template-columns: 1fr 320px; 
+    grid-template-columns: 1fr 340px; 
     gap: 40px; 
+    align-items: start;
 }
 
+/* Cards Brancos com Texto Escuro */
 .vibz-card { 
-    background: white; 
-    padding: 30px 40px; 
-    border-radius: 24px; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+    background: #ffffff; 
+    padding: 35px 40px; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
     margin-bottom: 25px; 
 }
 
 .vibz-card h3 { 
     font-size: 1.4rem; 
-    color: #1e293b; 
+    color: #0f172a; 
+    margin-top: 0;
     margin-bottom: 20px; 
+    font-weight: 800;
 }
 
 .vibz-desc { 
     line-height: 1.8; 
-    color: #475569; 
+    color: #334155; 
+    font-size: 1.05rem;
     white-space: pre-line;
 }
 
@@ -173,13 +241,15 @@
 
 .vibz-org h4 {
     margin: 0 0 5px 0;
+    color: #0f172a;
+    font-size: 1.1rem;
 }
 
 .vibz-avatar { 
     width: 60px; 
     height: 60px; 
-    background: #f1f5f9; 
-    border-radius: 16px; 
+    background: #f8fafc; 
+    border-radius: 12px; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
@@ -197,42 +267,48 @@
     text-decoration: none; 
 }
 
-/* --- SIDEBAR (Agenda Vibz) --- */
+/* --- SIDEBAR CORRIGIDA (SEM SOBREPOSIÇÃO) --- */
+.vibz-sidebar {
+    position: sticky; /* O efeito 'sticky' fica APENAS no pai agora */
+    top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px; /* O espaçamento entre os cards é controlado aqui */
+    width: 100%;
+}
+
 .vibz-guide { 
     background: #0b0914; 
     color: white; 
-    padding: 35px 25px; /* Reduzido levemente nas laterais para telas pequenas */
-    border-radius: 24px; 
-    position: sticky; 
-    top: 20px; 
-    /* Força tudo dentro da caixa a ficar perfeitamente no centro */
+    padding: 35px 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    /* Removido o 'position: sticky' daqui */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    box-sizing: border-box;
+    box-sizing: border-box; /* Trava a largura */
+    width: 100%;
 }
 
 .guide-icon { 
     font-size: 2.5rem; 
     color: #a78bfa; 
     margin-bottom: 15px; 
-    /* Centraliza o próprio ícone caso ele tenha um container */
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .vibz-guide h3 {
-    margin: 0 0 15px 0;
+    margin: 0 0 10px 0;
     font-size: 1.4rem;
+    color: #ffffff;
 }
 
 .vibz-guide p {
     margin: 0;
     line-height: 1.6;
-    color: #cbd5e1;
+    color: #94a3b8;
     font-size: 0.95rem;
 }
 
@@ -249,100 +325,135 @@
     border: none;
     cursor: pointer;
     font-family: inherit;
-    font-size: 1rem;
-    /* A Mágica: Alinha o texto e o ícone perfeitamente ao centro */
+    font-size: 1.05rem;
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    gap: 10px; /* Dá um respiro perfeito entre o ícone e o texto */
-    box-sizing: border-box;
+    gap: 10px; 
+    box-sizing: border-box; /* Previne o vazamento do botão */
 }
 
 .vibz-btn-primary:hover { 
     background: #5b02d4; 
-    transform: scale(1.02); 
+    transform: translateY(-2px);
 }
 
+/* =========================================
+   NOVA SEÇÃO: TRANSPORTE E GASTRONOMIA
+   ========================================= */
+/* A classe .mt-4 não é mais necessária pois o gap do flex resolve o espaço */
+.mt-4 { margin-top: 0; } 
+
+.vibz-utility-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 20px;
+    box-sizing: border-box;
+}
+
+/* Botão da Uber */
+.vibz-btn-uber {
+    background: #ffffff;
+    color: #000000;
+    padding: 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s ease, background 0.2s ease;
+    width: 100%;
+    box-sizing: border-box; /* Previne o vazamento do botão */
+}
+
+.vibz-btn-uber:hover { 
+    background: #f1f5f9; 
+    transform: translateY(-2px);
+}
+
+.vibz-places-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+
+/* Botões Outline na Sidebar Escura */
+.vibz-btn-outline {
+    background: rgba(255, 255, 255, 0.03);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 14px 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: flex-start; 
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box; /* Previne o vazamento do botão */
+}
+
+.vibz-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
 
 /* =========================================
    MEDIA QUERIES - RESPONSIVIDADE COMPLETA 
    ========================================= */
 
-/* Tablets */
 @media (max-width: 900px) {
-    .vibz-grid { 
-        grid-template-columns: 1fr; 
-    }
+    .vibz-grid { grid-template-columns: 1fr; }
+    .vibz-sidebar { position: static; }
     .vibz-hero-container { 
         flex-direction: column; 
         text-align: center; 
         align-items: center; 
     }
-    .vibz-hero-info {
-        align-items: center;
-    }
-    .vibz-meta {
-        justify-content: center;
-    }
+    .vibz-hero-info { align-items: center; }
+    .vibz-meta { justify-content: center; }
 }
 
-/* Celulares Padrão */
 @media (max-width: 768px) {
-    .vibz-hero { 
-        padding: 40px 20px 100px; 
-    }
+    .vibz-hero { padding: 40px 20px 60px; }
     .vibz-cover-wrapper { 
-        width: 200px; 
-        height: 200px; 
+        width: 220px; 
+        height: 220px; 
     }
-    .vibz-title { 
-        font-size: 2.2rem; /* Título reduzido para não quebrar a tela */
-    }
-    
-    .vibz-content { 
-        margin-top: -40px; 
-    }
-    .vibz-grid { 
-        gap: 20px; 
-    }
-    .vibz-card { 
-        padding: 25px; /* Redução drástica do respiro interno do card */
-        border-radius: 20px; 
-    }
-    .vibz-guide { 
-        padding: 25px; 
-    }
+    .vibz-title { font-size: 2.5rem; }
+    .vibz-content { margin-top: 20px; }
+    .vibz-grid { gap: 20px; }
+    .vibz-card { padding: 25px; }
+    .vibz-guide { padding: 30px 20px; }
 }
 
-/* Celulares Pequenos (iPhone SE, etc) */
 @media (max-width: 480px) {
     .vibz-cover-wrapper { 
         width: 180px; 
         height: 180px; 
-        border-width: 3px; 
     }
-    .vibz-title { 
-        font-size: 1.8rem; /* Título ainda menor para as telas mais apertadas */
-    }
+    .vibz-title { font-size: 2rem; }
     .vibz-meta { 
-        flex-direction: column; /* Força a data e local a ficarem um embaixo do outro */
+        flex-direction: column; 
         gap: 8px; 
-        font-size: 0.9rem; 
     }
-    
-    .vibz-card { 
-        padding: 20px; 
-    }
-    .vibz-card h3 { 
-        font-size: 1.2rem; 
-    }
-    
+    .vibz-card { padding: 20px; }
+    .vibz-card h3 { font-size: 1.2rem; }
     .vibz-org { 
         flex-direction: column; 
         text-align: center; 
         gap: 15px; 
     }
-    .vibz-btn-primary { 
-        padding: 14px; 
-    }
+    .vibz-btn-primary { padding: 14px; }
 }
