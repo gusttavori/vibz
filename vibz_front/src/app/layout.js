@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import InstallPrompt from '@/components/InstallPrompt';
 import PWACleaner from '@/components/PWACleaner';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import VLibrasWidget from '@/components/VLibrasWidget'; // Importação do VLibras
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,6 +39,9 @@ export default function RootLayout({ children }) {
         
         {/* Rastreamento do Google Analytics de forma otimizada */}
         <GoogleAnalytics gaId="G-37B5HVWY8J" />
+
+        {/* Avatar 3D de Acessibilidade em Libras */}
+        <VLibrasWidget />
       </body>
     </html>
   );

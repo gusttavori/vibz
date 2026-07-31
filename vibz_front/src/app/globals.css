@@ -48,3 +48,62 @@ code {
     transform: rotate(360deg);
   }
 }
+
+/* ==================================================
+   ACESSIBILIDADE (A11y): NAVEGAÇÃO POR TECLADO
+   ================================================== */
+
+/* 1. Remove o contorno azul padrão de TODOS os elementos quando clicados com o mouse */
+*:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+/* 2. Adiciona um contorno roxo elegante APENAS quando navegado por teclado (Tecla Tab) */
+*:focus-visible {
+    outline: 3px solid #4C01B5 !important;
+    outline-offset: 3px !important;
+    border-radius: 6px;
+    transition: outline-offset 0.2s ease;
+}
+
+/* 3. Arredonda o contorno perfeitamente para elementos que já são redondos */
+.vibz-avatar-btn:focus-visible,
+.vibz-search-toggle-btn:focus-visible,
+.close-search-btn:focus-visible,
+.close-modal:focus-visible,
+.clear-city:focus-visible {
+    border-radius: 50% !important;
+}
+
+/* 4. Ajuste para os botões arredondados (pílulas) */
+.vibz-btn-login:focus-visible,
+.super-tab-btn:focus-visible,
+.btn-explore-purple:focus-visible,
+.btn-outline-minimal:focus-visible {
+    border-radius: 50px !important;
+}
+
+/* ==================================================
+   ACESSIBILIDADE: BOTÃO "PULAR PARA O CONTEÚDO"
+   ================================================== */
+.skip-to-content {
+    position: absolute;
+    top: -100px; /* Fica escondido fora da tela */
+    left: 0;
+    background-color: var(--primary-purple, #4C01B5);
+    color: #ffffff;
+    padding: 12px 24px;
+    font-weight: 800;
+    font-size: 1rem;
+    z-index: 9999;
+    border-radius: 0 0 12px 0;
+    text-decoration: none;
+    transition: top 0.2s ease-in-out;
+}
+
+/* Quando recebe foco pelo teclado, desce e fica visível */
+.skip-to-content:focus {
+    top: 0;
+    outline: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}

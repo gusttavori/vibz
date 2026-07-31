@@ -7,14 +7,18 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard'; 
 import toast, { Toaster } from 'react-hot-toast';
-import { FaEdit, FaTicketAlt, FaChartLine, FaSearch, FaChevronRight } from 'react-icons/fa';
+import { 
+    FaEdit, FaTicketAlt, FaHeart, FaSearch, 
+    FaCalendarDay, FaMapMarkerAlt, FaQrcode, 
+    FaTimes, FaDownload 
+} from 'react-icons/fa';
 import './UserProfile.css'; 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// --- SKELETON REUTILIZÁVEL E LIMPO ---
+// --- SKELETON UNIFICADO ---
 const ProfileSkeleton = () => (
-    <div className="user-profile-container">
+    <div className="user-profile-container" aria-busy="true" aria-label="Carregando perfil do usuário">
         <Header />
         <div className="profile-header-wrapper">
             <div className="skeleton-cover skeleton-pulse"></div>
@@ -24,20 +28,13 @@ const ProfileSkeleton = () => (
                     <div className="skeleton-text skeleton-pulse" style={{height: '32px', width: '70%'}}></div>
                     <div className="skeleton-text skeleton-pulse" style={{height: '20px', width: '50%'}}></div>
                 </div>
-                <div className="profile-buttons">
-                    <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '40px'}}></div>
-                    <div className="skeleton-box skeleton-pulse" style={{width: '100px', height: '40px'}}></div>
-                </div>
             </div>
         </div>
         <div className="profile-body">
-            <div className="skeleton-text skeleton-pulse" style={{width: '200px', height: '28px', marginBottom: '20px'}}></div>
-            <div className="skeleton-box skeleton-pulse" style={{width: '100%', height: '80px', borderRadius: '16px', marginBottom: '40px'}}></div>
-            
-            <div className="skeleton-text skeleton-pulse" style={{width: '150px', height: '28px', marginBottom: '20px'}}></div>
-            <div className="favorites-grid">
+            <div className="skeleton-box skeleton-pulse" style={{width: '300px', height: '50px', margin: '0 auto 40px', borderRadius: '50px'}}></div>
+            <div className="tickets-grid">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="skeleton-box skeleton-pulse" style={{height: '320px', borderRadius: '16px'}}></div>
+                    <div key={i} className="skeleton-box skeleton-pulse" style={{height: '140px', borderRadius: '20px'}}></div>
                 ))}
             </div>
         </div>
@@ -45,48 +42,73 @@ const ProfileSkeleton = () => (
     </div>
 );
 
-const UserProfile = () => {
+export default function UserProfile() {
     const router = useRouter();
+    
+    // Estados Globais
+    const [loading, setLoading] = useState(true);
     const [userData, setUserData] = useState(null);
+    const [profileImage, setProfileImage] = useState('');
+    
+    // Estados de Ingressos e Favoritos
     const [favoritedEvents, setFavoritedEvents] = useState([]);
     const [tickets, setTickets] = useState([]); 
-    const [loading, setLoading] = useState(true);
-    const [profileImage, setProfileImage] = useState('');
+    
+    // Controle de Abas e Modais (Abre direto em 'favoritos')
+    const [mainTab, setMainTab] = useState('favoritos'); 
+    const [ticketTab, setTicketTab] = useState('valid'); // 'valid' | 'history'
+    const [selectedTicket, setSelectedTicket] = useState(null);
 
     useEffect(() => {
         const fetchAllData = async () => {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
-            if (!token) return router.push('/login');
+            let token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+            
+            if (!token) {
+                return router.push('/login');
+            }
+            
+            token = token.replace(/"/g, '');
 
             try {
-                // 1. Fetch User Data
+                // 1. Busca Usuário e Favoritos (Obrigatório)
                 const profileRes = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!profileRes.ok) throw new Error("Erro ao carregar perfil");
+                if (!profileRes.ok) {
+                    if (profileRes.status === 401 || profileRes.status === 403) {
+                        localStorage.clear();
+                        toast.error("Sua sessão expirou. Faça login novamente.");
+                        return router.push('/login');
+                    }
+                    throw new Error("Erro ao carregar perfil do usuário.");
+                }
                 
                 const profileData = await profileRes.json();
                 const userObj = profileData.user || profileData;
                 setUserData(userObj);
-                
-                // Set Image Fallback
                 setProfileImage(userObj.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name || 'User')}&background=random&color=fff`);
-
-                // 2. Set Favorites
                 setFavoritedEvents(profileData.favoritedEvents || userObj.favoritedEvents || []);
 
-                // 3. Fetch Tickets
-                const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (ticketsRes.ok) {
-                    const ticketsData = await ticketsRes.json();
-                    setTickets(ticketsData.slice(0, 3)); // Pega apenas os 3 mais recentes
+                // 2. Busca Ingressos (Opcional - Protegido contra Erro 500 para não travar a tela)
+                try {
+                    const ticketsRes = await fetch(`${API_BASE_URL}/tickets/my-tickets`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (ticketsRes.ok) {
+                        const ticketsData = await ticketsRes.json();
+                        setTickets(ticketsData);
+                    } else {
+                        console.warn("Aviso: Rota de ingressos retornou erro do servidor.");
+                    }
+                } catch (ticketErr) {
+                    console.warn("Aviso: Falha ao buscar ingressos.", ticketErr);
                 }
+
             } catch (err) {
-                console.error(err);
-                toast.error("Erro ao carregar dados.");
+                console.error("Erro geral no perfil:", err);
+                toast.error("Erro ao carregar dados do perfil.");
             } finally {
                 setLoading(false);
             }
@@ -94,25 +116,34 @@ const UserProfile = () => {
         fetchAllData();
     }, [router]);
 
+    // --- ACESSIBILIDADE: Fechar modal com a tecla ESC ---
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && selectedTicket) {
+                closeTicket();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [selectedTicket]);
+
+    // --- FUNÇÕES DE FAVORITOS ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
-        const token = localStorage.getItem('userToken');
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
         if (!token) return router.push('/login');
 
-        // Optimistic UI
         if (!isFavoriting) {
             setFavoritedEvents(prev => prev.filter(e => (e.id || e._id) !== eventId));
             toast.success("Removido dos favoritos.");
         }
 
         try {
-            // Tenta rota Toggle
             let res = await fetch(`${API_BASE_URL}/users/toggle-favorite`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
                 body: JSON.stringify({ eventId }) 
             });
 
-            // Tenta rota legada se 404
             if (!res.ok && res.status === 404) {
                  const userId = localStorage.getItem('userId');
                  res = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
@@ -123,26 +154,70 @@ const UserProfile = () => {
             }
 
             if (!res.ok) throw new Error("Falha na API");
-            
-            // Se for favoritar, recarrega a lista para garantir dados atualizados (opcional)
             if (isFavoriting) toast.success("Evento favoritado!");
-
         } catch(e) { 
-            console.error(e);
             toast.error("Erro ao sincronizar."); 
-            // Reverte em caso de erro
             if (!isFavoriting) setTimeout(() => window.location.reload(), 1000);
         }
     };
 
-    // Helper para extrair dia e mês da data do evento
-    const getDateInfo = (dateString) => {
-        if (!dateString) return { day: '--', month: '---' };
-        const date = new Date(dateString);
-        return {
-            day: date.getDate(),
-            month: date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')
-        };
+    // --- FUNÇÕES DE INGRESSOS ---
+    const handleDownloadPDF = async (ticketId, eventTitle) => {
+        const token = localStorage.getItem('userToken')?.replace(/"/g, '');
+        const toastId = toast.loading("Gerando PDF...");
+        
+        try {
+            const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}/download`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Ingresso_${eventTitle}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                toast.success("Download concluído!", { id: toastId });
+            } else {
+                toast.error("Erro ao baixar.", { id: toastId });
+            }
+        } catch (e) {
+            toast.error("Erro de conexão.", { id: toastId });
+        }
+    };
+
+    const formatText = (text) => {
+        if (!text) return '';
+        return text.toString().replace(/(\d+)\s*[oO°]/g, '$1º').replace(/(\d+)\s*[aAª]/g, '$1ª');
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Data não definida';
+        try {
+            const cleanDate = dateString.toString().includes('T') ? dateString.split('T')[0] : dateString;
+            const [year, month, day] = cleanDate.split('-');
+            const date = new Date(year, month - 1, day);
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+        } catch (e) { return 'Erro na data'; }
+    };
+
+    // Listas Filtradas
+    const validTickets = tickets.filter(t => t.status === 'valid');
+    const historyTickets = tickets.filter(t => t.status !== 'valid'); 
+    const currentTicketsList = ticketTab === 'valid' ? validTickets : historyTickets;
+
+    const openTicket = (ticket) => setSelectedTicket(ticket);
+    const closeTicket = () => setSelectedTicket(null);
+
+    // Permite abrir o card do ingresso via teclado
+    const handleTicketKeyDown = (e, ticket) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openTicket(ticket);
+        }
     };
 
     if (loading) return <ProfileSkeleton />;
@@ -152,89 +227,157 @@ const UserProfile = () => {
             <Toaster position="top-center" />
             <Header/>
             
+            {/* CABEÇALHO DO PERFIL */}
             {userData && (
-                <>
-                    <div className="profile-header-wrapper">
-                        <div className="profile-cover">
-                            {userData.coverPicture ? (
-                                <img src={userData.coverPicture} alt="Capa" />
-                            ) : (
-                                <div className="default-cover-gradient"></div>
-                            )}
+                <div className="profile-header-wrapper" role="banner">
+                    <div className="profile-cover" aria-hidden="true">
+                        {userData.coverPicture ? (
+                            <img src={userData.coverPicture} alt="" />
+                        ) : (
+                            <div className="default-cover-gradient"></div>
+                        )}
+                    </div>
+                    <div className="profile-details-container">
+                        <div className="profile-avatar">
+                            <img 
+                                src={profileImage} 
+                                alt={`Foto de perfil de ${userData.name}`} 
+                                onError={(e) => e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`} 
+                            />
                         </div>
-                        <div className="profile-details-container">
-                            <div className="profile-avatar">
-                                <img 
-                                    src={profileImage} 
-                                    alt="Perfil" 
-                                    onError={(e) => e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff`} 
-                                />
-                            </div>
-                            <div className="profile-texts">
-                                <h1>{userData.name}</h1>
-                                <p>{userData.email}</p> 
-                            </div>
-                            <div className="profile-buttons">
-                                <Link href="/dashboard" className="btn-outline"><FaChartLine /> Painel</Link>
-                                <button className="btn-outline" onClick={() => router.push('/perfil/editar')}><FaEdit /> Editar</button>
-                            </div>
+                        <div className="profile-texts">
+                            <h1>{userData.name}</h1>
+                            <p>{userData.email}</p> 
+                        </div>
+                        <div className="profile-buttons">
+                            <button 
+                                className="btn-outline-minimal" 
+                                onClick={() => router.push('/perfil/editar')}
+                                aria-label="Editar seu perfil"
+                            >
+                                <FaEdit aria-hidden="true" /> Editar Perfil
+                            </button>
                         </div>
                     </div>
+                </div>
+            )}
 
-                    <div className="profile-body">
-                        {/* SEÇÃO DE INGRESSOS COMPACTA */}
-                        <div className="mini-tickets-section">
-                            <div className="section-header-row">
-                                <div className="section-title">
-                                    <FaTicketAlt className="icon-purple" />
-                                    <h2>Ingressos Recentes</h2>
-                                </div>
-                                <Link href="/meus-ingressos" className="link-view-all">Ver Todos <FaChevronRight size={12}/></Link>
-                            </div>
-                            
-                            {tickets.length === 0 ? (
-                                <div className="empty-box-small">
-                                    <p>Você ainda não tem ingressos ativos.</p>
-                                    <Link href="/" className="link-explore">Explorar Eventos</Link>
+            {/* ÁREA DE CONTEÚDO UNIFICADA COM ID DE ACESSIBILIDADE */}
+            <main id="conteudo-principal" className="profile-body" tabIndex="-1">
+                
+                {/* SUPER TABS (Ingressos vs Favoritos) */}
+                <div className="super-tabs-container">
+                    <div className="super-tabs" role="tablist" aria-label="Navegação do Perfil">
+                        <button 
+                            className={`super-tab-btn ${mainTab === 'ingressos' ? 'active' : ''}`} 
+                            onClick={() => setMainTab('ingressos')}
+                            role="tab"
+                            aria-selected={mainTab === 'ingressos'}
+                            aria-controls="panel-ingressos"
+                            id="tab-ingressos"
+                        >
+                            <FaTicketAlt aria-hidden="true" /> Meus Ingressos
+                        </button>
+                        <button 
+                            className={`super-tab-btn ${mainTab === 'favoritos' ? 'active' : ''}`} 
+                            onClick={() => setMainTab('favoritos')}
+                            role="tab"
+                            aria-selected={mainTab === 'favoritos'}
+                            aria-controls="panel-favoritos"
+                            id="tab-favoritos"
+                        >
+                            <FaHeart aria-hidden="true" /> Eventos Salvos
+                        </button>
+                    </div>
+                </div>
+
+                {/* ABA 1: INGRESSOS (Estilo Apple Wallet) */}
+                {mainTab === 'ingressos' && (
+                    <div 
+                        className="tab-content animate-fade-in" 
+                        role="tabpanel" 
+                        id="panel-ingressos" 
+                        aria-labelledby="tab-ingressos"
+                    >
+                        
+                        <div className="sub-tabs-wrapper" role="tablist" aria-label="Filtro de Ingressos">
+                            <button 
+                                className={`sub-tab-btn ${ticketTab === 'valid' ? 'active' : ''}`} 
+                                onClick={() => setTicketTab('valid')}
+                                role="tab"
+                                aria-selected={ticketTab === 'valid'}
+                            >
+                                Próximos Eventos
+                            </button>
+                            <button 
+                                className={`sub-tab-btn ${ticketTab === 'history' ? 'active' : ''}`} 
+                                onClick={() => setTicketTab('history')}
+                                role="tab"
+                                aria-selected={ticketTab === 'history'}
+                            >
+                                Histórico
+                            </button>
+                        </div>
+
+                        <div className="tickets-grid">
+                            {currentTicketsList.length === 0 ? (
+                                <div className="empty-wallet" role="status">
+                                    <FaTicketAlt className="empty-icon" aria-hidden="true" />
+                                    <h3>Sua carteira está vazia</h3>
+                                    <p>Você não tem ingressos nesta categoria no momento.</p>
+                                    <Link href="/" className="btn-explore-purple">Explorar Eventos</Link>
                                 </div>
                             ) : (
-                                <div className="mini-tickets-list">
-                                    {tickets.map((t) => {
-                                        const { day, month } = getDateInfo(t.event?.date);
-                                        
-                                        // CORREÇÃO: Extrai o nome se ticketType for um objeto
-                                        const ticketTypeName = typeof t.ticketType === 'object' && t.ticketType !== null
-                                            ? t.ticketType.name
-                                            : t.ticketType;
+                                currentTicketsList.map((ticket) => {
+                                    const dateToShow = ticket.ticketType?.activityDate || ticket.event?.date;
+                                    const ticketTypeName = typeof ticket.ticketType === 'object' && ticket.ticketType !== null 
+                                        ? ticket.ticketType.name 
+                                        : ticket.ticketType;
 
-                                        return (
-                                            <div key={t.id} className="mini-ticket-card" onClick={() => router.push('/meus-ingressos')}>
-                                                <div className="mini-date">
-                                                    <span className="day">{day}</span>
-                                                    <span className="month">{month}</span>
-                                                </div>
-                                                <div className="mini-info">
-                                                    <h4>{t.event?.title || 'Evento Indisponível'}</h4>
-                                                    <div className="mini-meta">
-                                                        <span>{ticketTypeName || 'Ingresso'}</span>
-                                                        {t.event?.city && <span>• {t.event.city}</span>}
-                                                    </div>
-                                                </div>
-                                                <FaChevronRight className="mini-arrow"/>
+                                    return (
+                                        <div 
+                                            key={ticket.id || ticket._id} 
+                                            className="wallet-ticket-card" 
+                                            onClick={() => openTicket(ticket)}
+                                            onKeyDown={(e) => handleTicketKeyDown(e, ticket)}
+                                            role="button"
+                                            tabIndex="0"
+                                            aria-label={`Abrir ingresso de ${formatText(ticket.event?.title)}`}
+                                        >
+                                            <div className="wallet-ticket-image" aria-hidden="true">
+                                                <img src={ticket.event?.imageUrl || '/img/default-event.jpg'} alt="" />
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            
+                                            <div className="wallet-ticket-info">
+                                                <span className="wallet-ticket-badge">{formatText(ticketTypeName || "Ingresso")}</span>
+                                                <h3>{formatText(ticket.event?.title || "Evento Desconhecido")}</h3>
+                                                
+                                                <div className="wallet-ticket-meta">
+                                                    <span><FaCalendarDay aria-hidden="true" /> {formatDate(dateToShow)}</span>
+                                                    <span className="dot-separator" aria-hidden="true">•</span>
+                                                    <span><FaMapMarkerAlt aria-hidden="true" /> {ticket.event?.city || "Local não informado"}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="wallet-ticket-action" aria-hidden="true">
+                                                <div className="qr-hint-btn"><FaQrcode /></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
+                    </div>
+                )}
 
-                        <div className="divider"></div>
-
-                        {/* SEÇÃO DE FAVORITOS */}
-                        <div className="section-title" style={{marginBottom: '20px'}}>
-                            <h2>Meus Favoritos</h2>
-                        </div>
-
+                {/* ABA 2: FAVORITOS */}
+                {mainTab === 'favoritos' && (
+                    <div 
+                        className="tab-content animate-fade-in" 
+                        role="tabpanel" 
+                        id="panel-favoritos" 
+                        aria-labelledby="tab-favoritos"
+                    >
                         {favoritedEvents.length > 0 ? (
                             <div className="favorites-grid">
                                 {favoritedEvents.map(event => (
@@ -248,17 +391,94 @@ const UserProfile = () => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="empty-simple">
-                                <p>Nenhum evento favoritado ainda.</p>
-                                <Link href="/" className="btn-explore-purple"><FaSearch /> Explorar Eventos</Link>
+                            <div className="empty-wallet" role="status">
+                                <FaHeart className="empty-icon" aria-hidden="true" />
+                                <h3>Nenhum evento favoritado</h3>
+                                <p>Clique no coração nos eventos da página inicial para salvá-los aqui.</p>
+                                <Link href="/" className="btn-explore-purple">
+                                    <FaSearch aria-hidden="true" /> Explorar Eventos
+                                </Link>
                             </div>
                         )}
                     </div>
-                </>
+                )}
+            </main>
+
+            {/* MODAL DO QR CODE */}
+            {selectedTicket && (
+                <div 
+                    className="modal-overlay" 
+                    onClick={closeTicket}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Ingresso para ${formatText(selectedTicket.event?.title)}`}
+                >
+                    <div className="ticket-modal" onClick={e => e.stopPropagation()}>
+                        <button 
+                            className="close-modal" 
+                            onClick={closeTicket}
+                            aria-label="Fechar ingresso"
+                            autoFocus
+                        >
+                            <FaTimes aria-hidden="true" />
+                        </button>
+                        
+                        <div className="modal-event-image" style={{backgroundImage: `url(${selectedTicket.event?.imageUrl || '/img/default-event.jpg'})`}} aria-hidden="true">
+                            <div className="modal-overlay-gradient"></div>
+                            <h2>{formatText(selectedTicket.event?.title)}</h2>
+                        </div>
+                        
+                        <div className="modal-body">
+                            <div className="qr-container">
+                                {selectedTicket.qrCodeImage ? (
+                                    <img 
+                                        src={selectedTicket.qrCodeImage} 
+                                        alt="QR Code do seu ingresso. Apresente na entrada." 
+                                        className="qr-image"
+                                    />
+                                ) : (
+                                    <div className="qr-loading" role="status">Gerando QR...</div>
+                                )}
+                                <p className="qr-code-text">Apresente este código na entrada</p>
+                            </div>
+                            
+                            <div className="ticket-info-block">
+                                <div className="info-row">
+                                    <span>Titular</span>
+                                    <strong>{selectedTicket.user?.name || userData?.name || "Você"}</strong>
+                                </div>
+                                <div className="info-row">
+                                    <span>Categoria</span>
+                                    <strong>{formatText(selectedTicket.ticketType?.name)}</strong>
+                                </div>
+                                <div className="info-row">
+                                    <span>Data</span>
+                                    <strong>{formatDate(selectedTicket.ticketType?.activityDate || selectedTicket.event?.date)}</strong>
+                                </div>
+                                
+                                <div className="status-row">
+                                    <span 
+                                        className={`status-pill ${selectedTicket.status}`}
+                                        role="status"
+                                        aria-label={`Status do ingresso: ${selectedTicket.status === 'valid' ? 'Válido' : 'Já utilizado'}`}
+                                    >
+                                        {selectedTicket.status === 'valid' ? 'VÁLIDO PARA USO' : 'JÁ UTILIZADO'}
+                                    </span>
+                                </div>
+                                
+                                <button 
+                                    className="btn-download-pdf" 
+                                    onClick={() => handleDownloadPDF(selectedTicket.id, selectedTicket.event?.title)}
+                                    aria-label="Fazer download do ingresso original em PDF"
+                                >
+                                    <FaDownload aria-hidden="true" /> Baixar PDF Original
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
             <Footer />
         </div>
     );
-};
-
-export default UserProfile;
+}

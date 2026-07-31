@@ -70,6 +70,7 @@ model User {
 
   // Relações essenciais mantidas
   eventsOrganized          Event[]   @relation("EventOrganizer")
+  favoritedEvents          Event[]   @relation("UserFavorites")
 
   @@map("users")
 }
@@ -113,7 +114,8 @@ model Event {
   // Relações Essenciais
   organizerId          String
   organizer            User        @relation("EventOrganizer", fields: [organizerId], references: [id])
-
+  favoritedBy          User[]      @relation("UserFavorites")
+  
   @@map("events")
 }
 

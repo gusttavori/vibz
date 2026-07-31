@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Link from 'next/link';
 import styles from './CadastroEvento.module.css';
 import { 
-    FaImage, FaInstagram, FaPlus, FaTrashAlt, 
+    FaImage, FaInstagram, FaPlus, FaTrashAlt, FaTicketAlt,
     FaStar, FaCalendarAlt, FaMapMarkerAlt,
     FaAlignLeft, FaArrowLeft, FaLink, FaCheckCircle, FaRegCircle
 } from 'react-icons/fa';
@@ -23,7 +23,10 @@ const CadastroEvento = () => {
     const [ageRating, setAgeRating] = useState('Livre');
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
-    const [externalUrl, setExternalUrl] = useState(''); // Novo Campo para Link Oficial
+    
+    // --- ESTADOS DE VENDAS ---
+    const [sellOnPlatform, setSellOnPlatform] = useState(true);
+    const [externalUrl, setExternalUrl] = useState(''); 
     
     const [sessions, setSessions] = useState([
         { date: '', time: '', endDate: '', endTime: '' }
@@ -94,7 +97,16 @@ const CadastroEvento = () => {
         formData.append('category', category);
         formData.append('ageRating', ageRating);
         formData.append('image', imageFile);
-        formData.append('externalUrl', externalUrl); 
+
+        // Lógica de Vendas na Plataforma ou Externa
+        formData.append('sellOnPlatform', sellOnPlatform);
+        if (!sellOnPlatform) {
+            formData.append('externalUrl', externalUrl);
+            formData.append('isInformational', 'true'); // Se é fora da Vibz, é apenas informativo aqui
+        } else {
+            formData.append('externalUrl', '');
+            formData.append('isInformational', 'false'); // Terá ingressos configurados depois
+        }
 
         const formattedSessions = sessions.map(s => {
             let isoStart = null;
@@ -113,7 +125,6 @@ const CadastroEvento = () => {
         
         formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
         formData.append('isFeaturedRequested', isFeaturedRequested ? 'true' : 'false');
-        formData.append('isInformational', 'true');
 
         try {
             const res = await fetch(`${API_BASE_URL}/events`, {
@@ -122,7 +133,9 @@ const CadastroEvento = () => {
                 body: formData,
             });
             if (!res.ok) throw new Error('Erro ao criar evento.');
+            
             toast.success('Evento publicado na Agenda Cultural!');
+            // Redireciona para o painel para ele ver o evento criado
             setTimeout(() => router.push('/dashboard'), 1500); 
         } catch (err) {
             toast.error(err.message);
@@ -179,11 +192,59 @@ const CadastroEvento = () => {
                                 <label className={styles.label}>Classificação Etária</label>
                                 <select className={styles.select} value={ageRating || 'Livre'} onChange={e=>setAgeRating(e.target.value)}><option>Livre</option><option>12+</option><option>14+</option><option>16+</option><option>18+</option></select>
                             </div>
-                            <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
-                                <label className={styles.label}>Link Oficial de Vendas / Mais Informações</label>
-                                <div className={styles.inputWrapper}><FaLink className={styles.inputIcon}/><input className={styles.input} type="url" value={externalUrl || ''} onChange={e=>setExternalUrl(e.target.value)} placeholder="https://sympla.com.br/... (Opcional)"/></div>
+                        </div>
+                    </section>
+
+                    {/* --- NOVA SEÇÃO DE VENDAS E INGRESSOS --- */}
+                    <section className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.iconWrapper}><FaTicketAlt /></div>
+                            <h3>Vendas e Ingressos</h3>
+                        </div>
+                        
+                        <div className={styles.infoSwitchContainer}>
+                            <label className={styles.switch}>
+                                <input 
+                                    className={styles.hiddenCheckbox} 
+                                    type="checkbox" 
+                                    checked={sellOnPlatform} 
+                                    onChange={e => setSellOnPlatform(e.target.checked)} 
+                                />
+                                <span className={styles.slider}></span>
+                            </label>
+                            <div>
+                                <strong style={{display: 'block', color: '#1e293b'}}>Vender ingressos pela Vibz</strong>
+                                <span style={{fontSize: '0.85rem', color: '#64748b'}}>
+                                    Desmarque se a venda for realizada em outro site (Sympla, Bilheteria Digital, etc).
+                                </span>
                             </div>
                         </div>
+
+                        {!sellOnPlatform && (
+                            <div className={styles.inputGroupFull} style={{marginTop: '20px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
+                                <label className={styles.label}>Link Oficial de Vendas Externo</label>
+                                <div className={styles.inputWrapper}>
+                                    <FaLink className={styles.inputIcon}/>
+                                    <input 
+                                        className={styles.input} 
+                                        type="url" 
+                                        value={externalUrl || ''} 
+                                        onChange={e=>setExternalUrl(e.target.value)} 
+                                        placeholder="https://www.sympla.com.br/..." 
+                                        required={!sellOnPlatform}
+                                    />
+                                </div>
+                                <span style={{fontSize: '0.85rem', color: '#64748b', marginTop: '8px', display: 'block'}}>
+                                    O botão Garantir Ingressos redirecionará o cliente diretamente para este link.
+                                </span>
+                            </div>
+                        )}
+
+                        {sellOnPlatform && (
+                            <div style={{marginTop: '20px', padding: '20px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', color: '#166534', fontSize: '0.95rem'}}>
+                                <strong>Perfeito!</strong> Após clicar em Publicar, você poderá acessar a aba <strong>Editar</strong> no seu Painel para cadastrar os Lotes, Valores e Tipos de Ingressos.
+                            </div>
+                        )}
                     </section>
 
                     <section className={styles.card}>

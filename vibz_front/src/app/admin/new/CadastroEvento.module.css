@@ -18,10 +18,9 @@
     font-family: 'Urbanist', sans-serif;
     color: var(--text-dark);
     padding-bottom: 0;       
-    overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+    overflow-x: hidden; 
 }
 
-/* Garantia de dimensionamento seguro para todos os elementos internos */
 .pageWrapper *, .pageWrapper *::before, .pageWrapper *::after {
     box-sizing: border-box;
 }
@@ -87,7 +86,7 @@
     box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
     border: 1px solid var(--border);
     transition: transform 0.2s;
-    width: 100%; /* Garante que não ultrapasse a tela */
+    width: 100%; 
 }
 
 .card:hover {
@@ -114,7 +113,7 @@
     justify-content: center;
     color: var(--primary-purple);
     font-size: 1.4rem;
-    flex-shrink: 0; /* Evita que o ícone esprema em telas pequenas */
+    flex-shrink: 0; 
 }
 
 .cardHeader h3 {
@@ -267,7 +266,7 @@
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 16px;
-    width: 100%; /* Previne overflow */
+    width: 100%; 
 }
 .ticketTypeCard { background: #fcfcfc; position: relative; }
 
@@ -425,7 +424,6 @@
     
     .uploadBox { height: 180px; }
     
-    /* Achata todas as grids complexas para 1 coluna */
     .gridTwo, .gridDateTime, .gridAddressTop, .gridAddressStreet { 
         grid-template-columns: 1fr; 
         gap: 16px; 
@@ -450,7 +448,6 @@
     .sessionCard, .ticketTypeCard { padding: 16px; }
 }
 
-/* Telas muito pequenas (iPhone SE, Galaxy Fold) */
 @media (max-width: 480px) {
     .batchRow { display: flex; flex-direction: column; gap: 10px; }
     .batchRow > * { width: 100%; }

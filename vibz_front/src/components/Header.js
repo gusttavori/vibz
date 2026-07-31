@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import './Header.css';
 import { 
-    FaPlus, FaSignOutAlt, FaCalendarPlus, FaUserCog, FaSearch, 
-    FaMapMarkerAlt, FaTimes, FaLayerGroup 
+    FaSignOutAlt, FaCalendarPlus, FaUserCog, FaSearch, 
+    FaMapMarkerAlt, FaTimes, FaLayerGroup, FaTicketAlt, FaUser 
 } from 'react-icons/fa';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -164,67 +164,112 @@ export default function Header() {
     };
 
     return (
-        <header className="vibz-header-full">
-            <nav className="vibz-header-container">
+        <header className="vibz-header-full" role="banner">
+        <a href="#conteudo-principal" className="skip-to-content">Pular para o conteúdo principal</a>
+            <nav className="vibz-header-container" role="navigation" aria-label="Navegação principal">
                 
                 {/* LOGO (Na esquerda) */}
-                <Link href="/" className="vibz-logo-area">
-                    <img src="/img/vibe_site.png" alt="Vibz Logo" />
+                <Link href="/" className="vibz-logo-area" aria-label="Voltar para a página inicial da Vibz">
+                    <img src="/img/vibe_site.png" alt="Logotipo da Vibz" />
                 </Link>
 
                 {/* CONTAINER DIREITO (Agrupa Ações + Busca) */}
                 <div className="vibz-right-area">
                     
-                    {/* AÇÕES (Empurradas pra esquerda quando a busca expande) */}
+                    {/* AÇÕES */}
                     <div className={`vibz-actions ${isSearchOpen ? 'hide-on-mobile' : ''}`}>
-                        {isLoggedIn && (
-                            <>
-                                <Link href="/admin/new" className="vibz-btn-new-event">
-                                    <FaPlus className="icon-plus" />
-                                    <span>Novo Evento</span>
-                                </Link>
+                        {isLoggedIn ? (
+                            <div className="vibz-user-capsule" ref={dropdownRef}>
+                                <button
+                                    className={`vibz-avatar-btn ${showDropdown ? 'active' : ''}`}
+                                    onClick={() => setShowDropdown(!showDropdown)}
+                                    aria-haspopup="true"
+                                    aria-expanded={showDropdown}
+                                    aria-label="Abrir menu do usuário"
+                                >
+                                    <FaUserCog size={16} aria-hidden="true" />
+                                </button>
 
-                                <div className="vibz-user-capsule" ref={dropdownRef}>
-                                    <button
-                                        className={`vibz-avatar-btn ${showDropdown ? 'active' : ''}`}
-                                        onClick={() => setShowDropdown(!showDropdown)}
-                                        aria-label="Menu"
+                                <div 
+                                    className={`vibz-dropdown ${showDropdown ? 'show' : ''}`}
+                                    role="menu"
+                                    aria-label="Menu do usuário"
+                                >
+                                    <div className="dropdown-user-info" role="presentation">
+                                        <span className="greeting">Olá,</span>
+                                        <strong>{user?.name?.split(' ')[0]}</strong>
+                                    </div>
+                                    <div className="dropdown-divider" role="separator"></div>
+                                    
+                                    <button 
+                                        className="dropdown-item" 
+                                        role="menuitem"
+                                        onClick={() => { setShowDropdown(false); router.push('/perfil'); }}
                                     >
-                                        <FaUserCog size={16} />
+                                        <FaTicketAlt aria-hidden="true" /> Meus Ingressos & Salvos
                                     </button>
 
-                                    <div className={`vibz-dropdown ${showDropdown ? 'show' : ''}`}>
-                                        <div className="dropdown-user-info">
-                                            <span className="greeting">Olá,</span>
-                                            <strong>{user?.name?.split(' ')[0]}</strong>
-                                        </div>
-                                        <div className="dropdown-divider"></div>
-                                        <button className="dropdown-item" onClick={() => router.push('/dashboard')}>
-                                            <FaCalendarPlus /> Agenda
-                                        </button>
-                                        <button className="dropdown-item logout" onClick={handleLogout}>
-                                            <FaSignOutAlt /> Sair
-                                        </button>
-                                    </div>
+                                    <button 
+                                        className="dropdown-item" 
+                                        role="menuitem"
+                                        onClick={() => { setShowDropdown(false); router.push('/dashboard'); }}
+                                    >
+                                        <FaCalendarPlus aria-hidden="true" /> Meu Painel (Produtor)
+                                    </button>
+
+                                    <div className="dropdown-divider" role="separator"></div>
+
+                                    <button 
+                                        className="dropdown-item logout" 
+                                        role="menuitem"
+                                        onClick={handleLogout}
+                                    >
+                                        <FaSignOutAlt aria-hidden="true" /> Sair
+                                    </button>
                                 </div>
-                            </>
+                            </div>
+                        ) : (
+                            <Link href="/login" className="vibz-btn-login" aria-label="Entrar ou criar uma conta">
+                                Entrar / Criar Conta
+                            </Link>
                         )}
                     </div>
 
                     {/* ÁREA DE BUSCA (No extremo direito) */}
-                    <div className={`vibz-search-container ${isSearchOpen ? 'open' : ''}`} ref={searchWrapperRef}>
+                    <div 
+                        className={`vibz-search-container ${isSearchOpen ? 'open' : ''}`} 
+                        ref={searchWrapperRef}
+                        role="search"
+                    >
                         {!isSearchOpen ? (
-                            <button className="vibz-search-toggle-btn" onClick={() => setIsSearchOpen(true)}>
-                                <FaSearch size={16} />
+                            <button 
+                                className="vibz-search-toggle-btn" 
+                                onClick={() => setIsSearchOpen(true)}
+                                aria-label="Abrir barra de pesquisa"
+                                aria-expanded="false"
+                            >
+                                <FaSearch size={16} aria-hidden="true" />
                             </button>
                         ) : (
                             <div className="vibz-search-expanded">
-                                <button className="location-btn" onClick={() => setShowCityMenu(!showCityMenu)}>
-                                    <FaMapMarkerAlt size={14} />
+                                <button 
+                                    className="location-btn" 
+                                    onClick={() => setShowCityMenu(!showCityMenu)}
+                                    aria-haspopup="listbox"
+                                    aria-expanded={showCityMenu}
+                                    aria-label={`Cidade selecionada: ${selectedCity || 'Todas as cidades'}. Clique para alterar.`}
+                                >
+                                    <FaMapMarkerAlt size={14} aria-hidden="true" />
                                     <span className="city-text">{selectedCity || 'Todas as cidades'}</span>
                                     {selectedCity && (
-                                        <div className="clear-city" onClick={(e) => { e.stopPropagation(); setSelectedCity(''); setShowCityMenu(false); }}>
-                                            <FaTimes size={10} />
+                                        <div 
+                                            className="clear-city" 
+                                            onClick={(e) => { e.stopPropagation(); setSelectedCity(''); setShowCityMenu(false); }}
+                                            role="button"
+                                            aria-label="Limpar cidade selecionada"
+                                            tabIndex="0"
+                                        >
+                                            <FaTimes size={10} aria-hidden="true" />
                                         </div>
                                     )}
                                 </button>
@@ -236,33 +281,63 @@ export default function Header() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
                                     className="search-input"
+                                    aria-label="Campo de pesquisa de eventos"
+                                    aria-autocomplete="list"
+                                    aria-controls="search-suggestions-menu"
                                     autoFocus
                                 />
 
-                                <button className="close-search-btn" onClick={() => { setIsSearchOpen(false); setSearchTerm(''); }}>
-                                    <FaTimes size={14} />
+                                <button 
+                                    className="close-search-btn" 
+                                    onClick={() => { setIsSearchOpen(false); setSearchTerm(''); }}
+                                    aria-label="Fechar barra de pesquisa"
+                                >
+                                    <FaTimes size={14} aria-hidden="true" />
                                 </button>
 
                                 {/* DROPDOWN DE CIDADES */}
                                 {showCityMenu && (
-                                    <div className="header-dropdown-menu city-dropdown">
-                                        <div className="dropdown-item" onClick={() => { setSelectedCity(''); setShowCityMenu(false); }}>
+                                    <div className="header-dropdown-menu city-dropdown" role="listbox" aria-label="Lista de cidades">
+                                        <div 
+                                            className="dropdown-item" 
+                                            role="option" 
+                                            aria-selected={!selectedCity}
+                                            onClick={() => { setSelectedCity(''); setShowCityMenu(false); }}
+                                            tabIndex="0"
+                                        >
                                             <strong>Todas as cidades</strong>
                                         </div>
                                         {cities.length > 0 ? cities.map((city, idx) => (
-                                            <div key={idx} className="dropdown-item" onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}>
+                                            <div 
+                                                key={idx} 
+                                                className="dropdown-item" 
+                                                role="option"
+                                                aria-selected={selectedCity === city}
+                                                onClick={() => { setSelectedCity(city); setShowCityMenu(false); }}
+                                                tabIndex="0"
+                                            >
                                                 {city}
                                             </div>
-                                        )) : <div className="dropdown-item">Carregando locais...</div>}
+                                        )) : <div className="dropdown-item" role="status">Carregando locais...</div>}
                                     </div>
                                 )}
 
-                                {/* DROPDOWN DE SUGESTÕES (AUTOCOMPLETE) */}
+                                {/* DROPDOWN DE SUGESTÕES DA BUSCA */}
                                 {showSuggestions && (suggestions.length > 0 || matchedCategory) && (
-                                    <div className="header-dropdown-menu suggestions-dropdown">
+                                    <div 
+                                        id="search-suggestions-menu"
+                                        className="header-dropdown-menu suggestions-dropdown" 
+                                        role="listbox"
+                                        aria-label="Sugestões de pesquisa"
+                                    >
                                         {matchedCategory && (
-                                            <div className="suggestion-item category-highlight" onClick={() => handleCategorySuggestionClick(matchedCategory)}>
-                                                <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" /></div>
+                                            <div 
+                                                className="suggestion-item category-highlight" 
+                                                role="option"
+                                                tabIndex="0"
+                                                onClick={() => handleCategorySuggestionClick(matchedCategory)}
+                                            >
+                                                <div className="suggestion-icon"><FaLayerGroup color="#4C01B5" aria-hidden="true" /></div>
                                                 <div className="suggestion-info">
                                                     <span className="suggestion-title">Ver tudo em <strong>{matchedCategory}</strong></span>
                                                     <span className="suggestion-date">Explorar categoria completa</span>
@@ -271,10 +346,16 @@ export default function Header() {
                                         )}
 
                                         {suggestions.map((event) => (
-                                            <div key={event._id || event.id} className="suggestion-item" onClick={() => handleSuggestionClick(event._id || event.id)}>
+                                            <div 
+                                                key={event._id || event.id} 
+                                                className="suggestion-item" 
+                                                role="option"
+                                                tabIndex="0"
+                                                onClick={() => handleSuggestionClick(event._id || event.id)}
+                                            >
                                                 <Image 
                                                     src={event.imageUrl || 'https://placehold.co/40x40/png'} 
-                                                    alt={event.title} 
+                                                    alt={`Capa do evento ${event.title}`} 
                                                     width={36} height={36} 
                                                     className="suggestion-image" 
                                                 />

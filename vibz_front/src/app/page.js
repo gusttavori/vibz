@@ -254,13 +254,20 @@ export default function Home() {
         return (
             <section className="events-section" ref={ref}>
                 <h3 className="section-title">{title}</h3>
-                <div className="filter-buttons">
+                <div className="filter-buttons" role="group" aria-label={`Filtros para ${title}`}>
                     {['Todos', 'Hoje', 'Esta semana', 'Grátis'].map(filter => (
-                        <button key={filter} className={`filter-button ${activeFilter === filter ? 'active' : ''}`} onClick={() => handleFilterChange(categoryKey, filter)}>{filter}</button>
+                        <button 
+                            key={filter} 
+                            className={`filter-button ${activeFilter === filter ? 'active' : ''}`} 
+                            onClick={() => handleFilterChange(categoryKey, filter)}
+                            aria-pressed={activeFilter === filter}
+                        >
+                            {filter}
+                        </button>
                     ))}
                 </div>
                 <div className="event-list">
-                    {loading ? <p className="loading-text">Buscando os melhores eventos...</p> : filteredEvents.length > 0 ? (
+                    {loading ? <p className="loading-text" role="status">Buscando os melhores eventos...</p> : filteredEvents.length > 0 ? (
                         filteredEvents.map(event => (
                             <EventCard
                                 key={event._id || event.id}
@@ -272,7 +279,7 @@ export default function Home() {
                             />
                         ))
                     ) : (
-                        <div className="no-events-container">
+                        <div className="no-events-container" role="status">
                             <p>Nenhum evento encontrado para <strong>"{activeFilter}"</strong> nesta categoria.</p>
                             <button onClick={() => handleFilterChange(categoryKey, 'Todos')} className="clear-filter-btn">Ver todos os eventos</button>
                         </div>
@@ -287,8 +294,6 @@ export default function Home() {
             <Toaster position="top-center" reverseOrder={false} />
             <Header />
 
-            {/* O Bloco gigante de busca foi removido daqui! */}
-
             {featuredEvents.length > 0 && (
                 <div className="featured-carousel-container">
                     <Carousel events={featuredEvents} />
@@ -297,10 +302,23 @@ export default function Home() {
 
             <div className="categories-section">
                 <div className="categories-carousel-wrapper">
-                    <div className="categories-list">
+                    <div className="categories-list" role="navigation" aria-label="Navegação por categorias de eventos">
                         {categoriesToShowInNavigation.map((cat, index) => (
-                            <div key={index} className="category-item" onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                                <div className="category-icon">
+                            <div 
+                                key={index} 
+                                className="category-item" 
+                                onClick={() => cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                role="button"
+                                tabIndex="0"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        cat.ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                }}
+                                aria-label={`Rolar para a seção de ${cat.name}`}
+                            >
+                                <div className="category-icon" aria-hidden="true">
                                     {cat.icon}
                                 </div>
                                 <span className="category-name">{cat.name}</span>
@@ -310,14 +328,15 @@ export default function Home() {
                 </div>
             </div>
 
-            <div className="main-content-wrapper">
+            {/* AQUI ESTÁ O NOSSO CONTEÚDO PRINCIPAL COM O ID E O TABINDEX */}
+            <main id="conteudo-principal" className="main-content-wrapper" tabIndex="-1">
                 {renderSection("Festas e Shows", 'festas', festasRef)}
                 {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
                 {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
                 {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
                 {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
                 {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
-            </div>
+            </main>
 
             <div className="mkt-premium-section">
                 <div className="mkt-premium-content">
@@ -330,21 +349,21 @@ export default function Home() {
 
                         <div className="mkt-premium-list">
                             <div className="mkt-list-item">
-                                <div className="mkt-list-icon"><FaBullhorn /></div>
+                                <div className="mkt-list-icon" aria-hidden="true"><FaBullhorn /></div>
                                 <div className="mkt-list-content">
                                     <strong>Visibilidade Estratégica</strong>
                                     <span>Apareça para quem realmente quer sair de casa.</span>
                                 </div>
                             </div>
                             <div className="mkt-list-item">
-                                <div className="mkt-list-icon"><FaStar /></div>
+                                <div className="mkt-list-icon" aria-hidden="true"><FaStar /></div>
                                 <div className="mkt-list-content">
                                     <strong>Curadoria e Destaque</strong>
                                     <span>Ganhe o selo Vibz e esgote seus ingressos mais rápido.</span>
                                 </div>
                             </div>
                             <div className="mkt-list-item">
-                                <div className="mkt-list-icon"><FaLink /></div>
+                                <div className="mkt-list-icon" aria-hidden="true"><FaLink /></div>
                                 <div className="mkt-list-content">
                                     <strong>Tráfego Direto</strong>
                                     <span>Levamos o cliente pronto para comprar no seu site oficial.</span>
@@ -353,16 +372,20 @@ export default function Home() {
                         </div>
 
                         <div className="mkt-premium-cta">
-                            <button className="btn-premium-glow" onClick={() => window.open("https://www.instagram.com/vibzeventos/", "_blank")}>
-                                Divulgar Meu Evento <FaArrowRight />
+                            <button 
+                                className="btn-premium-glow" 
+                                onClick={() => window.open("https://www.instagram.com/vibzeventos/", "_blank")}
+                                aria-label="Abrir Instagram da Vibz Eventos em nova aba"
+                            >
+                                Divulgar Meu Evento <FaArrowRight aria-hidden="true" />
                             </button>
                         </div>
                     </div>
-                    <div className="mkt-premium-visual">
+                    <div className="mkt-premium-visual" aria-hidden="true">
                         <div className="glow-effect"></div>
                         <Image 
                             src="/img/mockup.png" 
-                            alt="App Vibz" 
+                            alt="" 
                             width={360} 
                             height={720} 
                             className="mkt-mockup-img" 
