@@ -1,0 +1,569 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+
+/* --- FUNDO CLARO PARA A PÁGINA --- */
+.vibz-details-page { 
+    background: #f4f4f5; 
+    min-height: 100vh; 
+    font-family: 'Urbanist', sans-serif; 
+    color: #0f172a; 
+}
+
+/* --- TELA DE CARREGAMENTO (LOADING) CORRIGIDA --- */
+.vibz-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #f4f4f5; /* Alinhado com o preto sofisticado do Hero */
+    font-family: 'Urbanist', sans-serif;
+    text-align: center;
+    padding: 20px;
+    z-index: 9999;
+}
+
+.vibz-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(167, 139, 250, 0.15); 
+    border-left-color: #a78bfa; 
+    border-radius: 50%;
+    animation: vibz-spin 1s linear infinite;
+    margin-bottom: 24px;
+}
+
+@keyframes vibz-spin {
+    to { transform: rotate(360deg); }
+}
+
+.vibz-loading-title {
+    font-size: 1.5rem;
+    color: #050408; /* Branco elegante */
+    font-weight: 800;
+    margin: 0 0 8px 0;
+}
+
+.vibz-loading-subtitle {
+    font-size: 1rem;
+    color: #9893a7;/* Cinza suave */
+    font-weight: 500;
+    margin: 0;
+}
+
+/* --- HERO: MINIMALISTA E SOFISTICADO --- */
+.vibz-hero { 
+    position: relative; 
+    padding: 80px 20px 80px; 
+    background: #050408;
+}
+
+.vibz-hero-container { 
+    max-width: 900px; 
+    margin: 0 auto; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 60px; 
+}
+
+.vibz-hero-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+}
+
+.vibz-category-pill { 
+    display: inline-block;
+    padding: 6px 14px; 
+    border: 1px solid rgba(191, 170, 255, 0.75); 
+    color: #bfaaff; 
+    border-radius: 100px; 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+}
+
+.vibz-title { 
+    font-size: 3rem; 
+    margin: 0 0 24px 0; 
+    font-weight: 700; 
+    line-height: 1.15; 
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+.vibz-meta-minimal { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #94a3b8; 
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.meta-icon {
+    color: #64748b; 
+    font-size: 1.1rem;
+}
+
+.vibz-image-minimal { 
+    width: 360px; /* Mais largo no desktop */
+    aspect-ratio: 16 / 9; /* Mágica do CSS moderno: trava a proporção exata */
+    height: auto; /* A altura se adapta automaticamente à largura */
+    border-radius: 16px; /* Borda levemente menor combina mais com formatos retangulares */
+    overflow: hidden;
+    flex-shrink: 0; 
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+}
+
+.vibz-image-minimal img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+}
+
+@media (max-width: 900px) {
+    .vibz-hero-container { 
+        flex-direction: column-reverse; 
+        text-align: center; 
+        gap: 40px;
+    }
+    .vibz-hero-info { align-items: center; }
+    .vibz-meta-minimal { align-items: center; }
+}
+
+@media (max-width: 768px) {
+    .vibz-title { font-size: 1.75rem; }
+    .vibz-image-minimal { width: 100%; max-width: 500px; }
+}
+
+@media (max-width: 480px) {
+    .vibz-title { font-size: 1.5rem; }
+    .vibz-image-minimal { width: 100%; }
+}
+
+.vibz-pill { 
+    display: inline-block;
+    background: #4C01B5; 
+    color: #ffffff;
+    padding: 6px 16px; 
+    border-radius: 4px; 
+    font-size: 0.75rem; 
+    font-weight: 800; 
+    text-transform: uppercase; 
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.vibz-meta { 
+    display: flex; 
+    gap: 12px; 
+    flex-wrap: wrap; 
+}
+
+.vibz-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08); 
+    border: 1px solid rgba(255, 255, 255, 0.15); 
+    padding: 8px 16px;
+    border-radius: 50px; 
+    font-size: 0.9rem;
+    color: #f8fafc;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+}
+
+.vibz-meta span svg {
+    color: #a78bfa; 
+    font-size: 1.1rem;
+}
+
+/* --- CONTEÚDO PRINCIPAL --- */
+.vibz-content { 
+    max-width: 1000px; 
+    margin: 40px auto 80px; 
+    padding: 0 20px; 
+}
+
+.vibz-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 340px; 
+    gap: 40px; 
+    align-items: start;
+}
+
+.vibz-card { 
+    background: #ffffff; 
+    padding: 35px 40px; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    margin-bottom: 25px; 
+}
+
+.vibz-card h3 { 
+    font-size: 1.4rem; 
+    color: #0f172a; 
+    margin-top: 0;
+    margin-bottom: 20px; 
+    font-weight: 800;
+}
+
+.vibz-desc { 
+    line-height: 1.8; 
+    color: #334155; 
+    font-size: 1.05rem;
+    white-space: pre-line;
+}
+
+/* --- ORGANIZADOR --- */
+.vibz-org { 
+    display: flex; 
+    align-items: center; 
+    gap: 20px; 
+}
+
+.vibz-org h4 {
+    margin: 0 0 5px 0;
+    color: #0f172a;
+    font-size: 1.1rem;
+}
+
+.vibz-avatar { 
+    width: 60px; 
+    height: 60px; 
+    background: #f8fafc; 
+    border-radius: 12px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-weight: 800; 
+    color: #4C01B5; 
+    flex-shrink: 0;
+}
+
+.vibz-insta { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px; 
+    color: #4C01B5; 
+    font-weight: 700; 
+    text-decoration: none; 
+}
+
+/* --- SIDEBAR --- */
+.vibz-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 24px; 
+    width: 100%;
+}
+
+.vibz-guide { 
+    background: #0b0914; 
+    color: white; 
+    padding: 35px 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box; 
+    width: 100%;
+}
+
+.guide-icon { 
+    font-size: 2.5rem; 
+    color: #a78bfa; 
+    margin-bottom: 15px; 
+}
+
+.vibz-guide h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.4rem;
+    color: #ffffff;
+}
+
+.vibz-guide p {
+    margin: 0 0 20px 0;
+    line-height: 1.6;
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+/* --- CORREÇÃO DO LAYOUT DOS INGRESSOS --- */
+.vibz-ticket-selector { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; width: 100%; }
+
+.vibz-ticket-row { 
+    display: flex; justify-content: space-between; align-items: center; 
+    background: rgba(255,255,255,0.03); padding: 16px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); 
+    transition: all 0.2s ease;
+}
+.vibz-ticket-row:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+}
+
+.ticket-details { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; } 
+.ticket-details strong { font-size: 1rem; color: #f8fafc; letter-spacing: 0.3px; }
+.ticket-price { color: #a78bfa; font-size: 0.9rem; font-weight: 700; margin-top: 2px;}
+
+/* NOVO: Estilo Premium para o Horário */
+.ticket-time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(167, 139, 250, 0.15); /* Fundo roxo translúcido */
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    color: #d8b4fe; /* Roxo claro brilhante */
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.ticket-time-badge svg {
+    font-size: 0.8rem;
+    color: #a78bfa;
+}
+
+.ticket-actions { 
+    display: flex; align-items: center; gap: 8px; background: #111827; 
+    padding: 6px 10px; border-radius: 8px; border: 1px solid #374151; 
+}
+
+.ticket-actions button { 
+    background: none; border: none; color: white; cursor: pointer; padding: 5px; display: flex; transition: 0.2s;
+}
+.ticket-actions button:hover:not(:disabled) { color: #a78bfa; transform: scale(1.1); }
+.ticket-actions button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.ticket-qty-display { font-weight: bold; width: 25px; text-align: center; color: #f8fafc; }
+
+/* --- BOTÕES --- */
+.vibz-btn-primary { 
+    width: 100%; background: #4C01B5; color: white; padding: 16px; border-radius: 12px; 
+    text-decoration: none; font-weight: 800; margin-top: 25px; transition: 0.2s; 
+    border: none; cursor: pointer; font-size: 1.05rem; display: flex; 
+    justify-content: center; align-items: center; gap: 10px; box-sizing: border-box;
+}
+
+.vibz-btn-primary:hover:not(:disabled) { background: #5b02d4; transform: translateY(-2px); }
+.vibz-btn-primary:disabled { background: #334155; cursor: not-allowed; }
+
+.vibz-btn-uber {
+    background: #ffffff; color: #000000; padding: 16px; border-radius: 12px;
+    text-decoration: none; font-weight: 800; font-size: 1.05rem; display: flex;
+    justify-content: center; align-items: center; gap: 10px; transition: transform 0.2s ease, background 0.2s ease;
+    width: 100%; box-sizing: border-box;
+}
+
+.vibz-btn-uber:hover { background: #f1f5f9; transform: translateY(-2px); }
+
+.vibz-places-list {
+    display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 5px; box-sizing: border-box;
+}
+
+.vibz-btn-outline {
+    background: rgba(255, 255, 255, 0.03); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 14px 16px; border-radius: 12px; text-decoration: none; font-weight: 700;
+    font-size: 0.95rem; display: flex; justify-content: flex-start; align-items: center;
+    gap: 12px; transition: all 0.2s ease; width: 100%; box-sizing: border-box;
+}
+
+.vibz-btn-outline:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); }
+
+/* --- ABAS DE SELEÇÃO DE DIAS NA BILHETERIA --- */
+.ticket-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ticket-dropdown-content {
+    width: 100%;
+    margin-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+}
+
+.dropdown-toggle-icon {
+    font-size: 1rem;
+    color: #a78bfa;
+}
+
+.vibz-day-tabs {
+    display: flex;
+    flex-wrap: wrap; /* Evita estourar o limite horizontal da tela */
+    gap: 6px;
+    margin-bottom: 15px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.vibz-day-tab {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 1 1 auto; /* Ajusta o tamanho dinamicamente em telas pequenas */
+    min-width: 75px;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.vibz-day-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.vibz-day-tab.active {
+    background: #4C01B5;
+    color: #ffffff;
+    border-color: #7c3aed;
+    box-shadow: 0 4px 12px rgba(76, 1, 181, 0.4);
+}
+
+/* Proteção geral para evitar overflow horizontal nas caixas escuras */
+.vibz-guide, .vibz-card {
+    box-sizing: border-box;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+/* ==========================================================
+   NOVO: CARD DE INGRESSO EXTERNO (LINK) E INFORMATIVO
+   ========================================================== */
+
+.vibz-ticket-external {
+    background: #0b0914; 
+    color: white; 
+    padding: 35px 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box; 
+    width: 100%;
+    margin-bottom: 25px;
+}
+
+.vibz-ticket-external .external-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.vibz-ticket-external h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.4rem;
+    color: #ffffff;
+}
+
+.vibz-ticket-external p.external-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.vibz-ticket-external p.external-text {
+    margin: 0 0 25px 0;
+    line-height: 1.6;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    max-width: 90%;
+}
+
+/* --- CARD DE INGRESSOS EXTERNOS (SIDEBAR) --- */
+.vibz-guide-external {
+    background: #0b0914; 
+    color: white; 
+    padding: 30px 25px; 
+    border-radius: 16px; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box; 
+    width: 100%;
+}
+.vibz-guide-external .guide-icon {
+    font-size: 2.2rem;
+    color: #a78bfa;
+    margin-bottom: 12px;
+}
+.vibz-guide-external h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.25rem;
+    color: #ffffff;
+    font-weight: 800;
+}
+.vibz-guide-external .external-subtitle {
+    margin: 0 0 15px 0;
+    font-size: 0.85rem;
+    color: #a78bfa;
+    font-weight: 600;
+}
+.vibz-guide-external .external-text {
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+.vibz-guide-external .vibz-btn-primary {
+    margin-top: 0;
+    padding: 14px;
+    font-size: 0.95rem;
+}
+
+/* --- RESPONSIVIDADE --- */
+@media (max-width: 900px) {
+    .vibz-grid { grid-template-columns: 1fr; }
+    .vibz-hero-container { flex-direction: column-reverse; text-align: center; }
+}
+
+@media (max-width: 768px) {
+    .vibz-hero { padding: 40px 20px 60px; }
+    .vibz-title { font-size: 2.5rem; }
+    .vibz-content { margin-top: 20px; }
+    .vibz-card { padding: 25px; }
+}
+
+@media (max-width: 480px) {
+    .vibz-title { font-size: 1.5rem; }
+    .vibz-meta { flex-direction: column; gap: 8px; }
+    .vibz-card { padding: 20px; }
+    .vibz-org { flex-direction: column; text-align: center; gap: 15px; }
+}

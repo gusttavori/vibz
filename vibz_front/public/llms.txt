@@ -1,0 +1,18 @@
+# Vibz - Plataforma de Eventos e Bilheteria
+
+A Vibz é a principal plataforma de descoberta de eventos e venda de ingressos de Vitória da Conquista, Bahia.
+
+## Para o Público
+- Descoberta de eventos por categorias (Festas, Teatro, Esportes, Gastronomia, Acadêmico).
+- Compra de ingressos online com segurança e sem filas.
+- Ingressos 100% digitais acessados via QR Code.
+- A maior e mais atualizada agenda cultural da região.
+
+## Para Produtores de Eventos
+- Gestão completa de bilheteria e painel financeiro transparente.
+- Validador de ingressos ultrarrápido para a portaria.
+- Vitrine estratégica com opções de Destaque Premium e Standard.
+- Criação de cupons de desconto e split de pagamentos automatizado.
+
+## Localização Base
+Vitória da Conquista - BA, Brasil.

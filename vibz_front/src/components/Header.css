@@ -1,0 +1,416 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+
+/* ==================================================
+   REGRA DE OURO: Impede que qualquer item vaze da tela
+   ================================================== */
+.vibz-header-full, .vibz-header-full * {
+    box-sizing: border-box;
+}
+
+/* --- HEADER FULL WIDTH (100% de largura) --- */
+.vibz-header-full {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    background: #4C01B5; 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); 
+}
+
+/* --- CONTAINER INTERNO --- */
+.vibz-header-container {
+    max-width: 1200px; 
+    margin: 0 auto;
+    height: 72px; 
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px; 
+}
+
+/* --- LOGO --- */
+.vibz-logo-area {
+    display: flex;
+    align-items: center;
+    flex: 1; 
+    justify-content: flex-start;
+}
+
+.vibz-logo-area img {
+    height: 26px; 
+    width: auto;
+    filter: brightness(0) invert(1);
+    transition: opacity 0.2s ease;
+}
+
+.vibz-logo-area:hover img { opacity: 0.8; }
+
+
+/* ==================================================
+   ÁREA DIREITA (AÇÕES + BUSCA EXTREMA)
+   ================================================== */
+.vibz-right-area {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1; 
+    gap: 12px;
+}
+
+.vibz-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0; 
+}
+
+/* CÁPSULA DA BUSCA (Extremo direito) */
+.vibz-search-container {
+    display: flex;
+    justify-content: flex-end;
+    width: 42px; 
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vibz-search-container.open {
+    width: 100%;
+    max-width: 420px; 
+}
+
+/* Botão Lupa Fechada */
+.vibz-search-toggle-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.vibz-search-toggle-btn:hover {
+    background: #ffffff;
+    color: #4C01B5;
+    transform: scale(1.05);
+}
+
+/* Barra Branca Expandida */
+.vibz-search-expanded {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    height: 44px;
+    width: 100%;
+    border-radius: 50px;
+    padding: 0 16px 0 8px;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* --- ELEMENTOS DENTRO DA BUSCA --- */
+.location-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 50px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.location-btn:hover { background: #e2e8f0; }
+.city-text { max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+
+.clear-city {
+    background: #cbd5e1;
+    color: white;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: #0f172a;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+    padding: 0 12px;
+    width: 100%;
+}
+
+.search-input::placeholder { color: #94a3b8; font-weight: 500; }
+
+.close-search-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+.close-search-btn:hover { color: #ef4444; }
+
+/* ==================================================
+   MENUS DROPDOWNS E BOTÕES PADRÃO
+   ================================================== */
+.header-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 16px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    z-index: 2000;
+}
+
+.city-dropdown { left: 0; width: 220px; }
+.suggestions-dropdown { left: 0; right: 0; width: 100%; }
+
+/* --- CORREÇÃO DO ESTILO DOS BOTÕES DO DROPDOWN DO USUÁRIO --- */
+.vibz-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: #334155;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 12px;
+    border: none; /* Remove aquelas bordas indesejadas */
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.vibz-dropdown .dropdown-item svg {
+    font-size: 1.1rem;
+    color: #4C01B5;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.vibz-dropdown .dropdown-item:hover {
+    background-color: #f5f3ff;
+    color: #4C01B5;
+    transform: translateX(3px); /* Efeito sutil de deslizar para a direita */
+}
+
+.vibz-dropdown .dropdown-item:hover svg {
+    transform: scale(1.1);
+}
+
+/* Item de Logout específico */
+.vibz-dropdown .dropdown-item.logout {
+    color: #ef4444;
+}
+
+.vibz-dropdown .dropdown-item.logout svg {
+    color: #ef4444;
+}
+
+.vibz-dropdown .dropdown-item.logout:hover {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+/* Sugestões de busca gerais */
+.dropdown-item {
+    padding: 12px 16px;
+    color: #334155;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f8fafc;
+    color: #4C01B5;
+}
+
+.suggestion-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; cursor: pointer; border-radius: 12px;
+    transition: background 0.2s;
+}
+.suggestion-item:hover { background: #f8fafc; }
+.suggestion-image { border-radius: 8px; object-fit: cover; }
+.suggestion-icon {
+    width: 36px; height: 36px; background: #f1f5f9;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+}
+.suggestion-info { display: flex; flex-direction: column; }
+.suggestion-title { color: #0f172a; font-weight: 700; font-size: 0.9rem; }
+.suggestion-date { color: #64748b; font-size: 0.75rem; font-weight: 500; }
+
+/* Botão Login Visitante */
+.vibz-btn-login {
+    display: flex; 
+    align-items: center; 
+    background: #ffffff; 
+    color: #4C01B5; 
+    padding: 10px 24px; 
+    border-radius: 50px; 
+    font-weight: 700; 
+    font-size: 0.9rem; 
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+}
+.vibz-btn-login:hover {
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15); 
+}
+
+/* Avatar Menu */
+.vibz-user-capsule { position: relative; display: flex; align-items: center; }
+.vibz-avatar-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.vibz-avatar-btn:hover, .vibz-avatar-btn.active { background: #ffffff; color: #4C01B5; }
+
+.vibz-dropdown {
+    position: absolute; top: calc(100% + 16px); right: 0; width: 250px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 10px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); 
+    opacity: 0; visibility: hidden; transform: translateY(10px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column; gap: 4px; z-index: 2000;
+}
+.vibz-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.dropdown-user-info { padding: 12px 14px 10px; display: flex; flex-direction: column; }
+.dropdown-user-info .greeting { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+.dropdown-user-info strong { font-size: 1.1rem; color: #0f172a; font-weight: 800; }
+.dropdown-divider { height: 1px; background-color: #f1f5f9; margin: 6px 4px; }
+
+
+/* ==================================================
+   RESPONSIVIDADE (MOBILE)
+   ================================================== */
+@media (max-width: 768px) {
+    .vibz-header-container { padding: 0 16px; height: 60px; }
+    
+    .vibz-avatar-btn { width: 38px; height: 38px; }
+    
+    .vibz-search-container { width: 38px; } 
+    .vibz-search-toggle-btn { width: 38px; height: 38px; }
+    
+    .vibz-dropdown { right: -10px; width: 230px; }
+
+    .hide-on-mobile { display: none !important; }
+    
+    .vibz-search-container.open {
+        max-width: 250px; 
+        margin-left: auto; 
+    }
+
+    .vibz-search-expanded {
+        height: 38px; 
+        padding: 0 12px 0 6px;
+    }
+
+    .location-btn { padding: 4px 8px; }
+    .location-btn svg { font-size: 12px; }
+    .city-text { display: none; } 
+
+    .search-input {
+        font-size: 0.85rem; 
+        padding: 0 8px;
+    }
+
+    .close-search-btn svg { font-size: 12px; }
+}
+
+@media (max-width: 400px) {
+    .vibz-search-container.open {
+        max-width: 200px; 
+    }
+    .vibz-logo-area img {
+        height: 20px; 
+    }
+}
+
+/* ==================================================
+   RESPONSIVIDADE (MOBILE)
+   ================================================== */
+@media (max-width: 768px) {
+    .vibz-header-container { padding: 0 16px; height: 60px; }
+    
+    .vibz-avatar-btn { width: 38px; height: 38px; }
+    
+    /* Ajuste de largura e altura da lupa no mobile */
+    .vibz-search-container { width: 38px; } 
+    .vibz-search-toggle-btn { width: 38px; height: 38px; }
+    
+    .vibz-dropdown { right: -10px; }
+
+    /* Quando a busca abrir no celular, esconde os botões */
+    .hide-on-mobile { display: none !important; }
+    
+    /* --- AJUSTES FINOS DA BUSCA EXPANDIDA NO MOBILE --- */
+    .vibz-search-container.open {
+        max-width: 250px; 
+        margin-left: auto; 
+    }
+
+    .vibz-search-expanded {
+        height: 38px; 
+        padding: 0 12px 0 6px;
+    }
+
+    .location-btn { padding: 4px 8px; }
+    .location-btn svg { font-size: 12px; }
+    .city-text { display: none; } 
+
+    .search-input {
+        font-size: 0.85rem; 
+        padding: 0 8px;
+    }
+
+    .close-search-btn svg { font-size: 12px; }
+}
+
+/* Celulares muito pequenos (iPhone SE, etc) */
+@media (max-width: 400px) {
+    .vibz-search-container.open {
+        max-width: 200px; 
+    }
+    .vibz-logo-area img {
+        height: 20px; 
+    }
+}

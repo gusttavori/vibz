@@ -1,0 +1,475 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --primary-purple: #4C01B5;
+    --bg-page: #f8fafc;
+    --text-dark: #1e293b;
+    --text-medium: #64748b;
+    --text-light: #94a3b8;
+    --border: #e2e8f0;
+}
+
+/* --- ESTRUTURA GERAL (CORREÇÃO FOOTER & OVERFLOW) --- */
+.pageWrapper {
+    display: flex;         
+    flex-direction: column;  
+    min-height: 100vh;       
+    background-color: var(--bg-page);
+    font-family: 'Urbanist', sans-serif;
+    color: var(--text-dark);
+    padding-bottom: 0;       
+    overflow-x: hidden; 
+}
+
+.pageWrapper *, .pageWrapper *::before, .pageWrapper *::after {
+    box-sizing: border-box;
+}
+
+.mainContent {
+    flex: 1;                 
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+/* --- HEADER --- */
+.pageHeader {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.pageHeader h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.pageHeader p {
+    color: var(--text-medium);
+    margin-top: 8px;
+    font-size: 1.1rem;
+}
+
+.backBtn {
+    background: none;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-medium);
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 12px;
+    transition: color 0.2s;
+    font-size: 0.95rem;
+}
+
+.backBtn:hover {
+    color: var(--primary-purple);
+}
+
+/* --- FORM CONTAINER --- */
+.formContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* --- CARDS --- */
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
+    transition: transform 0.2s;
+    width: 100%; 
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px -10px rgba(0,0,0,0.08);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.iconWrapper {
+    width: 48px;
+    height: 48px;
+    background: #f5f3ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-purple);
+    font-size: 1.4rem;
+    flex-shrink: 0; 
+}
+
+.cardHeader h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+/* --- GRIDS --- */
+.gridTwo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.gridDateTime {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+}
+
+.gridAddressTop {
+    display: grid;
+    grid-template-columns: 1.5fr 3fr 0.8fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.gridAddressStreet {
+    display: grid;
+    grid-template-columns: 4fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* --- INPUTS --- */
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.inputGroupFull {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+    margin-left: 2px;
+}
+
+.inputWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 16px;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+
+.input, .textarea, .select {
+    width: 100%;
+    height: 52px;
+    padding: 0 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-dark);
+    background: #fff;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.inputWrapper .input, .inputWrapper .select {
+    padding-left: 50px;
+}
+
+.textarea {
+    height: auto;
+    min-height: 140px;
+    padding: 16px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.input:focus, .select:focus, .textarea:focus, .inputSmall:focus {
+    outline: none;
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 4px rgba(76, 1, 181, 0.1);
+}
+
+.input::placeholder { color: var(--text-light); }
+
+/* --- UPLOAD --- */
+.uploadSection { margin-bottom: 30px; }
+
+.uploadBox {
+    width: 100%;
+    height: 250px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #f8fafc;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.uploadBox:hover {
+    border-color: var(--primary-purple);
+    background: #f5f3ff;
+}
+
+.uploadPlaceholder {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; color: var(--text-medium); font-weight: 500;
+}
+
+.imagePreview { width: 100%; height: 100%; object-fit: cover; }
+
+.imageOverlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.6); color: white; padding: 10px;
+    text-align: center; opacity: 0; transition: 0.3s;
+}
+.uploadBox:hover .imageOverlay { opacity: 1; }
+
+/* --- SESSIONS & TICKETS --- */
+.sessionCard, .ticketTypeCard {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    width: 100%; 
+}
+.ticketTypeCard { background: #fcfcfc; position: relative; }
+
+.sessionHeader, .ticketTypeHeader {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+}
+.ticketTypeHeader { align-items: flex-end; gap: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; }
+
+.sessionHeader h4 { margin: 0; font-size: 1rem; color: var(--primary-purple); font-weight: 700; }
+
+.batchesContainer {
+    background: #f1f5f9; border-radius: 12px; padding: 20px;
+    border: 1px dashed #cbd5e1;
+}
+
+.batchTitle {
+    font-size: 0.85rem; color: var(--text-medium); margin: 0 0 12px 0;
+    text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;
+}
+
+.batchRow {
+    display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; 
+    gap: 12px; align-items: center; margin-bottom: 12px;
+}
+
+.inputSmall {
+    width: 100%; height: 42px; padding: 0 12px; border: 1px solid #cbd5e1;
+    border-radius: 8px; font-size: 0.95rem; background: white; color: var(--text-dark);
+}
+.inputWrapper .inputSmall { padding-left: 36px; }
+
+.currencyPrefix {
+    position: absolute; left: 12px; font-size: 0.9rem;
+    color: var(--text-medium); font-weight: 600; pointer-events: none;
+}
+
+/* --- BUTTONS --- */
+.addBtnSmall, .addBatchBtn {
+    background: white; border: 2px dashed var(--text-light); color: var(--text-medium);
+    border-radius: 12px; cursor: pointer; font-weight: 600; display: flex;
+    align-items: center; justify-content: center; gap: 8px; transition: 0.2s;
+}
+.addBtnSmall { padding: 14px; width: 100%; margin-top: 10px; font-size: 0.95rem; }
+.addBatchBtn { background: none; border: none; color: var(--primary-purple); margin-top: 16px; padding: 4px 8px; border-radius: 6px; }
+
+.addBtnSmall:hover, .addBatchBtn:hover { background: #f5f3ff; color: var(--primary-purple); border-color: var(--primary-purple); }
+
+.trashBtn, .removeBatchBtn {
+    background: #fee2e2; color: #ef4444; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: 0.2s; flex-shrink: 0;
+}
+.trashBtn { width: 42px; height: 42px; border-radius: 10px; }
+.removeBatchBtn { width: 36px; height: 36px; border-radius: 8px; }
+.trashBtn:hover, .removeBatchBtn:hover { background: #fecaca; }
+
+.addBtnFull {
+    width: 100%; padding: 16px; background: #f0fdf4; border: 2px dashed #16a34a;
+    color: #16a34a; font-weight: 700; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: 0.2s; font-size: 1rem; margin-top: 24px;
+}
+.addBtnFull:hover { background: #dcfce7; }
+
+.submitButton {
+    width: 100%; padding: 20px; background: linear-gradient(135deg, #4C01B5 0%, #7c3aed 100%);
+    color: white; border: none; border-radius: 16px; font-weight: 800; font-size: 1.15rem;
+    cursor: pointer; box-shadow: 0 10px 25px -5px rgba(76, 1, 181, 0.4);
+    transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 20px;
+}
+.submitButton:hover { transform: translateY(-3px); box-shadow: 0 15px 35px -5px rgba(76, 1, 181, 0.5); filter: brightness(1.1); }
+.submitButton:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+/* --- SWITCHES & CHECKBOX --- */
+.infoSwitchContainer {
+    display: flex; align-items: center; gap: 15px; background: #f8fafc;
+    padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 20px;
+}
+.switch { position: relative; display: inline-block; width: 52px; height: 28px; flex-shrink: 0; }
+.hiddenCheckbox { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1; transition: .4s; border-radius: 34px;
+}
+.slider:before {
+    position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px;
+    background-color: white; transition: .4s; border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.hiddenCheckbox:checked + .slider { background-color: var(--primary-purple); }
+.hiddenCheckbox:checked + .slider:before { transform: translateX(24px); }
+
+/* Ajustado para ficar perfeito com a lixeira */
+.checkboxLabel {
+    display: flex; align-items: center; gap: 8px; font-size: 0.95rem;
+    color: #475569; cursor: pointer; user-select: none; font-weight: 600; margin: 0;
+}
+.checkbox { width: 18px; height: 18px; accent-color: var(--primary-purple); cursor: pointer; flex-shrink: 0; }
+
+/* --- DESTAQUES --- */
+.highlightGrid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+}
+.highlightCard {
+    background: white; border: 2px solid var(--border); border-radius: 16px;
+    padding: 24px; cursor: pointer; transition: all 0.3s;
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+.highlightCard:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+.highlightCard.active { border-color: var(--text-medium); background: #f8fafc; }
+.highlightCard.activeStandard { border-color: var(--primary-purple); background: #f5f3ff; }
+.highlightCard.activePremium { border-color: #f59e0b; background: #fffbeb; }
+
+/* --- FORMULÁRIO PARTICIPANTE --- */
+.questionList { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+.questionCard {
+    background-color: #f8fafc; border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; position: relative; width: 100%;
+}
+.questionRow { display: grid; grid-template-columns: 3fr 1.5fr; gap: 16px; align-items: start; margin-bottom: 12px; }
+
+/* 🌟 ALINHAMENTO PERFEITO DA LIXEIRA E OBRIGATÓRIO 🌟 */
+.questionFooter { 
+    display: flex; 
+    justify-content: space-between; /* Empurra um pra cada ponta */
+    align-items: center; 
+    margin-top: 16px; 
+}
+
+.deleteQuestionBtn { 
+    background: #fee2e2; color: #ef4444; border: 1px solid transparent; 
+    padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; 
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;
+}
+.deleteQuestionBtn:hover { background: #fca5a5; color: #b91c1c; }
+
+.addQuestionBtn { width: 100%; padding: 16px; background-color: #fff; border: 2px dashed #cbd5e1; color: var(--text-medium); border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;}
+.addQuestionBtn:hover { border-color: var(--primary-purple); color: var(--primary-purple); background-color: #f5f3ff; }
+
+/* --- SKELETON ANIMATIONS --- */
+@keyframes skeletonPulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+.skeletonPulse { animation: skeletonPulse 1.5s ease-in-out infinite; background-color: #e2e8f0; }
+.skTitle { height: 40px; border-radius: 8px; margin: 0 auto 10px; }
+.skSubtitle { height: 20px; border-radius: 4px; margin: 0 auto 40px; }
+.skCard { background: white; border-radius: 20px; padding: 32px; border: 1px solid #e2e8f0; margin-bottom: 32px; }
+.skInput { height: 52px; width: 100%; border-radius: 12px; }
+.skLabel { height: 16px; width: 100px; border-radius: 4px; margin-bottom: 8px; }
+.skImage { height: 250px; width: 100%; border-radius: 16px; margin-bottom: 10px; }
+.skButton { height: 56px; width: 100%; border-radius: 14px; margin-top: 20px; }
+
+/* ==========================================================================
+   RESPONSIVIDADE INTELIGENTE
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .mainContent { padding: 20px 16px; }
+    
+    .pageHeader h1 { font-size: 1.8rem; }
+    .pageHeader p { font-size: 1rem; }
+    
+    .card { padding: 24px 16px; border-radius: 16px; }
+    
+    .uploadBox { height: 180px; }
+    
+    .gridTwo, .gridDateTime, .gridAddressTop, .gridAddressStreet { 
+        grid-template-columns: 1fr; 
+        gap: 16px; 
+    }
+    
+    .ticketTypeHeader { flex-direction: column; align-items: stretch; gap: 16px; }
+    
+    .batchRow { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .batchRow > *:first-child { grid-column: span 2; }
+    .removeBatchBtn { grid-column: span 2; width: 100%; }
+    
+    .inputWrapper .input, .inputWrapper .select { padding-left: 44px; }
+    .inputIcon { left: 14px; }
+    
+    .questionRow { grid-template-columns: 1fr; gap: 12px; }
+    
+    /* 🌟 ALINHAMENTO NO CELULAR TAMBÉM 🌟 */
+    .questionFooter { 
+        flex-direction: row; /* Força a ficar na mesma linha */
+        justify-content: space-between; 
+        align-items: center; 
+        gap: 16px; 
+    }
+    .deleteQuestionBtn { justify-content: center; width: auto; }
+    
+    .highlightGrid { grid-template-columns: 1fr; }
+    
+    .sessionCard, .ticketTypeCard { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+    .batchRow { display: flex; flex-direction: column; gap: 10px; }
+    .batchRow > * { width: 100%; }
+    
+    .cardHeader { flex-direction: column; align-items: flex-start; gap: 12px; }
+    
+    .submitButton { font-size: 1.05rem; padding: 16px; }
+}

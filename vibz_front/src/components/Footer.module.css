@@ -1,0 +1,161 @@
+/* --- GERAL DO FOOTER --- */
+.footerWrapper {
+    background-color: #0b0914; /* Fundo escuro alinhado com a seção MKT premium */
+    color: #b3b3b3; 
+    font-family: 'Urbanist', sans-serif;
+    padding: 70px 20px 30px;
+    margin-top: auto;
+    width: 100%;
+    box-sizing: border-box;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* --- ÁREA PRINCIPAL --- */
+.mainContent {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 60px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 25px;
+}
+
+/* Coluna da Marca */
+.brandColumn {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.footerLogo {
+    width: 110px;
+    filter: brightness(0) invert(1);
+    opacity: 0.95;
+}
+
+.brandDescription {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.installArea {
+    margin-top: 10px;
+}
+
+/* Coluna dos Links */
+.navColumn {
+    flex: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 60px;
+    flex-wrap: wrap;
+}
+
+.navGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-width: 140px;
+}
+
+.navTitle {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+}
+
+.link {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.link:hover {
+    color: #ffffff;
+}
+
+/* --- BARRA INFERIOR --- */
+.bottomBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.copyright {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.socialIcons {
+    display: flex;
+    gap: 20px;
+}
+
+.socialIcon {
+    color: #94a3b8;
+    font-size: 1.5rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.socialIcon:hover {
+    color: #ffffff;
+    background: #4C01B5;
+    transform: translateY(-3px);
+}
+
+/* --- RESPONSIVIDADE --- */
+@media (max-width: 900px) {
+    .mainContent {
+        flex-direction: column;
+        gap: 50px;
+    }
+    
+    .navColumn {
+        justify-content: flex-start;
+        gap: 40px;
+    }
+}
+
+@media (max-width: 600px) {
+    .navColumn {
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .bottomBar {
+        flex-direction: column-reverse;
+        text-align: center;
+        gap: 25px;
+    }
+}

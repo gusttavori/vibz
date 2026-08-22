@@ -1,0 +1,7 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /login/
+
+Sitemap: https://www.vibzeventos.com.br/sitemap.xml

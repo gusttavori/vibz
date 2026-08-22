@@ -1,0 +1,513 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import toast, { Toaster } from 'react-hot-toast';
+import {
+    FaChartPie, FaList, FaCheck, FaTimes, FaCog,
+    FaMoneyBillWave, FaUsers, FaStar, FaEye, FaSignOutAlt,
+    FaTicketAlt, FaTrash, FaPlus, FaHandshake, FaInbox, FaDatabase
+} from 'react-icons/fa';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import './AdminDashboard.css';
+
+const getApiBaseUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+};
+
+export default function AdminDashboard() {
+    const router = useRouter();
+    const API_BASE_URL = getApiBaseUrl();
+
+    const [activeTab, setActiveTab] = useState('overview');
+    const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    const [stats, setStats] = useState(null);
+    const [pendingEvents, setPendingEvents] = useState([]);
+    const [pendingHighlights, setPendingHighlights] = useState([]);
+    const [allEvents, setAllEvents] = useState([]); 
+    const [coupons, setCoupons] = useState([]);
+    const [config, setConfig] = useState({ platformFee: 0.08, premiumPrice: 100, standardPrice: 2 });
+
+    const [selectedEvent, setSelectedEvent] = useState(null);
+
+    const [newCoupon, setNewCoupon] = useState({
+        code: '',
+        discountType: 'percentage_fee',
+        value: '',
+        partner: '',
+        maxUses: '',
+        expiresAt: ''
+    });
+
+    useEffect(() => {
+        checkAdminAndFetch();
+    }, [activeTab]);
+
+    const checkAdminAndFetch = async () => {
+        try {
+            // Verifica permissão de Admin via Cookie HttpOnly
+            const userRes = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
+            
+            if (userRes.status === 401) {
+                toast.error("Sessão expirada. Faça login novamente.");
+                router.push('/login');
+                return;
+            }
+
+            const userData = await userRes.json();
+            const user = userData.user || userData;
+
+            if (!user.isAdmin) {
+                toast.error("ACESSO NEGADO.");
+                router.push('/dashboard');
+                return;
+            }
+            setIsAdmin(true);
+
+            // Buscas protegidas por Cookie
+            if (activeTab === 'overview') {
+                const res = await fetch(`${API_BASE_URL}/admin/stats`, { credentials: 'include' });
+                if (res.ok) setStats(await res.json());
+            }
+            else if (activeTab === 'events') {
+                const res = await fetch(`${API_BASE_URL}/admin/events?status=pending`, { credentials: 'include' });
+                if (res.ok) setPendingEvents(await res.json());
+            }
+            else if (activeTab === 'highlights') {
+                const res = await fetch(`${API_BASE_URL}/admin/events?highlightStatus=pending`, { credentials: 'include' });
+                if (res.ok) setPendingHighlights(await res.json());
+            }
+            else if (activeTab === 'manage_events') { 
+                const res = await fetch(`${API_BASE_URL}/admin/all-events`, { credentials: 'include' });
+                if (res.ok) setAllEvents(await res.json());
+            }
+            else if (activeTab === 'coupons') {
+                const res = await fetch(`${API_BASE_URL}/admin/coupons`, { credentials: 'include' });
+                if (res.ok) setCoupons(await res.json());
+            }
+            else if (activeTab === 'settings') {
+                const res = await fetch(`${API_BASE_URL}/admin/settings`, { credentials: 'include' });
+                if (res.ok) setConfig(await res.json());
+            }
+        } catch (error) {
+            console.error(error);
+            router.push('/login');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAction = async (id, action, type = 'event') => {
+        const endpoint = type === 'highlight' ? `/admin/highlights/${id}` : `/admin/events/${id}`;
+        const body = type === 'highlight' ? { highlightStatus: action } : { status: action };
+
+        try {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Requisição Segura
+                body: JSON.stringify(body)
+            });
+
+            if (res.status === 401) return router.push('/login');
+
+            if (res.ok) {
+                toast.success('Atualizado com sucesso!');
+                checkAdminAndFetch();
+                setSelectedEvent(null);
+            } else {
+                toast.error("Erro ao atualizar.");
+            }
+        } catch (e) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    const handleDeleteEvent = async (id) => {
+        if (!confirm("CUIDADO: Tem certeza que deseja apagar este evento? Se houver vendas, ele será apenas ocultado (arquivado) para preservar o histórico financeiro.")) return;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/events/${id}`, {
+                method: 'DELETE',
+                credentials: 'include' // Requisição Segura
+            });
+
+            if (res.status === 401) return router.push('/login');
+
+            if (res.ok) {
+                toast.success("Evento excluído/arquivado com sucesso.");
+                setAllEvents(allEvents.filter(ev => (ev.id || ev._id) !== id));
+            } else {
+                toast.error("Erro ao excluir evento.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        if (!newCoupon.code || !newCoupon.value || !newCoupon.partner) {
+            return toast.error("Preencha os campos obrigatórios.");
+        }
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/coupons`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Requisição Segura
+                body: JSON.stringify(newCoupon)
+            });
+
+            if (res.status === 401) return router.push('/login');
+
+            if (res.ok) {
+                toast.success("Cupom criado!");
+                setNewCoupon({ code: '', discountType: 'percentage_fee', value: '', partner: '', maxUses: '', expiresAt: '' });
+                checkAdminAndFetch();
+            } else {
+                const err = await res.json();
+                toast.error(err.message || "Erro ao criar cupom.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    const handleDeleteCoupon = async (id) => {
+        if (!confirm("Tem certeza que deseja excluir este cupom?")) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/coupons/${id}`, {
+                method: 'DELETE',
+                credentials: 'include' // Requisição Segura
+            });
+
+            if (res.status === 401) return router.push('/login');
+
+            if (res.ok) {
+                toast.success("Cupom excluído.");
+                setCoupons(coupons.filter(c => (c.id || c._id) !== id));
+            } else {
+                toast.error("Erro ao excluir.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Requisição Segura
+                body: JSON.stringify(config)
+            });
+
+            if (res.status === 401) return router.push('/login');
+
+            if (res.ok) {
+                toast.success("Configurações Salvas!");
+            } else {
+                toast.error("Erro ao salvar.");
+            }
+        } catch (e) {
+            toast.error("Erro ao salvar.");
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+        } catch(e) {}
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userName');
+        router.push('/');
+    };
+
+    const chartData = stats?.chartData?.map(item => ({
+        date: new Date(item.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        amount: item.platformFeeFinal || 0
+    })) || [];
+
+    if (loading) return <div className="admin-loading"><div className="spinner"></div></div>;
+    if (!isAdmin) return null;
+
+    return (
+        <div className="admin-layout">
+            <Toaster position="top-right" />
+
+            <aside className="admin-sidebar">
+                <div className="admin-logo">
+                    <img src="/img/vibe_site.png" alt="Vibz Admin" className="logo-img" />
+                </div>
+                <nav className="admin-nav">
+                    <p className="nav-label">MENU</p>
+                    <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}><FaChartPie /> <span>Visão Geral</span></button>
+                    <button className={activeTab === 'events' ? 'active' : ''} onClick={() => setActiveTab('events')}><FaList /> <span>Moderação</span> {pendingEvents.length > 0 && <span className="badge">{pendingEvents.length}</span>}</button>
+                    <button className={activeTab === 'highlights' ? 'active' : ''} onClick={() => setActiveTab('highlights')}><FaStar /> <span>Destaques</span> {pendingHighlights.length > 0 && <span className="badge">{pendingHighlights.length}</span>}</button>
+
+                    <button className={activeTab === 'manage_events' ? 'active' : ''} onClick={() => setActiveTab('manage_events')}><FaDatabase /> <span>Gerenciar Eventos</span></button>
+
+                    <p className="nav-label">FINANCEIRO</p>
+                    <button className={activeTab === 'coupons' ? 'active' : ''} onClick={() => setActiveTab('coupons')}><FaTicketAlt /> <span>Cupons</span></button>
+                    <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}><FaCog /> <span>Configurações</span></button>
+                </nav>
+                <div className="admin-footer">
+                    <button onClick={handleLogout}><FaSignOutAlt /> <span>Sair</span></button>
+                </div>
+            </aside>
+
+            <main className="admin-main">
+                <header className="admin-header">
+                    <div>
+                        <h3>Painel Administrativo</h3>
+                        <p className="admin-subtitle">Gerenciamento completo da plataforma Vibz.</p>
+                    </div>
+                    <div className="admin-profile"><div className="admin-avatar">A</div><div className="admin-info"><span className="admin-name">Administrador</span><span className="admin-role">Super Admin</span></div></div>
+                </header>
+
+                <div className="admin-content-area">
+                    {activeTab === 'overview' && stats && (
+                        <>
+                            <div className="overview-grid">
+                                <div className="kpi-card purple"><div className="kpi-icon"><FaMoneyBillWave /></div><div className="kpi-data"><h4>Receita Líquida</h4><p>{stats.revenue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div></div>
+                                <div className="kpi-card blue"><div className="kpi-icon"><FaUsers /></div><div className="kpi-data"><h4>Usuários Totais</h4><p>{stats.users}</p></div></div>
+                                <div className="kpi-card orange"><div className="kpi-icon"><FaList /></div><div className="kpi-data"><h4>Eventos Pendentes</h4><p>{stats.pendingEvents}</p></div></div>
+                            </div>
+                            <div className="chart-container-card">
+                                <div className="card-header-clean"><h4>Desempenho de Receita (7 Dias)</h4></div>
+                                <div style={{ height: 350, width: '100%', padding: '20px' }}>
+                                    <ResponsiveContainer>
+                                        <LineChart data={chartData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="date" stroke="#94a3b8" axisLine={false} tickLine={false} dy={10} fontSize={12} />
+                                            <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} dx={-10} fontSize={12} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '13px' }} />
+                                            <Line type="monotone" dataKey="amount" stroke="#4C01B5" strokeWidth={3} dot={{ r: 4, fill: '#4C01B5' }} activeDot={{ r: 6 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {(activeTab === 'events' || activeTab === 'highlights') && (
+                        <div className="table-card">
+                            <div className="card-header">
+                                <h3>{activeTab === 'events' ? 'Moderando Eventos' : 'Solicitações de Destaque'}</h3>
+                            </div>
+                            {(activeTab === 'events' ? pendingEvents : pendingHighlights).length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-icon-bg"><FaInbox /></div>
+                                    <h3>Tudo limpo!</h3>
+                                    <p>Nenhuma solicitação pendente.</p>
+                                </div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>{activeTab === 'events' ? 'Organizador' : 'Plano & Valor'}</th>
+                                            <th>Status</th>
+                                            <th style={{ textAlign: 'right' }}>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(activeTab === 'events' ? pendingEvents : pendingHighlights).map(ev => (
+                                            <tr key={ev.id || ev._id}>
+                                                <td>
+                                                    <div className="event-info-cell">
+                                                        <div className="event-thumb" style={{ backgroundImage: `url(${ev.imageUrl})` }}></div>
+                                                        <div><strong>{ev.title}</strong><small>{ev.city}</small></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {activeTab === 'events'
+                                                        ? <span>{ev.organizer?.name}</span>
+                                                        : <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <strong style={{ color: ev.highlightTier === 'PREMIUM' ? '#B45309' : '#4C01B5' }}>
+                                                                {ev.highlightTier === 'PREMIUM' ? 'PREMIUM (Fixo)' : 'STANDARD (Diária)'}
+                                                            </strong>
+                                                            <small style={{ color: '#64748b' }}>
+                                                                {ev.highlightTier === 'STANDARD'
+                                                                    ? `${ev.highlightDuration} dias x R$ ${config.standardPrice.toFixed(2)} = R$ ${(ev.highlightDuration * config.standardPrice).toFixed(2)}`
+                                                                    : `Fixo: R$ ${config.premiumPrice.toFixed(2)}`
+                                                                }
+                                                            </small>
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td><span className="status-badge pending">Pendente</span></td>
+                                                <td className="actions-cell">
+                                                    <button className="btn-icon view" title="Ver" onClick={() => setSelectedEvent(ev)}><FaEye /></button>
+                                                    <button className="btn-icon approve" title="Aprovar" onClick={() => handleAction(ev.id || ev._id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck /></button>
+                                                    <button className="btn-icon reject" title="Rejeitar" onClick={() => handleAction(ev.id || ev._id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'manage_events' && (
+                        <div className="table-card">
+                            <div className="card-header">
+                                <h3>Todos os Eventos</h3>
+                            </div>
+                            {allEvents.length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-icon-bg"><FaDatabase /></div>
+                                    <h3>Nenhum evento encontrado</h3>
+                                </div>
+                            ) : (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Organizador</th>
+                                            <th>Data</th>
+                                            <th>Status</th>
+                                            <th style={{ textAlign: 'right' }}>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allEvents.map(ev => (
+                                            <tr key={ev.id || ev._id}>
+                                                <td>
+                                                    <div className="event-info-cell">
+                                                        <div className="event-thumb" style={{ backgroundImage: `url(${ev.imageUrl})` }}></div>
+                                                        <div><strong>{ev.title}</strong><small>{ev.city}</small></div>
+                                                    </div>
+                                                </td>
+                                                <td>{ev.organizer?.name || 'Desconhecido'}</td>
+                                                <td>{ev.eventDate || ev.createdAt ? new Date(ev.eventDate || ev.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
+                                                <td>
+                                                    <span className={`status-badge ${ev.status === 'approved' ? 'approved' : ev.status === 'rejected' || ev.status === 'archived' ? 'rejected' : 'pending'}`}>
+                                                        {ev.status === 'approved' ? 'Aprovado' : ev.status === 'rejected' ? 'Rejeitado' : ev.status === 'archived' ? 'Arquivado' : 'Pendente'}
+                                                    </span>
+                                                </td>
+                                                <td className="actions-cell">
+                                                    <button className="btn-icon view" title="Ver Detalhes" onClick={() => setSelectedEvent(ev)}><FaEye /></button>
+                                                    <button className="btn-icon reject" title="Excluir/Arquivar" onClick={() => handleDeleteEvent(ev.id || ev._id)}><FaTrash /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'coupons' && (
+                        <div className="coupon-layout">
+                            <div className="form-card">
+                                <h4><FaPlus size={12} /> Criar Novo Cupom</h4>
+                                <form onSubmit={handleCreateCoupon} className="admin-form">
+                                    <div className="form-group"><label>Código</label><input className="admin-input" value={newCoupon.code} onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })} placeholder="Ex: VIBZ10" required /></div>
+                                    <div className="form-group"><label>Parceiro</label><div className="input-icon-wrapper"><FaHandshake className="input-icon" /><input className="admin-input pl-icon" value={newCoupon.partner} onChange={e => setNewCoupon({ ...newCoupon, partner: e.target.value })} placeholder="Nome do parceiro" required /></div></div>
+                                    <div className="form-row">
+                                        <div className="form-group"><label>Tipo</label><select className="admin-select" value={newCoupon.discountType} onChange={e => setNewCoupon({ ...newCoupon, discountType: e.target.value })}><option value="percentage_fee">% na Taxa (Split)</option><option value="fixed">R$ Fixo</option></select></div>
+                                        <div className="form-group"><label>Valor</label><input className="admin-input" type="number" value={newCoupon.value} onChange={e => setNewCoupon({ ...newCoupon, value: e.target.value })} placeholder="5" required /></div>
+                                    </div>
+                                    <button type="submit" className="btn-primary full">Criar Cupom</button>
+                                </form>
+                            </div>
+                            <div className="table-card fluid-height">
+                                <div className="card-header"><h3>Cupons Ativos</h3></div>
+                                <div className="table-wrapper">
+                                    <table className="admin-table">
+                                        <thead><tr><th>Código</th><th>Parceiro</th><th>Benefício</th><th>Usos</th><th></th></tr></thead>
+                                        <tbody>
+                                            {coupons.map(c => (
+                                                <tr key={c.id || c._id}>
+                                                    <td><span className="code-badge">{c.code}</span></td><td>{c.partner}</td>
+                                                    <td>{c.discountType === 'percentage_fee' ? <span className="benefit-tag fee">-{c.value}% Taxa</span> : <span className="benefit-tag fixed">-R$ {c.value}</span>}</td>
+                                                    <td>{c.usedCount || 0}</td>
+                                                    <td style={{ textAlign: 'right' }}><button className="btn-icon reject" onClick={() => handleDeleteCoupon(c.id || c._id)}><FaTrash /></button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <div className="center-container">
+                            <div className="form-card large">
+                                <h4>Configurações Globais</h4>
+                                <p className="form-desc">Defina as taxas e valores base da plataforma.</p>
+                                <div className="admin-form">
+                                    <div className="form-group">
+                                        <label>Taxa da Plataforma (Decimal)</label>
+                                        <input className="admin-input" type="number" step="0.01" value={config.platformFee} onChange={e => setConfig({ ...config, platformFee: e.target.value })} />
+                                        <small>Ex: 0.08 equivale a 8% por venda de ingresso.</small>
+                                    </div>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label>Preço Destaque Premium (Fixo)</label>
+                                            <input className="admin-input" type="number" value={config.premiumPrice} onChange={e => setConfig({ ...config, premiumPrice: e.target.value })} />
+                                            <small>Valor único cobrado até o dia do evento.</small>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Valor Diária Standard (R$)</label>
+                                            <input className="admin-input" type="number" value={config.standardPrice} onChange={e => setConfig({ ...config, standardPrice: e.target.value })} />
+                                            <small>Valor cobrado por dia selecionado.</small>
+                                        </div>
+                                    </div>
+                                    <button className="btn-primary" onClick={handleSaveSettings}>Salvar Alterações</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {selectedEvent && (
+                    <div className="admin-modal-overlay" onClick={() => setSelectedEvent(null)}>
+                        <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                            <button className="close-modal-btn" onClick={() => setSelectedEvent(null)}><FaTimes /></button>
+                            <div className="modal-content-wrapper">
+                                <div className="modal-img-col" style={{ backgroundImage: `url(${selectedEvent.imageUrl})` }}></div>
+                                <div className="modal-info-col">
+                                    <div className="modal-header"><h2>{selectedEvent.title}</h2><span className="modal-category">{selectedEvent.category}</span></div>
+                                    <p className="modal-meta">{selectedEvent.city} • {selectedEvent.eventDate ? new Date(selectedEvent.eventDate).toLocaleDateString('pt-BR') : 'Data Indisponível'}</p>
+
+                                    <div className="modal-desc-box"><label>Descrição</label><p>{selectedEvent.description}</p></div>
+
+                                    <div className="modal-organizer">
+                                        <label>Organizador</label>
+                                        <p>{selectedEvent.organizer?.name} ({selectedEvent.organizer?.email})</p>
+                                    </div>
+
+                                    {selectedEvent.isFeaturedRequested && (
+                                        <div className="modal-organizer" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FEF3C7' }}>
+                                            <label style={{ color: '#B45309' }}>Solicitação de Destaque</label>
+                                            <p>Plano: <strong>{selectedEvent.highlightTier}</strong></p>
+                                            {selectedEvent.highlightTier === 'STANDARD' && <p>Duração: <strong>{selectedEvent.highlightDuration} dias</strong></p>}
+                                        </div>
+                                    )}
+
+                                    <div className="modal-actions-row">
+                                        {activeTab !== 'manage_events' ? (
+                                            <>
+                                                <button className="btn-action approve" onClick={() => handleAction(selectedEvent.id || selectedEvent._id, 'approved', activeTab === 'events' ? 'event' : 'highlight')}><FaCheck /> Aprovar</button>
+                                                <button className="btn-action reject" onClick={() => handleAction(selectedEvent.id || selectedEvent._id, 'rejected', activeTab === 'events' ? 'event' : 'highlight')}><FaTimes /> Rejeitar</button>
+                                            </>
+                                        ) : (
+                                            <button className="btn-action reject" onClick={() => { handleDeleteEvent(selectedEvent.id || selectedEvent._id); setSelectedEvent(null); }}><FaTrash /> Apagar Evento</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}
