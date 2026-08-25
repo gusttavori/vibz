@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { OAuth2Client } = require('google-auth-library');
-const { z } = require('zod'); // <-- 1. Importação do Zod
+const { z } = require('zod'); 
 
 const googleClient = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
@@ -12,7 +12,7 @@ const googleClient = new OAuth2Client(
 );
 
 // ==========================================
-// 🛡️ ESQUEMAS DE VALIDAÇÃO ZOD (Ponto 14)
+// 🛡️ ESQUEMAS DE VALIDAÇÃO ZOD 
 // ==========================================
 
 const registerSchema = z.object({
@@ -37,21 +37,27 @@ const resetPasswordSchema = z.object({
 });
 
 // ==========================================
+// 🛡️ CONFIGURAÇÃO DE SEGURANÇA (COOKIES E JWT)
+// ==========================================
 
-// --- CONFIGURAÇÃO DE SEGURANÇA DO COOKIE (HTTP-ONLY) ---
 const isProduction = process.env.NODE_ENV === 'production';
+
 const cookieOptions = {
     httpOnly: true, 
     secure: isProduction, 
-    sameSite: isProduction ? 'none' : 'lax', 
+    sameSite: 'lax', // Mitigação severa contra CSRF 
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 dias
 };
 
 const generateToken = (id) => {
-    if (!process.env.JWT_SECRET) {
-        return jwt.sign({ id }, 'secret_temporario_vibz', { expiresIn: '7d' });
+    const secret = process.env.JWT_SECRET;
+    
+    // Proteção Crítica: Impede a geração de tokens com secret fraco/padrão em ambiente de produção
+    if (!secret && isProduction) {
+        throw new Error("FATAL ERROR: JWT_SECRET não definido em ambiente de produção.");
     }
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+    
+    return jwt.sign({ id }, secret || 'secret_temporario_vibz', {
         expiresIn: '7d',
     });
 };

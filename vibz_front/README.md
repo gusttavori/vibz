@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💜 Vibz — Plataforma de Gestão e Descoberta de Eventos
 
-## Getting Started
+> Uma solução SaaS inovadora para o mercado de entretenimento, conectando produtores de eventos ao seu público através de uma experiência de compra fluida e uma gestão de bilheteria inteligente. Desenvolvido pela **FLXCHE**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 💜 Visão Geral do Produto
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A Vibz foi projetada para modernizar a interação entre o público e as casas de eventos. A plataforma atua em duas frentes complementares: um agregador cultural dinâmico para os usuários descobrirem o que está acontecendo na cidade, e um robusto sistema de controle B2B para que organizadores possam orquestrar vendas, gerenciar lotes e validar a portaria com máxima segurança.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🎯 Experiência B2B e B2C
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* **Vitrine e Descoberta:** Feed dinâmico otimizado para facilitar a navegação do usuário final entre categorias, datas e locais.
+* **Checkout de Alta Conversão:** Integração nativa de pagamentos garantindo um fluxo de compra rápido, com suporte a formulários personalizados exigidos pelos produtores.
+* **Ingressos Digitais Inteligentes:** Geração e disparo automatizado de ingressos em PDF contendo QR Codes criptografados únicos por participante.
+* **Painel do Organizador:** Dashboard com métricas em tempo real, controle de lotes, capacidade de sessões e edição do *line-up* do evento.
+* **Controle de Portaria:** Validador interno ágil integrado ao banco de dados, prevenindo fraudes e otimizando o fluxo de entrada.
+* **Inteligência de Dados:** Exportação avançada de relatórios de presença com filtros cruzados diretamente pelo *client-side*.
 
-## Learn More
+## 🛡️ Arquitetura e Segurança
 
-To learn more about Next.js, take a look at the following resources:
+* Arquitetura desacoplada, garantindo escalabilidade independente entre o cliente e os serviços da API.
+* Blindagem contra ataques XSS e roubo de sessão utilizando JWT envelopado estritamente em cookies `HttpOnly` e `SameSite`.
+* Validação de ponta a ponta na entrada de dados da API utilizando esquemas rigorosos de tipagem.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 💻 Stack Tecnológico
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+* **Frontend:** React, Next.js, CSS Modules (Design System Proprietário).
+* **Backend:** Node.js, Express, Prisma ORM, PostgreSQL.
+* **Integrações Chave:** Stripe API (Processamento financeiro e Webhooks), Resend (E-mails transacionais) e Cloudinary (CDN de Mídia).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Plataforma desenvolvida por Gustavo / FLXCHE.*

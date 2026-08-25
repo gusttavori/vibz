@@ -17,6 +17,37 @@ const eventSchema = z.object({
     description: z.string().min(10, "A descrição do evento precisa ter no mínimo 10 caracteres."),
     category: z.string().min(2, "A categoria do evento é obrigatória.")
 });
+
+// ==========================================
+// 🛡️ TRAVA LGPD (MINIMIZAÇÃO DE DADOS)
+// ==========================================
+const validateFormSchemaLGPD = (schema) => {
+    if (!schema || !Array.isArray(schema)) return;
+
+    // Padrões Regex baseados estritamente na Seção 4.4 dos Termos de Uso
+    const forbiddenPatterns = [
+        // Dados Pessoais Sensíveis
+        /\b(religião|religiao|raça|raca|etnia|política|politica|sindicato|saúde|saude|doença|doenca|sexual|genético|genetico|biometria|biométrico)\b/i,
+        // Credenciais e Dados Financeiros
+        /\b(senha|cartão de crédito|cartao de credito|cvv|conta bancária|conta bancaria|chave pix)\b/i,
+        // Proibição de Fotos/Cópias de Documentos (Permite texto de RG para portaria, mas proíbe envio de foto)
+        /\b(foto|cópia|copia|digitalização)\b.*\b(rg|cnh|passaporte|documento)\b/i,
+        /\b(rg|cnh|passaporte|documento)\b.*\b(foto|cópia|copia|digitalização)\b/i,
+        // Localização em Tempo Real
+        /\b(gps|tempo real)\b/i
+    ];
+
+    for (const field of schema) {
+        // Pega a label da pergunta, ou o nome do campo
+        const label = (field.label || field.question || field.name || '').toLowerCase();
+        
+        for (const pattern of forbiddenPatterns) {
+            if (pattern.test(label)) {
+                throw new Error(`Alerta LGPD: O campo "${field.label || field.name}" contém solicitações restritas pelas Políticas da Vibz (ex: dados sensíveis, financeiros ou pedido de fotos de documentos).`);
+            }
+        }
+    }
+};
 // ==========================================
 
 // --- HELPER: Junta os ingressos ao evento na hora de buscar do Banco ---
@@ -109,6 +140,14 @@ const createEvent = async (req, res) => {
             return res.status(400).json({ message: validation.error.errors[0].message });
         }
 
+        // 🛡️ Validação da Trava LGPD no Formulário Customizado
+        let parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
+        try {
+            validateFormSchemaLGPD(parsedFormSchema);
+        } catch (lgpdError) {
+            return res.status(400).json({ message: lgpdError.message });
+        }
+
         const userId = req.user.id;
         
         let finalOrganizerName = "Curador Vibz";
@@ -127,7 +166,6 @@ const createEvent = async (req, res) => {
 
         let parsedAddress = address ? JSON.parse(address) : {};
         let parsedSessions = sessions ? JSON.parse(sessions) : [];
-        let parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
         let parsedTickets = tickets ? JSON.parse(tickets) : [];
 
         let imageUrl = '';
@@ -214,6 +252,14 @@ const updateEvent = async (req, res) => {
             return res.status(400).json({ message: validation.error.errors[0].message });
         }
 
+        // 🛡️ Validação da Trava LGPD no Formulário Customizado
+        const parsedFormSchema = typeof formSchema === 'string' ? JSON.parse(formSchema) : (formSchema || []);
+        try {
+            validateFormSchemaLGPD(parsedFormSchema);
+        } catch (lgpdError) {
+            return res.status(400).json({ message: lgpdError.message });
+        }
+
         let imageUrl = existingEvent.imageUrl;
         if (req.file) {
             const b64 = Buffer.from(req.file.buffer).toString("base64");
@@ -245,7 +291,7 @@ const updateEvent = async (req, res) => {
                 eventDate: mainEventDate, sessions: parsedSessions,
                 organizerInfo: parsedOrgInfo,
                 externalUrl: externalUrl || existingEvent.externalUrl,
-                formSchema: typeof formSchema === 'string' ? JSON.parse(formSchema) : formSchema,
+                formSchema: parsedFormSchema,
                 isInformational: isInfoBool
             }
         });
@@ -457,7 +503,6 @@ const getEventParticipants = async (req, res) => {
     }
 };
 
-// --- RESTAURADO: Alteração manual de status no Painel ---
 const toggleTicketStatus = async (req, res) => {
     try {
         const ticketId = req.params.ticketId || req.params.id || req.body.ticketId;

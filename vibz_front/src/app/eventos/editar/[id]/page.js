@@ -765,9 +765,17 @@ const EditarEvento = () => {
                             {sellOnPlatform && (
                                 <section className={styles.card}>
                                     <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaClipboardCheck /></div><h3>Formulário Personalizado</h3></div>
-                                    <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '20px' }}>
+                                    <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '10px' }}>
                                         Exija informações adicionais na inscrição (Ex: WhatsApp, Igreja, Mesa Desejada).
                                     </p>
+                                    
+                                    {/* ALERTA DE UX SOBRE A LGPD */}
+                                    <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '10px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                                        <span style={{ fontSize: '0.85rem', color: '#991B1B' }}>
+                                            <strong>Regra LGPD:</strong> É proibido solicitar dados sensíveis (religião, saúde), dados bancários, senhas ou fotos de documentos (RG/CNH). O sistema bloqueará o salvamento caso identifique termos restritos.
+                                        </span>
+                                    </div>
 
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '25px', padding: '15px', border: '1px solid #e2e8f0', borderRadius: '10px', background: requireCustomForm ? '#f8fafc' : '#fff' }}>
                                         <input type="checkbox" checked={requireCustomForm} onChange={e => setRequireCustomForm(e.target.checked)} style={{ accentColor: '#4c01b5', transform: 'scale(1.2)' }} />
@@ -788,9 +796,14 @@ const EditarEvento = () => {
                                                             <option value="text">Texto Curto</option><option value="tel">Telefone / WhatsApp</option><option value="email">E-mail</option>
                                                         </select>
                                                     </div>
-                                                    <div className={styles.inputGroup} style={{ flex: '1 1 auto', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#475569', fontWeight: 'bold', padding: '10px' }}>
-                                                            <input type="checkbox" checked={field.required} onChange={e => handleChangeFormField(field.id, 'required', e.target.checked)} style={{ accentColor: '#4c01b5', transform: 'scale(1.1)' }} />
+                                                    <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-start', paddingBottom: '12px' }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.95rem', color: '#334155', fontWeight: 'bold' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={field.required} 
+                                                                onChange={e => handleChangeFormField(field.id, 'required', e.target.checked)} 
+                                                                style={{ accentColor: '#4c01b5', width: '18px', height: '18px', margin: 0, cursor: 'pointer' }} 
+                                                            />
                                                             Obrigatório
                                                         </label>
                                                     </div>

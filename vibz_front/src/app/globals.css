@@ -130,3 +130,101 @@ code {
     outline: none;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
+
+/* ==================================================
+   ESTILOS DO BANNER DE COOKIES (MODERNO / VIBZ)
+   ================================================== */
+.cookie-consent {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 500px; /* Mantém o card compacto e elegante */
+  background-color: #0f0a1a; /* Fundo escuro com leve tom roxo */
+  border: 1px solid rgba(168, 85, 247, 0.3); /* Borda roxa sutil */
+  border-radius: 16px; /* Cantos arredondados padrão Vibz */
+  padding: 24px;
+  z-index: 99999;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); /* Sombra suave flutuante */
+  backdrop-filter: blur(10px);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.cookie-consent-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cookie-consent-content h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Adiciona o emoji de cookie direto no título via CSS para dar um toque amigável */
+.cookie-consent-content h2::before {
+  content: '🍪';
+  font-size: 1.3rem;
+}
+
+.cookie-consent-content p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #a1a1aa; /* Cinza claro para não cansar a leitura */
+}
+
+.cookie-consent-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.cookie-consent-actions button {
+  flex: 1; /* Deixa os botões do mesmo tamanho */
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+/* Botão Recusar (Estilo Outline/Discreto) */
+.cookie-consent-actions button:first-child {
+  background-color: transparent;
+  color: #d4d4d8;
+  border: 1px solid #3f3f46;
+}
+
+.cookie-consent-actions button:first-child:hover {
+  background-color: #27272a;
+  color: #fff;
+  border-color: #52525b;
+}
+
+/* Botão Aceitar (Destaque Principal Vibz) */
+.cookie-consent-actions button:last-child {
+  background-color: #4C01B5; /* Roxo Vibz */
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(76, 1, 181, 0.4); /* Brilho do botão */
+}
+
+.cookie-consent-actions button:last-child:hover {
+  background-color: #5b02d9; /* Mais claro no hover */
+  transform: translateY(-2px); /* Efeito de levantar levemente */
+  box-shadow: 0 6px 20px rgba(76, 1, 181, 0.6);
+}
