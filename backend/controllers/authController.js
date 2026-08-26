@@ -42,10 +42,13 @@ const resetPasswordSchema = z.object({
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Para Vercel (Front) e Render (Back) se comunicarem sem bloqueios do navegador,
+// SameSite DEVE ser 'none' em produção com secure 'true'.
 const cookieOptions = {
     httpOnly: true, 
     secure: isProduction, 
-    sameSite: 'lax', // Mitigação severa contra CSRF 
+    sameSite: isProduction ? 'none' : 'lax', // <-- A MÁGICA ACONTECE AQUI
+    path: '/', // Garante que o cookie vale para toda a API
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 dias
 };
 
@@ -206,7 +209,13 @@ const googleLogin = async (req, res) => {
 };
 
 const logoutUser = (req, res) => {
-    res.clearCookie('vibz_token', cookieOptions);
+    // Para deletar o cookie, o Express exige exatamente as mesmas opções (exceto maxAge)
+    res.clearCookie('vibz_token', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/'
+    });
     res.status(200).json({ msg: 'Logout realizado com sucesso' });
 };
 
