@@ -5,9 +5,6 @@ const crypto = require('crypto');
 const { generateAndSendTickets } = require('./ticketController');
 const { sendNewSaleEmail } = require('../services/emailService');
 
-const STRIPE_PERCENTAGE = 0.0399;
-const STRIPE_FIXED = 0.39;
-
 const connectStripeAccount = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -48,32 +45,48 @@ const connectStripeAccount = async (req, res) => {
 
 const validateCoupon = async (req, res) => {
     try {
+        // 🛡️ Segurança: Identifica o usuário para a trava de uso único
+        const userId = req.user?.id;
         const { code, eventId } = req.body;
 
-        if (!code || !eventId) {
-            return res.status(400).json({ message: 'Dados incompletos.' });
+        if (!code || !eventId || !userId) {
+            return res.status(400).json({ message: 'Dados incompletos ou usuário não autenticado.' });
         }
 
         const coupon = await prisma.coupon.findUnique({
             where: { code: code, isActive: true }
         });
 
-        if (!coupon) {
-            return res.status(404).json({ message: 'Cupom inválido ou expirado.' });
-        }
+        if (!coupon) return res.status(404).json({ message: 'Cupom inválido ou expirado.' });
 
+        // Validações de data e limite global
         const now = new Date();
-        if (coupon.validFrom && now < new Date(coupon.validFrom)) return res.status(400).json({ message: 'Cupom ainda não disponível.' });
-        if (coupon.validUntil && now > new Date(coupon.validUntil)) return res.status(400).json({ message: 'Cupom expirado.' });
+        if (coupon.validFrom && now < coupon.validFrom) return res.status(400).json({ message: 'Cupom ainda não disponível.' });
+        if (coupon.validUntil && now > coupon.validUntil) return res.status(400).json({ message: 'Cupom expirado.' });
+        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ message: 'Limite de usos deste cupom atingido.' });
 
-        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ message: 'Limite de usos atingido.' });
-
+        // Validação de evento/parceiro
         const event = await prisma.event.findUnique({ where: { id: eventId } });
         if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
+        
+        if (coupon.partnerId && coupon.partnerId !== event.partnerId) {
+            return res.status(400).json({ message: 'Este cupom não é válido para este evento.' });
+        }
 
-        if (coupon.partnerId) {
-            if (coupon.partnerId !== event.partnerId) {
-                return res.status(400).json({ message: 'Este cupom não é válido para este evento.' });
+        // 🛡️ TRAVA DE USO ÚNICO POR USUÁRIO
+        const userUsage = await prisma.couponUsage.findFirst({
+            where: { userId: userId, couponId: coupon.id }
+        });
+
+        if (userUsage) {
+            return res.status(400).json({ message: 'Você já utilizou este cupom em outra compra.' });
+        }
+
+        // 🛡️ TRAVA FINANCEIRA: O cupom não pode descontar 100% da taxa
+        if (coupon.discountType === 'PERCENTAGE' || coupon.discountType === 'PERCENTAGE_FEE') {
+            // Em centavos, 100% seria 10000. Limitamos a 99% (9900)
+            if (coupon.discountValue >= 10000) {
+                return res.status(400).json({ message: 'Configuração de cupom inválida (desconto excede o limite permitido).' });
             }
         }
 
@@ -81,22 +94,22 @@ const validateCoupon = async (req, res) => {
             valid: true,
             code: coupon.code,
             discountType: coupon.discountType,
+            discountValue: coupon.discountValue,
             message: 'Cupom aplicado com sucesso!'
         });
 
     } catch (error) {
+        console.error("Erro validar cupom:", error);
         return res.status(500).json({ message: 'Erro interno ao validar cupom.' });
     }
 };
 
 const createCheckoutSession = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ message: 'Sessão expirada. Faça login novamente.' });
-        }
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Sessão expirada. Faça login novamente.' });
 
         const { eventId, tickets, couponCode, participantData } = req.body;
-        const userId = req.user.id;
 
         const event = await prisma.event.findUnique({
             where: { id: eventId },
@@ -104,17 +117,12 @@ const createCheckoutSession = async (req, res) => {
         });
 
         if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
+        if (event.isInformational) return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
 
-        if (event.isInformational) {
-            return res.status(400).json({ message: 'Este evento é apenas informativo e não possui vendas online.' });
-        }
-
+        // --- VALIDAÇÃO DE CONFLITO DE HORÁRIO ---
         const ticketIdsToCheck = Object.keys(tickets).filter(tid => tickets[tid] > 0);
         if (ticketIdsToCheck.length > 1) {
-            const dbTickets = await prisma.ticketType.findMany({
-                where: { id: { in: ticketIdsToCheck } }
-            });
-
+            const dbTickets = await prisma.ticketType.findMany({ where: { id: { in: ticketIdsToCheck } } });
             const toMinutes = (t) => {
                 if (!t) return 0;
                 const [h, m] = t.split(':').map(Number);
@@ -125,21 +133,12 @@ const createCheckoutSession = async (req, res) => {
                 for (let j = i + 1; j < dbTickets.length; j++) {
                     const t1 = dbTickets[i];
                     const t2 = dbTickets[j];
-
                     if (t1.activityDate && t2.activityDate && t1.startTime && t2.startTime && t1.endTime && t2.endTime) {
                         const d1 = new Date(t1.activityDate).toISOString().split('T')[0];
                         const d2 = new Date(t2.activityDate).toISOString().split('T')[0];
-
                         if (d1 === d2) {
-                            const start1 = toMinutes(t1.startTime);
-                            const end1 = toMinutes(t1.endTime);
-                            const start2 = toMinutes(t2.startTime);
-                            const end2 = toMinutes(t2.endTime);
-
-                            if (Math.max(start1, start2) < Math.min(end1, end2)) {
-                                return res.status(400).json({
-                                    message: `Conflito de horário: "${t1.name}" e "${t2.name}" ocorrem simultaneamente.`
-                                });
+                            if (Math.max(toMinutes(t1.startTime), toMinutes(t2.startTime)) < Math.min(toMinutes(t1.endTime), toMinutes(t2.endTime))) {
+                                return res.status(400).json({ message: `Conflito de horário: "${t1.name}" e "${t2.name}" ocorrem simultaneamente.` });
                             }
                         }
                     }
@@ -147,255 +146,216 @@ const createCheckoutSession = async (req, res) => {
             }
         }
 
+        // --- VALIDAÇÃO DE CUPOM ---
         let validCoupon = null;
-        let platformRate = 0.08;
-        let partnerRate = 0.00;
-
         if (couponCode) {
-            validCoupon = await prisma.coupon.findUnique({
-                where: { code: couponCode, isActive: true }
-            });
-
+            validCoupon = await prisma.coupon.findUnique({ where: { code: couponCode, isActive: true } });
             if (validCoupon) {
-                if (validCoupon.partnerId && validCoupon.partnerId !== event.partnerId) {
-                    return res.status(400).json({ message: 'Cupom inválido para este produtor/parceiro.' });
-                }
-
-                if (validCoupon.discountType === 'PERCENTAGE') {
-                    const totalFee = Math.max(0, 8 - validCoupon.discountValue) / 100;
-                    platformRate = totalFee / 2;
-                    partnerRate = totalFee / 2;
-                }
+                const userUsage = await prisma.couponUsage.findFirst({ where: { userId, couponId: validCoupon.id } });
+                if (userUsage) return res.status(400).json({ message: 'Você já utilizou este cupom.' });
             }
         }
 
-        const line_items = [];
-        const orderItemsData = [];
+        // ============================================
+        // 🛡️ TRANSAÇÃO ATÔMICA E RESERVA DE ESTOQUE
+        // ============================================
+        const reservationResult = await prisma.$transaction(async (tx) => {
+            const reservations = [];
+            const items = [];
 
-        let totalBaseAmount = 0;
-        let totalPlatformFee = 0;
-        let totalPartnerCommission = 0;
-        let totalPaid = 0;
+            for (const [ticketTypeId, quantity] of Object.entries(tickets)) {
+                if (quantity <= 0) continue;
 
-        // VALIDAÇÃO PRÉVIA (Aviso rápido para o usuário antes da transação)
-        for (const [ticketTypeId, quantity] of Object.entries(tickets)) {
-            if (quantity <= 0) continue;
+                const tType = await tx.ticketType.findUnique({ where: { id: ticketTypeId } });
+                if (!tType || tType.eventId !== eventId) continue;
 
-            const tType = await prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
-            if (!tType || tType.eventId !== eventId) continue;
+                // Consulta vagas ocupadas (Vendidos + Reservas Ativas de outros usuários)
+                const activeReservations = await tx.ticketReservation.aggregate({
+                    _sum: { quantity: true },
+                    where: { ticketTypeId, expiresAt: { gt: new Date() } }
+                });
+                
+                const reservedCount = activeReservations._sum.quantity || 0;
+                const available = tType.quantity - tType.sold - reservedCount;
 
-            const available = tType.quantity - tType.sold;
-            if (available < quantity) {
-                return res.status(400).json({ message: `O ingresso "${tType.name}" esgotou ou não tem quantidade suficiente.` });
-            }
+                if (available < quantity) {
+                    throw new Error(`Infelizmente, o ingresso "${tType.name}" esgotou as vagas neste exato segundo.`);
+                }
 
-            const unitPrice = parseFloat(tType.price);
-            let unitPlatformFee = 0;
-            let unitPartnerFee = 0;
-            let grossUnitTotal = 0;
+                // Verifica o limite de compra por pessoa
+                const userBoughtCount = await tx.ticket.count({
+                    where: { userId, ticketTypeId, status: { in: ['VALID', 'USED'] } }
+                });
+                const userReservedCount = await tx.ticketReservation.aggregate({
+                    _sum: { quantity: true },
+                    where: { userId, ticketTypeId, expiresAt: { gt: new Date() } }
+                });
+                
+                const totalUserHas = userBoughtCount + (userReservedCount._sum.quantity || 0);
+                const maxAllowed = tType.maxPerUser || 4;
+                
+                if ((totalUserHas + quantity) > maxAllowed) {
+                    throw new Error(`O limite para "${tType.name}" é de ${maxAllowed} ingresso(s) por pessoa.`);
+                }
 
-            if (unitPrice > 0) {
-                unitPlatformFee = unitPrice * platformRate;
-                unitPartnerFee = unitPrice * partnerRate;
-                const targetNet = unitPrice + unitPlatformFee + unitPartnerFee;
-                grossUnitTotal = (targetNet + STRIPE_FIXED) / (1 - STRIPE_PERCENTAGE);
-            } else {
-                grossUnitTotal = 0;
-            }
-
-            totalBaseAmount += (unitPrice * quantity);
-            totalPlatformFee += (unitPlatformFee * quantity);
-            totalPartnerCommission += (unitPartnerFee * quantity);
-            totalPaid += (grossUnitTotal * quantity);
-
-            orderItemsData.push({
-                ticketTypeId: tType.id,
-                quantity: quantity,
-                unitPrice: unitPrice
-            });
-
-            if (grossUnitTotal > 0) {
-                line_items.push({
-                    price_data: {
-                        currency: 'brl',
-                        product_data: { name: `${tType.name} - ${tType.batchName || 'Lote Único'}` },
-                        unit_amount: Math.round(grossUnitTotal * 100),
-                    },
+                // Cria a reserva blindada de 5 minutos
+                const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
+                const reservation = await tx.ticketReservation.create({
+                    data: { userId, eventId, ticketTypeId, quantity, expiresAt }
+                });
+                
+                reservations.push(reservation);
+                items.push({
+                    ticketTypeId: tType.id,
+                    name: tType.name,
+                    batchName: tType.batchName,
                     quantity: quantity,
+                    unitPrice: tType.price // Preço 100% vindo do BD em centavos
                 });
             }
+            return { reservations, items };
+        });
+
+        // ============================================
+        // 🧮 MATEMÁTICA FINANCEIRA (EM CENTAVOS)
+        // ============================================
+        const itemsToProcess = reservationResult.items;
+        const orderItemsData = [];
+        
+        let totalBaseAmount = 0; // Valor bruto dos ingressos (vai para o organizador)
+        let totalTicketsQuantity = 0;
+
+        for (const item of itemsToProcess) {
+            totalBaseAmount += (item.unitPrice * item.quantity);
+            totalTicketsQuantity += item.quantity;
+            orderItemsData.push({ ticketTypeId: item.ticketTypeId, quantity: item.quantity, unitPrice: item.unitPrice });
         }
 
+        // Taxa fixa da plataforma: 10%
+        let platformFee = Math.round(totalBaseAmount * 0.10);
+        let discountAmount = 0;
+
+        // Abate o cupom EXCLUSIVAMENTE da taxa Vibz
+        if (validCoupon) {
+            if (validCoupon.discountType === 'PERCENTAGE' || validCoupon.discountType === 'PERCENTAGE_FEE') {
+                discountAmount = Math.round(platformFee * (validCoupon.discountValue / 10000));
+            } else if (validCoupon.discountType === 'FIXED') {
+                discountAmount = validCoupon.discountValue;
+            }
+
+            // REGRA: A taxa Vibz nunca pode ser zerada.
+            if (discountAmount >= platformFee) discountAmount = platformFee - 1; 
+        }
+
+        const totalPaid = totalBaseAmount + platformFee - discountAmount;
         const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
         // ============================================
-        // LÓGICA DE INGRESSO GRATUITO (COM TRANSAÇÃO ATÔMICA)
+        // INGRESSOS 100% GRATUITOS (Sem Stripe)
         // ============================================
         if (totalPaid === 0) {
-            try {
-                // INÍCIO DA TRANSAÇÃO ATÔMICA (Bloqueia o banco para impedir concorrência/overbooking)
-                const { order, totalTicketsGenerated } = await prisma.$transaction(async (tx) => {
-                    
-                    // 1. Revalida estoque e limites dentro do ambiente bloqueado
-                    for (const item of orderItemsData) {
-                        const tType = await tx.ticketType.findUnique({
-                            where: { id: item.ticketTypeId },
-                        });
+            const newOrder = await prisma.order.create({
+                data: {
+                    userId, eventId, couponId: validCoupon ? validCoupon.id : null,
+                    subtotal: 0, discountAmount: 0, platformFee: 0, totalAmount: 0,
+                    status: 'paid', paymentIntentId: `free_${crypto.randomUUID()}`
+                }
+            });
 
-                        const available = tType.quantity - tType.sold;
-                        if (available < item.quantity) {
-                            throw new Error(`Infelizmente as vagas para "${tType.name}" esgotaram no último segundo.`);
-                        }
+            // Converte a Reserva direto em Ingressos
+            for (const item of itemsToProcess) {
+                await prisma.ticketType.update({
+                    where: { id: item.ticketTypeId },
+                    data: { sold: { increment: item.quantity } }
+                });
 
-                        // Revalidação Atômica: Checa se o usuário tentou burlar o limite do ingresso
-                        const userBoughtCount = await tx.ticket.count({
-                            where: {
-                                userId: userId,
-                                ticketTypeId: item.ticketTypeId,
-                                status: { in: ['valid', 'used'] }
-                            }
-                        });
-
-                        const maxAllowed = tType.maxPerUser || 4;
-                        if ((userBoughtCount + item.quantity) > maxAllowed) {
-                            throw new Error(`Limite excedido para "${tType.name}". O limite é de ${maxAllowed} vaga(s) por pessoa.`);
-                        }
-
-                        // ATUALIZAÇÃO SEGURA: Já tira a vaga do banco
-                        await tx.ticketType.update({
-                            where: { id: item.ticketTypeId },
-                            data: { sold: { increment: item.quantity } }
-                        });
-                    }
-
-                    // 2. Cria o Pedido (Order)
-                    const newOrder = await tx.order.create({
+                for (let i = 0; i < item.quantity; i++) {
+                    const pData = participantData?.find(p => p.ticketTypeId === item.ticketTypeId);
+                    await prisma.ticket.create({
                         data: {
-                            userId: userId,
-                            eventId: eventId,
-                            couponId: validCoupon ? validCoupon.id : null,
-                            subtotal: 0,
-                            totalAmount: 0,
-                            platformFee: 0,
-                            status: 'paid',
-                            paymentIntentId: `free_${crypto.randomUUID()}`
+                            ticketTypeId: item.ticketTypeId, eventId, userId, orderId: newOrder.id,
+                            qrCodeData: crypto.randomUUID(), status: 'VALID', price: 0,
+                            participantData: pData ? pData.data : {}
                         }
                     });
-
-                    // 3. Gera os Ingressos associados ao pedido
-                    let generatedCount = 0;
-                    for (const item of orderItemsData) {
-                        for (let i = 0; i < item.quantity; i++) {
-                            let customData = {};
-                            if (participantData && Array.isArray(participantData)) {
-                                const pData = participantData.find(p => p.ticketTypeId === item.ticketTypeId);
-                                if (pData) customData = pData.data;
-                            }
-
-                            await tx.ticket.create({
-                                data: {
-                                    ticketTypeId: item.ticketTypeId,
-                                    eventId: eventId,
-                                    userId: userId,
-                                    orderId: newOrder.id,
-                                    qrCodeData: crypto.randomUUID(),
-                                    status: 'valid',
-                                    price: 0,
-                                    participantData: customData
-                                }
-                            });
-                            generatedCount++;
-                        }
-                    }
-
-                    return { order: newOrder, totalTicketsGenerated: generatedCount };
-                });
-                // FIM DA TRANSAÇÃO ATÔMICA
-
-                // Disparo de E-mails feito de forma paralela para não atrasar a resposta
-                try {
-                    const user = await prisma.user.findUnique({ where: { id: userId } });
-                    if (user) {
-                        generateAndSendTickets(order, user.email, user.name).catch(() => {});
-                    }
-                } catch (emailError) {}
-
-                try {
-                    if (event.organizer && event.organizer.email) {
-                        sendNewSaleEmail(event.organizer.email, event.organizer.name, event.title, totalTicketsGenerated, 0).catch(() => {});
-                    }
-                } catch (emailError) {}
-
-                return res.json({
-                    url: `${clientUrl}/sucesso?session_id=${order.paymentIntentId}&is_free=true`
-                });
-
-            } catch (txError) {
-                // Se der qualquer erro dentro do $transaction (Ex: Estourou o limite de vagas), ele cai aqui e devolve a resposta clara para o frontend
-                return res.status(400).json({ message: txError.message });
+                }
             }
+            
+            // Registra o uso do cupom (se houver) e deleta as reservas
+            if (validCoupon) {
+                await prisma.couponUsage.create({ data: { userId, couponId: validCoupon.id, orderId: newOrder.id } });
+            }
+            await prisma.ticketReservation.deleteMany({ where: { id: { in: reservationResult.reservations.map(r => r.id) } }});
+            
+            // Disparos
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (user) generateAndSendTickets(newOrder, user.email, user.name).catch(() => {});
+            if (event.organizer?.email) sendNewSaleEmail(event.organizer.email, event.organizer.name, event.title, totalTicketsQuantity, 0).catch(() => {});
+
+            return res.json({ url: `${clientUrl}/sucesso?session_id=${newOrder.paymentIntentId}&is_free=true` });
         }
 
         // ============================================
-        // LÓGICA DE INGRESSO PAGO (STRIPE - Atual em Desuso)
+        // 💳 INGRESSOS PAGOS (Stripe + Repasse Futuro)
         // ============================================
         const order = await prisma.order.create({
             data: {
-                userId,
-                eventId,
-                couponId: validCoupon ? validCoupon.id : null,
-                subtotal: totalBaseAmount,
-                totalAmount: totalPaid,
-                platformFee: totalPlatformFee,
-                status: 'pending'
+                userId, eventId, couponId: validCoupon ? validCoupon.id : null,
+                subtotal: totalBaseAmount, discountAmount, platformFee, totalAmount: totalPaid,
+                status: 'pending',
+                items: { create: orderItemsData }
             }
         });
 
-        for (const item of orderItemsData) {
-            for (let i = 0; i < item.quantity; i++) {
-                let customData = {};
-                if (participantData && Array.isArray(participantData)) {
-                    const pData = participantData.find(p => p.ticketTypeId === item.ticketTypeId);
-                    if (pData) customData = pData.data;
-                }
-
-                await prisma.ticket.create({
-                    data: {
-                        ticketTypeId: item.ticketTypeId,
-                        eventId: eventId,
-                        userId: userId,
-                        orderId: order.id,
-                        qrCodeData: crypto.randomUUID(),
-                        status: 'pending',
-                        price: item.unitPrice,
-                        participantData: customData
-                    }
+        const line_items = [];
+        
+        // 1. Linha(s) dos Ingressos
+        for (const item of itemsToProcess) {
+            if (item.unitPrice > 0) {
+                line_items.push({
+                    price_data: {
+                        currency: 'brl',
+                        product_data: { name: `${item.name} - ${item.batchName || 'Lote Único'}` },
+                        unit_amount: item.unitPrice, 
+                    },
+                    quantity: item.quantity,
                 });
             }
         }
 
-        let paymentIntentData = undefined;
-        const organizerStripeId = event.organizer?.stripeAccountId;
-        const isOrganizerReady = event.organizer?.stripeOnboardingComplete && organizerStripeId;
+        // 2. Linha da Taxa Vibz (separada e abatida do cupom)
+        const taxaLiquida = platformFee - discountAmount;
+        if (taxaLiquida > 0) {
+            const feeName = discountAmount > 0 
+                ? `Taxa de Conveniência (Cupom aplicado: -${(discountAmount/100).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})})` 
+                : `Taxa de Conveniência (10%)`;
 
-        if (isOrganizerReady) {
-            paymentIntentData = { transfer_group: order.id };
+            line_items.push({
+                price_data: {
+                    currency: 'brl',
+                    product_data: { name: feeName },
+                    unit_amount: taxaLiquida, 
+                },
+                quantity: 1,
+            });
         }
 
         const participantsJSON = JSON.stringify(participantData || []).substring(0, 499);
+        const reservationIds = reservationResult.reservations.map(r => r.id);
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            payment_method_types: ['card', 'pix'],
             mode: 'payment',
             line_items,
-            payment_intent_data: paymentIntentData,
+            payment_intent_data: { transfer_group: order.id },
             success_url: `${clientUrl}/sucesso?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${clientUrl}/evento/${eventId}`,
             metadata: {
                 type: 'TICKET_SALE',
                 orderId: order.id,
                 eventId: eventId,
-                participantsPreview: participantsJSON
+                participantsPreview: participantsJSON,
+                reservationIds: JSON.stringify(reservationIds)
             }
         });
 
@@ -403,7 +363,7 @@ const createCheckoutSession = async (req, res) => {
 
     } catch (error) {
         console.error("Erro checkout:", error);
-        res.status(500).json({ message: 'Erro ao processar pedido.', error: error.message });
+        res.status(400).json({ message: error.message || 'Erro ao processar pedido.' });
     }
 };
 
@@ -413,17 +373,17 @@ const createHighlightCheckoutSession = async (req, res) => {
         const event = await prisma.event.findUnique({ where: { id: eventId } });
         if (!event) return res.status(404).json({ message: 'Evento não encontrado.' });
 
-        const price = highlightType === 'premium' ? 100 : 50;
+        const price = highlightType === 'premium' ? 10000 : 5000; // Em centavos
         const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            payment_method_types: ['card', 'pix'],
             mode: 'payment',
             line_items: [{
                 price_data: {
                     currency: 'brl',
                     product_data: { name: `Destaque: ${event.title}` },
-                    unit_amount: price * 100,
+                    unit_amount: price,
                 },
                 quantity: 1,
             }],
@@ -442,115 +402,9 @@ const createHighlightCheckoutSession = async (req, res) => {
     }
 };
 
-const handleStripeWebhook = async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-        const payload = req.rawBody || req.body;
-        event = stripe.webhooks.constructEvent(payload, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const { type, orderId, eventId } = session.metadata;
-        const stripeEmail = session.customer_details?.email;
-        const stripeName = session.customer_details?.name;
-
-        if (type === 'TICKET_SALE') {
-            try {
-                const updatedOrder = await prisma.order.update({
-                    where: { id: orderId },
-                    data: { status: 'paid', paymentIntentId: session.payment_intent }
-                });
-
-                const pendingTickets = await prisma.ticket.findMany({
-                    where: { orderId: orderId }
-                });
-
-                const qtyByType = {};
-                pendingTickets.forEach(t => {
-                    qtyByType[t.ticketTypeId] = (qtyByType[t.ticketTypeId] || 0) + 1;
-                });
-
-                let totalTickets = 0;
-                for (const [tId, qty] of Object.entries(qtyByType)) {
-                    await prisma.ticketType.update({
-                        where: { id: tId },
-                        data: { sold: { increment: qty } }
-                    });
-                    totalTickets += qty;
-                }
-
-                await prisma.ticket.updateMany({
-                    where: { orderId: orderId },
-                    data: { status: 'valid' }
-                });
-
-                const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
-                if (user) {
-                    generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(() => {});
-                }
-
-                const eventData = await prisma.event.findUnique({
-                    where: { id: updatedOrder.eventId },
-                    include: { organizer: true }
-                });
-
-                if (eventData && eventData.organizer) {
-                    const totalValue = Number(updatedOrder.totalAmount);
-                    sendNewSaleEmail(eventData.organizer.email, eventData.organizer.name, eventData.title, totalTickets, totalValue).catch(() => {});
-                }
-
-            } catch (err) {
-                console.error("Erro webhook ticket:", err);
-            }
-        }
-
-        if (type === 'EVENT_HIGHLIGHT') {
-            try {
-                await prisma.event.update({
-                    where: { id: eventId },
-                    data: {
-                        isFeatured: true,
-                        highlightStatus: 'approved',
-                        isFeaturedRequested: false
-                    }
-                });
-            } catch (err) {
-                console.error("Erro ao processar destaque:", err);
-            }
-        }
-    }
-
-    if (event.type === 'account.updated') {
-        const account = event.data.object;
-        if (account.charges_enabled) {
-            try {
-                await prisma.user.updateMany({
-                    where: { stripeAccountId: account.id },
-                    data: { stripeOnboardingComplete: true }
-                });
-            } catch (err) {}
-        } else {
-            try {
-                await prisma.user.updateMany({
-                    where: { stripeAccountId: account.id },
-                    data: { stripeOnboardingComplete: false }
-                });
-            } catch (err) {}
-        }
-    }
-
-    res.json({ received: true });
-};
-
 module.exports = {
     createCheckoutSession,
     createHighlightCheckoutSession,
-    handleStripeWebhook,
     validateCoupon,
     connectStripeAccount
 };

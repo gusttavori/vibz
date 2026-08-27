@@ -7,7 +7,8 @@ import Footer from '@/components/Footer';
 import toast, { Toaster } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { 
-    FaCalendarAlt, FaEdit, FaList, FaStar, FaBolt, FaArrowUp, FaPlus, FaUserFriends, FaQrcode 
+    FaCalendarAlt, FaEdit, FaList, FaStar, FaBolt, FaArrowUp, FaPlus, FaUserFriends, FaQrcode,
+    FaExclamationTriangle, FaCheckCircle, FaWallet 
 } from 'react-icons/fa';
 import './Dashboard.css';
 
@@ -33,7 +34,7 @@ const DashboardContent = () => {
     const [myEvents, setMyEvents] = useState([]);
     const [loading, setLoading] = useState(true);
 
-const fetchAllData = useCallback(async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
 
         try {
@@ -80,17 +81,60 @@ const fetchAllData = useCallback(async () => {
 
     useEffect(() => {
         fetchAllData();
+        
+        // Gatilhos de Destaque
         if (searchParams.get('success') === 'highlight') {
             toast.success("Destaque Ativado! 🌟");
             confetti({ particleCount: 150, spread: 70 });
             router.replace('/dashboard');
         }
+
+        // Gatilhos de Retorno da Stripe
+        if (searchParams.get('success_stripe') === 'true') {
+            toast.success("Conta bancária conectada com sucesso!");
+            confetti({ particleCount: 150, spread: 70 });
+            router.replace('/dashboard');
+        }
+
+        if (searchParams.get('refresh_stripe') === 'true') {
+            toast.error("Processo de conexão interrompido. Tente novamente.");
+            router.replace('/dashboard');
+        }
+
     }, [fetchAllData, searchParams, router]);
+
+    // LÓGICA DE CONEXÃO COM A STRIPE
+    const handleConnectStripe = async () => {
+        try {
+            toast.loading("Gerando ambiente seguro da Stripe...", { id: 'stripe-loading' });
+            
+            const response = await fetch(`${API_BASE_URL}/payments/connect-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.url) {
+                window.location.href = data.url; // Redireciona o produtor para a Stripe
+            } else {
+                toast.dismiss('stripe-loading');
+                toast.error(data.message || 'Erro ao comunicar com o financeiro.');
+            }
+        } catch (error) {
+            toast.dismiss('stripe-loading');
+            toast.error('Erro de conexão. Tente novamente.');
+        }
+    };
 
     if (loading) return <DashboardSkeleton />;
 
     const firstName = userData?.name ? userData.name.split(' ')[0] : 'Curador';
     const activeEvents = myEvents.filter(ev => ev.status === 'approved').length;
+
+    // Checa se o usuário precisa concluir o cadastro financeiro
+    const needsStripeOnboarding = userData && !userData.stripeOnboardingComplete;
 
     return (
         <div className="dashboard-container">
@@ -101,7 +145,14 @@ const fetchAllData = useCallback(async () => {
                 <div className="dashboard-main-header">
                     <div className="header-titles">
                         <h1>Painel da Agenda Cultural</h1>
-                        <p className="sub-greeting">Olá, {firstName}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <p className="sub-greeting" style={{ margin: 0 }}>Olá, {firstName}</p>
+                            {!needsStripeOnboarding && (
+                                <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#10b981', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <FaCheckCircle /> Financeiro Liberado
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="header-status-actions">
@@ -131,6 +182,27 @@ const fetchAllData = useCallback(async () => {
                         </div>
                     </div>
                 </div>
+
+                {/* BANNER FINANCEIRO DA STRIPE (Aparece só para quem não conectou) */}
+                {needsStripeOnboarding && (
+                    <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                            <FaExclamationTriangle color="#d97706" size={28} style={{ marginTop: '4px' }} />
+                            <div>
+                                <h3 style={{ margin: '0 0 5px 0', color: '#92400e', fontSize: '1.1rem' }}>Recebimento de Vendas Bloqueado</h3>
+                                <p style={{ margin: 0, color: '#b45309', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                                    Para organizar eventos com venda de ingressos e receber seus repasses, você precisa conectar sua conta bancária na nossa processadora segura (Stripe).
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleConnectStripe}
+                            style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+                        >
+                            <FaWallet /> Conectar Conta Bancária
+                        </button>
+                    </div>
+                )}
 
                 <div className="section-header-flex">
                     <h2><FaList className="purple-icon" /> Gerenciar Agenda</h2>
@@ -179,7 +251,6 @@ const fetchAllData = useCallback(async () => {
                                     {/* AÇÕES DA LINHA DO EVENTO */}
                                     <div className="event-item-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                         
-                                        {/* ROTA ATUALIZADA AQUI */}
                                         <button 
                                             className="btn-row-action" 
                                             onClick={() => router.push(`/admin/checkin/${eventId}`)}

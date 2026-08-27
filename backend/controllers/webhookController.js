@@ -31,81 +31,147 @@ const handleStripeWebhook = async (req, res) => {
                 await prisma.event.update({
                     where: { id: metadata.eventId },
                     data: { 
-                        highlightStatus: 'paid', // Status final
+                        highlightStatus: 'paid',
                         isFeaturedRequested: false, 
-                        isFeatured: true, // AGORA SIM ESTÁ DESTACADO
-                        highlightPaymentLink: null // Limpa o link
+                        isFeatured: true, 
+                        highlightPaymentLink: null 
                     }
                 });
                 console.log('✅ Evento destacado com sucesso!');
             } catch (err) { console.error('Erro ao destacar:', err); }
         }
 
-        // --- 2. VENDA DE INGRESSO ---
+        // --- 2. VENDA DE INGRESSO (COMPRA CONFIRMADA) ---
         if (metadata && metadata.type === 'TICKET_SALE') {
             try {
-                const updatedOrder = await prisma.order.update({
+                // 🛡️ IDEMPOTÊNCIA: Verifica se o pedido já não foi processado antes
+                const existingOrder = await prisma.order.findUnique({ 
                     where: { id: metadata.orderId },
-                    data: { status: 'paid', paymentIntentId: session.payment_intent },
-                    include: { items: true }
+                    include: { items: true, event: true } 
                 });
+                
+                if (!existingOrder) return res.status(404).json({ error: 'Pedido não encontrado' });
+                
+                if (existingOrder.status === 'paid' || existingOrder.status === 'refunded') {
+                    console.log('⚠️ Pedido já processado anteriormente. Ignorando evento duplicado.');
+                    return res.json({ received: true });
+                }
 
-                let participantsData = [];
-                try { participantsData = JSON.parse(metadata.participantsPreview || '[]'); } catch (e) {}
-
-                for (const item of updatedOrder.items) {
-                    await prisma.ticketType.update({
-                        where: { id: item.ticketTypeId },
-                        data: { sold: { increment: item.quantity } }
+                // 🗄️ TRANSAÇÃO ATÔMICA: Tudo ou Nada
+                await prisma.$transaction(async (tx) => {
+                    
+                    // 1. Marca o pedido como Pago
+                    await tx.order.update({
+                        where: { id: existingOrder.id },
+                        data: { status: 'paid', paymentIntentId: session.payment_intent }
                     });
 
-                    for (let i = 0; i < item.quantity; i++) {
-                        const cleanQrCode = crypto.randomUUID();
-                        const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
-                        
-                        await prisma.ticket.create({
-                            data: {
-                                status: 'valid',
-                                qrCodeData: cleanQrCode,
-                                price: item.unitPrice,
-                                userId: updatedOrder.userId,
-                                eventId: updatedOrder.eventId,
-                                ticketTypeId: item.ticketTypeId,
-                                orderId: updatedOrder.id,
-                                participantData: pData ? pData.data : {}
-                            }
+                    // 2. Destrói as Reservas de Estoque Temporárias
+                    let reservationIds = [];
+                    try { reservationIds = JSON.parse(metadata.reservationIds || '[]'); } catch (e) {}
+                    if (reservationIds.length > 0) {
+                        await tx.ticketReservation.deleteMany({
+                            where: { id: { in: reservationIds } }
                         });
                     }
-                }
 
-                console.log("🎟️ Ingressos gerados via Webhook.");
+                    // 3. Incrementa Estoque e Gera os Ingressos
+                    let participantsData = [];
+                    try { participantsData = JSON.parse(metadata.participantsPreview || '[]'); } catch (e) {}
 
-                const user = await prisma.user.findUnique({ where: { id: updatedOrder.userId } });
-                if (user) {
-                    await generateAndSendTickets(updatedOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
-                }
+                    for (const item of existingOrder.items) {
+                        await tx.ticketType.update({
+                            where: { id: item.ticketTypeId },
+                            data: { sold: { increment: item.quantity } }
+                        });
 
-                const eventData = await prisma.event.findUnique({
-                    where: { id: updatedOrder.eventId },
-                    include: { organizer: true }
+                        for (let i = 0; i < item.quantity; i++) {
+                            const cleanQrCode = crypto.randomUUID();
+                            const pData = participantsData.find(p => p.ticketTypeId === item.ticketTypeId);
+                            
+                            await tx.ticket.create({
+                                data: {
+                                    status: 'VALID',
+                                    qrCodeData: cleanQrCode,
+                                    price: item.unitPrice,
+                                    userId: existingOrder.userId,
+                                    eventId: existingOrder.eventId,
+                                    ticketTypeId: item.ticketTypeId,
+                                    orderId: existingOrder.id,
+                                    participantData: pData ? pData.data : {}
+                                }
+                            });
+                        }
+                    }
+
+                    // 4. LIVRO-RAZÃO: Credita o valor puro do ingresso na conta do Organizador
+                    await tx.financialLedger.create({
+                        data: {
+                            organizerId: existingOrder.event.organizerId,
+                            eventId: existingOrder.eventId,
+                            orderId: existingOrder.id,
+                            type: 'SALE',
+                            amount: existingOrder.subtotal, // Organizador ganha o Subtotal em centavos
+                            description: `Venda (Pedido: ${existingOrder.id})`
+                        }
+                    });
+
+                    // 5. CUPOM: Registra o uso único para aquele usuário
+                    if (existingOrder.couponId) {
+                        const usageExists = await tx.couponUsage.findFirst({
+                            where: { userId: existingOrder.userId, couponId: existingOrder.couponId }
+                        });
+                        
+                        if (!usageExists) {
+                            await tx.couponUsage.create({
+                                data: { userId: existingOrder.userId, couponId: existingOrder.couponId, orderId: existingOrder.id }
+                            });
+                            await tx.coupon.update({
+                                where: { id: existingOrder.couponId },
+                                data: { usedCount: { increment: 1 } }
+                            });
+                        }
+                    }
                 });
 
-                if (eventData && eventData.organizer) {
-                    const totalTickets = updatedOrder.items.reduce((acc, item) => acc + item.quantity, 0);
-                    const totalValue = Number(updatedOrder.totalAmount); 
+                console.log("🎟️ Ingressos gerados, estoque consolidado e Livro-Razão atualizado.");
 
-                    await sendNewSaleEmail(
-                        eventData.organizer.email,
-                        eventData.organizer.name,
-                        eventData.title,
-                        totalTickets,
-                        totalValue
-                    );
+                // 📧 E-mails executados fora da transação do banco (segurança de performance)
+                const user = await prisma.user.findUnique({ where: { id: existingOrder.userId } });
+                if (user) {
+                    await generateAndSendTickets(existingOrder, stripeEmail || user.email, stripeName || user.name).catch(console.error);
+                }
+
+                if (existingOrder.event && existingOrder.event.organizer) {
+                    const totalTickets = existingOrder.items.reduce((acc, item) => acc + item.quantity, 0);
+                    // Avisa o organizador convertendo os centavos de volta pra R$ só no email
+                    const organizadorGanhoReal = existingOrder.subtotal / 100;
+                    await sendNewSaleEmail(existingOrder.event.organizer.email, existingOrder.event.organizer.name, existingOrder.event.title, totalTickets, organizadorGanhoReal).catch(() => {});
                 }
 
             } catch (err) {
                 console.error("❌ Erro crítico webhook venda:", err);
             }
+        }
+    }
+
+    // --- 3. ATUALIZAÇÃO DA CONTA STRIPE CONNECT ---
+    if (event.type === 'account.updated') {
+        const account = event.data.object;
+        if (account.charges_enabled) {
+            try {
+                await prisma.user.updateMany({
+                    where: { stripeAccountId: account.id },
+                    data: { stripeOnboardingComplete: true }
+                });
+            } catch (err) {}
+        } else {
+            try {
+                await prisma.user.updateMany({
+                    where: { stripeAccountId: account.id },
+                    data: { stripeOnboardingComplete: false }
+                });
+            } catch (err) {}
         }
     }
 

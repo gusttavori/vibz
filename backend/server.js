@@ -18,6 +18,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const configRoutes = require('./routes/configRoutes');
+const financeRoutes = require('./routes/financeRoutes');
 
 // --- Importação das Rotas do MVP (Música ao Vivo) ---
 const artistRoutes = require('./routes/artistRoutes');
@@ -65,6 +66,7 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// ❌ REMOVI A ROTA DUPLICADA QUE ESTAVA AQUI
 
 // ==========================================
 // 🛡️ 2. PROTEÇÃO CONTRA BOTS E FORÇA BRUTA (Rate Limiting)
@@ -108,8 +110,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/finance', financeRoutes); 
 
-// --- Registro das Rotas do MVP (Música ao Vivo) ---
 app.use('/api/artists', artistRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/schedules', scheduleRoutes);

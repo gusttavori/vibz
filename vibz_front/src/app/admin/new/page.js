@@ -225,19 +225,26 @@ const CadastroEvento = () => {
             formData.append('externalUrl', '');
             formData.append('isInformational', 'false');
 
-            const formattedTickets = tickets.map(t => ({
-                name: t.name,
-                price: t.isFree ? 0 : parseFloat(t.price),
-                quantity: parseInt(t.quantity),
-                isFree: t.isFree,
-                hasSchedule: Boolean(t.hasSchedule),
-                activityDate: t.hasSchedule && t.activityDate ? t.activityDate : null,
-                startTime: t.hasSchedule ? t.startTime : null,
-                endTime: t.hasSchedule ? t.endTime : null,
-                batch: 'Lote Único',
-                category: 'Inteira',
-                maxPerUser: 4
-            }));
+            // 🎯 A MÁGICA ACONTECE AQUI: Transforma o valor digitado em CENTAVOS
+            const formattedTickets = tickets.map(t => {
+                // Remove possíveis vírgulas que o usuário digitar e transforma em ponto
+                const parsedPrice = parseFloat(t.price.toString().replace(',', '.'));
+                
+                return {
+                    name: t.name,
+                    price: t.isFree ? 0 : Math.round(parsedPrice * 100), // Multiplica por 100 (Ex: R$ 50.00 vira 5000)
+                    quantity: parseInt(t.quantity),
+                    isFree: t.isFree,
+                    hasSchedule: Boolean(t.hasSchedule),
+                    activityDate: t.hasSchedule && t.activityDate ? t.activityDate : null,
+                    startTime: t.hasSchedule ? t.startTime : null,
+                    endTime: t.hasSchedule ? t.endTime : null,
+                    batch: 'Lote Único',
+                    category: 'Inteira',
+                    maxPerUser: 4
+                };
+            });
+            
             formData.append('tickets', JSON.stringify(formattedTickets));
 
             let finalSchema = [];

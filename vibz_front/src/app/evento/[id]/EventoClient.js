@@ -406,7 +406,9 @@ export default function EventoDetalhes() {
                                 ticketsToDisplay.map(ticket => {
                                     const tId = ticket.id || ticket._id;
                                     const qty = ticketQuantities[tId] || 0;
-                                    const isFree = parseFloat(ticket.price) === 0 || ticket.price === "0" || !ticket.price;
+                                    
+                                    // NOVO: Verifica se é gratuito baseado no valor em centavos
+                                    const isFree = !ticket.price || parseInt(ticket.price) === 0;
 
                                     const available = (ticket.quantity || 0) - (ticket.sold || 0);
                                     const isSoldOut = available <= 0;
@@ -436,7 +438,7 @@ export default function EventoDetalhes() {
                                                 )}
                                                 
                                                 <span className="ticket-price" style={{ color: '#a78bfa', fontSize: '0.85rem', fontWeight: '600' }}>
-                                                    {isFree ? "Gratuito" : `R$ ${parseFloat(ticket.price).toFixed(2).replace('.', ',')}`}
+                                                    {isFree ? "Gratuito" : (Number(ticket.price) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                                 </span>
                                             </div>
                                             
