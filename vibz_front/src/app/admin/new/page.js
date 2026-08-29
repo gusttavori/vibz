@@ -17,17 +17,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 const CadastroEvento = () => {
     const router = useRouter();
 
-    // --- ESTADOS DO WIZARD ---
     const [currentStep, setCurrentStep] = useState(1);
-
-    // --- ESTADOS DOS DADOS ---
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [ageRating, setAgeRating] = useState('Livre');
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
-    
     const [sellOnPlatform, setSellOnPlatform] = useState(true);
     const [externalUrl, setExternalUrl] = useState(''); 
     const [tickets, setTickets] = useState([
@@ -35,13 +31,11 @@ const CadastroEvento = () => {
     ]);
     const [expandedTicketIndex, setExpandedTicketIndex] = useState(0); 
     
-    // --- ESTADOS DO FORMULÁRIO PERSONALIZADO ---
     const [requireCustomForm, setRequireCustomForm] = useState(false);
     const [formFields, setFormFields] = useState([
         { id: 1, label: '', type: 'text', required: true }
     ]);
 
-    // O estado Sessions agora é preparado para receber um Line-up interno!
     const [sessions, setSessions] = useState([
         { date: '', time: '', endDate: '', endTime: '', lineup: [] }
     ]);
@@ -54,19 +48,28 @@ const CadastroEvento = () => {
     const [addressState, setAddressState] = useState('');
     const [addressZipCode, setAddressZipCode] = useState('');
     
-    const [organizerName, setOrganizerName] = useState('');
-    const [organizerInstagram, setOrganizerInstagram] = useState('');
+    // NOVO: Array para suportar múltiplos organizadores
+    const [organizers, setOrganizers] = useState([
+        { name: '', instagram: '' }
+    ]);
     
     const [isFeaturedRequested, setIsFeaturedRequested] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    // --- VALIDAÇÃO DE SESSÃO COM COOKIE ---
     useEffect(() => {
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-            router.push('/login');
-        }
+        const verifySession = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/auth/verify`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                if (!res.ok) router.push('/login');
+            } catch (error) {
+                router.push('/login');
+            }
+        };
+        verifySession();
     }, [router]);
 
     const handleZipCodeChange = (value) => {
@@ -84,7 +87,18 @@ const CadastroEvento = () => {
         }
     };
     
-    // --- FUNÇÕES DE SESSÕES ---
+    // --- FUNÇÕES DE MÚLTIPLOS ORGANIZADORES ---
+    const handleAddOrganizer = () => setOrganizers([...organizers, { name: '', instagram: '' }]);
+    const handleRemoveOrganizer = (index) => {
+        if (organizers.length === 1) return toast.error("Mínimo de 1 organizador.");
+        setOrganizers(organizers.filter((_, i) => i !== index));
+    };
+    const handleChangeOrganizer = (index, field, value) => {
+        const updated = [...organizers];
+        updated[index][field] = value;
+        setOrganizers(updated);
+    };
+
     const handleAddSession = () => setSessions([...sessions, { date: '', time: '', endDate: '', endTime: '', lineup: [] }]);
     const handleRemoveSession = (index) => {
         if (sessions.length === 1) return toast.error("Mínimo de 1 data.");
@@ -96,7 +110,6 @@ const CadastroEvento = () => {
         setSessions(updated);
     };
 
-    // --- FUNÇÕES DE LINE-UP (NOVO PARA BARES E PUBS) ---
     const handleAddLineup = (sessionIndex) => {
         const updated = [...sessions];
         if (!updated[sessionIndex].lineup) updated[sessionIndex].lineup = [];
@@ -114,23 +127,14 @@ const CadastroEvento = () => {
         setSessions(updated);
     };
 
-    // --- FUNÇÕES DO FORMULÁRIO PERSONALIZADO ---
-    const handleAddFormField = () => {
-        setFormFields([...formFields, { id: Date.now(), label: '', type: 'text', required: true }]);
-    };
-    const handleRemoveFormField = (id) => {
-        setFormFields(formFields.filter(f => f.id !== id));
-    };
-    const handleChangeFormField = (id, field, value) => {
-        setFormFields(formFields.map(f => f.id === id ? { ...f, [field]: value } : f));
-    };
+    const handleAddFormField = () => setFormFields([...formFields, { id: Date.now(), label: '', type: 'text', required: true }]);
+    const handleRemoveFormField = (id) => setFormFields(formFields.filter(f => f.id !== id));
+    const handleChangeFormField = (id, field, value) => setFormFields(formFields.map(f => f.id === id ? { ...f, [field]: value } : f));
 
-    // --- FUNÇÕES DE INGRESSOS E ACORDEÃO ---
     const handleAddTicket = () => {
         setTickets([...tickets, { name: '', price: '', quantity: '', isFree: false, hasSchedule: false, activityDate: '', startTime: '', endTime: '' }]);
         setExpandedTicketIndex(tickets.length); 
     };
-
     const handleDuplicateTicket = (index) => {
         const ticketToCopy = tickets[index];
         const newTicket = { ...ticketToCopy, name: `${ticketToCopy.name} (Cópia)` };
@@ -140,19 +144,15 @@ const CadastroEvento = () => {
         setExpandedTicketIndex(index + 1); 
         toast.success('Atividade clonada com sucesso!');
     };
-
     const handleRemoveTicket = (index) => {
         if (tickets.length === 1) return toast.error("Mínimo de 1 ingresso/atividade.");
         setTickets(tickets.filter((_, i) => i !== index));
         setExpandedTicketIndex(Math.max(0, index - 1)); 
     };
-
     const handleChangeTicket = (index, field, value) => {
         const updated = [...tickets];
         updated[index][field] = value;
-        if (field === 'isFree' && value === true) {
-            updated[index].price = '0';
-        }
+        if (field === 'isFree' && value === true) updated[index].price = '0';
         if (field === 'hasSchedule' && value === false) {
             updated[index].activityDate = '';
             updated[index].startTime = '';
@@ -161,11 +161,13 @@ const CadastroEvento = () => {
         setTickets(updated);
     };
 
-    // --- VALIDAÇÃO E NAVEGAÇÃO DO WIZARD ---
     const handleNextStep = () => {
         if (currentStep === 1) {
             if (!imageFile) return toast.error('Adicione uma capa para o evento.');
             if (!title || !category || !description) return toast.error('Preencha as informações principais.');
+            for (let org of organizers) {
+                if (!org.name) return toast.error('Preencha o nome de todos os organizadores.');
+            }
         }
         if (currentStep === 2) {
             if (!locationName || !addressCity) return toast.error('Preencha o local e a cidade.');
@@ -174,10 +176,8 @@ const CadastroEvento = () => {
             }
         }
         if (currentStep === 3) {
-            // 👇 CORREÇÃO 1: Atualizado para 'Bares e Entretenimento'
-            if (!sellOnPlatform && !externalUrl && category !== 'Bares e Entretenimento') {
-                return toast.error('Insira o link oficial de vendas ou Instagram.');
-            }
+            // Removida a obrigatoriedade de externalUrl se a plataforma de vendas for desligada. 
+            // Agora o formulário permite criar Eventos Informativos/Livres tranquilamente.
             if (sellOnPlatform) {
                 for (let i = 0; i < tickets.length; i++) {
                     if (!tickets[i].name) return toast.error(`Preencha o nome do ingresso ${i + 1}`);
@@ -203,7 +203,6 @@ const CadastroEvento = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // --- ENVIO FINAL PARA O BACKEND COM COOKIE SEGURO ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!termsAccepted) return toast.error('Você deve confirmar e aceitar os termos.');
@@ -225,14 +224,11 @@ const CadastroEvento = () => {
             formData.append('externalUrl', '');
             formData.append('isInformational', 'false');
 
-            // 🎯 A MÁGICA ACONTECE AQUI: Transforma o valor digitado em CENTAVOS
             const formattedTickets = tickets.map(t => {
-                // Remove possíveis vírgulas que o usuário digitar e transforma em ponto
                 const parsedPrice = parseFloat(t.price.toString().replace(',', '.'));
-                
                 return {
                     name: t.name,
-                    price: t.isFree ? 0 : Math.round(parsedPrice * 100), // Multiplica por 100 (Ex: R$ 50.00 vira 5000)
+                    price: t.isFree ? 0 : Math.round(parsedPrice * 100),
                     quantity: parseInt(t.quantity),
                     isFree: t.isFree,
                     hasSchedule: Boolean(t.hasSchedule),
@@ -277,14 +273,15 @@ const CadastroEvento = () => {
             city: addressCity, state: addressState, zipCode: addressZipCode
         }));
         
-        formData.append('organizerInfo', JSON.stringify({ name: organizerName, instagram: organizerInstagram }));
+        // NOVO: Salvando o array completo de organizadores
+        formData.append('organizerInfo', JSON.stringify(organizers));
         formData.append('isFeaturedRequested', isFeaturedRequested ? 'true' : 'false');
 
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE_URL}/events`, {
                 method: 'POST',
-                credentials: 'include', // <-- Envio do Evento via Cookie HttpOnly
+                credentials: 'include', 
                 body: formData,
             });
 
@@ -319,7 +316,6 @@ const CadastroEvento = () => {
                     <p>Siga os passos abaixo para configurar seu evento.</p>
                 </div>
 
-                {/* --- BARRA DE PROGRESSO DO WIZARD --- */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '15px', left: '0', right: '0', height: '2px', background: '#e2e8f0', zIndex: 0 }}></div>
                     <div style={{ position: 'absolute', top: '15px', left: '0', width: `${((currentStep - 1) / 3) * 100}%`, height: '2px', background: '#4c01b5', transition: '0.3s ease', zIndex: 0 }}></div>
@@ -387,11 +383,36 @@ const CadastroEvento = () => {
                             </section>
 
                             <section className={styles.card}>
-                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Produtor Organizador</h3></div>
-                                <div className={styles.gridTwo}>
-                                    <div className={styles.inputGroup}><label className={styles.label}>Nome do Organizador</label><input className={styles.input} placeholder="Ex: Diretório Acadêmico" value={organizerName || ''} onChange={e=>setOrganizerName(e.target.value)} required/></div>
-                                    <div className={styles.inputGroup}><label className={styles.label}>Instagram (Opcional)</label><div className={styles.inputWrapper}><FaInstagram className={styles.inputIcon}/><input className={styles.input} placeholder="@instagram" value={organizerInstagram || ''} onChange={e=>setOrganizerInstagram(e.target.value)}/></div></div>
-                                </div>
+                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Produtor(es) Organizador(es)</h3></div>
+                                
+                                {organizers.map((org, index) => (
+                                    <div key={index} style={{ marginBottom: '20px', paddingBottom: '15px', borderBottom: index < organizers.length - 1 ? '1px dashed #e2e8f0' : 'none' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <h4 style={{ margin: 0, fontSize: '1rem', color: '#0f172a' }}>Organizador #{index + 1}</h4>
+                                            {organizers.length > 1 && (
+                                                <button type="button" onClick={() => handleRemoveOrganizer(index)} className={styles.trashBtn} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                                                    <FaTrashAlt />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className={styles.gridTwo}>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Nome do Organizador</label>
+                                                <input className={styles.input} placeholder="Ex: Diretório Acadêmico" value={org.name} onChange={e => handleChangeOrganizer(index, 'name', e.target.value)} required />
+                                            </div>
+                                            <div className={styles.inputGroup}>
+                                                <label className={styles.label}>Instagram (Opcional)</label>
+                                                <div className={styles.inputWrapper}>
+                                                    <FaInstagram className={styles.inputIcon} />
+                                                    <input className={styles.input} placeholder="@instagram" value={org.instagram} onChange={e => handleChangeOrganizer(index, 'instagram', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={handleAddOrganizer} className={styles.addBtnSmall} style={{ marginTop: '10px' }}>
+                                    <FaPlus /> Adicionar outro organizador
+                                </button>
                             </section>
                         </div>
                     )}
@@ -430,12 +451,9 @@ const CadastroEvento = () => {
                         </div>
                     )}
 
-                    {/* ================= PASSO 3 (PROGRAMAÇÃO E INGRESSOS) ================= */}
+                    {/* ================= PASSO 3 ================= */}
                     {currentStep === 3 && (
                         <div className="wizard-step animate-fade-in">
-                            
-                            {/* --- EXCLUSIVO PARA BARES: CONSTRUTOR DE LINE-UP --- */}
-                            {/* 👇 CORREÇÃO 2: Atualizado para 'Bares e Entretenimento' */}
                             {category === 'Bares e Entretenimento' && (
                                 <section className={styles.card} style={{ marginBottom: '30px', border: '2px solid #4c01b5' }}>
                                     <div className={styles.cardHeader}>
@@ -505,7 +523,7 @@ const CadastroEvento = () => {
 
                                 {!sellOnPlatform ? (
                                     <div className={styles.inputGroupFull} style={{marginTop: '20px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
-                                        <label className={styles.label}>Link de Vendas, Reservas ou Instagram (Opcional para Bares)</label>
+                                        <label className={styles.label}>Link de Vendas, Reservas ou Instagram (Opcional)</label>
                                         <div className={styles.inputWrapper}>
                                             <FaLink className={styles.inputIcon}/>
                                             <input className={styles.input} type="url" value={externalUrl || ''} onChange={e=>setExternalUrl(e.target.value)} placeholder="https://..." />
@@ -598,7 +616,6 @@ const CadastroEvento = () => {
                                             <FaPlus /> Adicionar Novo Lote / Ingresso Zerado
                                         </button>
 
-                                        {/* FORMULÁRIO PERSONALIZADO PARA OS PARTICIPANTES */}
                                         <div style={{ marginTop: '40px', borderTop: '1px solid #e2e8f0', paddingTop: '30px' }}>
                                             <h4 style={{ color: '#0f172a', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
                                                 <FaClipboardCheck color="#4c01b5" /> Formulário Personalizado do Participante
@@ -619,13 +636,11 @@ const CadastroEvento = () => {
                                                 </strong>
                                             </label>
 
-                                            {/* LINHAS SEPARADAS (FIX APLICADO AQUI) */}
                                             {requireCustomForm && (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                                     {formFields.map((field) => (
                                                         <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '15px', background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
                                                             
-                                                            {/* LINHA DE CIMA: PERGUNTA E TIPO */}
                                                             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                                                                 <div className={styles.inputGroup} style={{ flex: '2 1 250px' }}>
                                                                     <label className={styles.label}>Pergunta / Campo</label>
@@ -642,7 +657,6 @@ const CadastroEvento = () => {
                                                                 </div>
                                                             </div>
 
-                                                            {/* LINHA DE BAIXO: LIXEIRA E OBRIGATÓRIO */}
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '15px' }}>
                                                                 <button type="button" onClick={() => handleRemoveFormField(field.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', fontSize: '0.9rem' }} title="Remover Pergunta">
                                                                     <FaTrashAlt /> Remover
@@ -663,7 +677,6 @@ const CadastroEvento = () => {
                                                 </div>
                                             )}
                                         </div>
-
                                     </div>
                                 )}
                             </section>

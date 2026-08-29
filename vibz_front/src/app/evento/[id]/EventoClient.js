@@ -26,6 +26,10 @@ export default function EventoDetalhes() {
     const [ownedTickets, setOwnedTickets] = useState([]); 
     const [selectedDayTab, setSelectedDayTab] = useState(0); 
     const [isTicketDropdownOpen, setIsTicketDropdownOpen] = useState(false); 
+    
+    // ESTADOS PARA O SOCIAL PROOF DINÂMICO
+    const [interestCount, setInterestCount] = useState(0); 
+    const [avatarLetters, setAvatarLetters] = useState(['A', 'B', 'C', 'D', 'E']);
 
     // ESTADOS PARA O MODAL DO FORMULÁRIO PERSONALIZADO
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -40,7 +44,39 @@ export default function EventoDetalhes() {
             .then(data => { 
                 setEvento(data); 
                 
-                // Lê o schema de formulário cadastrado pelo organizador
+                // ==============================================================
+                // ALGORITMO DETERMINÍSTICO PARA PROVA SOCIAL ÚNICA POR EVENTO
+                // ==============================================================
+                // Cria um hash matemático baseado no ID único do evento
+                let hash = 0;
+                for (let i = 0; i < id.length; i++) {
+                    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                hash = Math.abs(hash);
+
+                // Define uma base de pessoas interessadas entre 15 e 84 (única para este evento)
+                const baseInterest = (hash % 70) + 15; 
+
+                // Escolhe 5 letras únicas do alfabeto baseado no hash do evento
+                const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                let tempHash = hash;
+                let selectedLetters = [];
+                while (selectedLetters.length < 5) {
+                    let char = alphabet[tempHash % alphabet.length];
+                    if (!selectedLetters.includes(char)) selectedLetters.push(char);
+                    tempHash = (tempHash * 31) + 17; // Muda o hash para a próxima letra
+                }
+                setAvatarLetters(selectedLetters);
+
+                // Soma a base fictícia com os dados REAIS de engajamento do sistema
+                const totalSold = (data.tickets || []).reduce((acc, t) => acc + (t.sold || 0), 0);
+                const totalFavorites = data.favoritesCount || (Array.isArray(data.favorites) ? data.favorites.length : 0);
+                const totalViews = data.viewCount || data.views || 0;
+                
+                setInterestCount(totalSold + totalFavorites + totalViews + baseInterest);
+                
+                // ==============================================================
+
                 if (data.formSchema) {
                     try {
                         const parsedSchema = typeof data.formSchema === 'string' ? JSON.parse(data.formSchema) : data.formSchema;
@@ -50,16 +86,14 @@ export default function EventoDetalhes() {
 
                 setLoading(false); 
                 
-                // Pega apenas o ID do usuário para checar de forma visual se ele está logado
                 const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
                 if (userId) {
-                    // Busca ingressos usando Cookies HttpOnly
                     fetch(`${API_BASE_URL}/tickets/my-tickets`, {
-                        credentials: 'include' // <-- Segurança ativada
+                        credentials: 'include' 
                     })
                     .then(res => {
                         if(res.status === 401) {
-                            localStorage.removeItem('userId'); // Limpa UI se cookie expirou
+                            localStorage.removeItem('userId'); 
                             return [];
                         }
                         return res.json();
@@ -317,7 +351,7 @@ export default function EventoDetalhes() {
             const response = await fetch(`${API_BASE_URL}/payments/create-checkout-session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // <-- COMPRA SEGURA VIA COOKIE
+                credentials: 'include', 
                 body: JSON.stringify(bodyPayload)
             });
 
@@ -351,12 +385,13 @@ export default function EventoDetalhes() {
     };
 
     const addressQuery = encodeURIComponent(`${evento.location}, ${evento.city}`);
-    const locationName = encodeURIComponent(evento.location); 
+    const locationNameUrl = encodeURIComponent(evento.location); 
     
-    const uberLink = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[nickname]=${locationName}&dropoff[formatted_address]=${addressQuery}`;
+    const uberLink = `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[nickname]=${locationNameUrl}&dropoff[formatted_address]=${addressQuery}`;
     const hoteisLink = `https://www.google.com/maps/search/hoteis+perto+de+${addressQuery}`;
     const baresLink = `https://www.google.com/maps/search/bares+perto+de+${addressQuery}`;
     const restaurantesLink = `https://www.google.com/maps/search/restaurantes+perto+de+${addressQuery}`;
+    const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
 
     const renderTicketBox = () => {
         if (!evento.tickets || evento.tickets.length === 0) return null;
@@ -407,9 +442,7 @@ export default function EventoDetalhes() {
                                     const tId = ticket.id || ticket._id;
                                     const qty = ticketQuantities[tId] || 0;
                                     
-                                    // NOVO: Verifica se é gratuito baseado no valor em centavos
                                     const isFree = !ticket.price || parseInt(ticket.price) === 0;
-
                                     const available = (ticket.quantity || 0) - (ticket.sold || 0);
                                     const isSoldOut = available <= 0;
                                     const isExpired = isTicketExpired(ticket);
@@ -505,20 +538,16 @@ export default function EventoDetalhes() {
             <Header />
             
             <section className="vibz-hero">
-                {/* 🌟 ESTRUTURA DO HERO REORGANIZADA PARA "EFEITO PÔSTER" 🌟 */}
                 <div className="vibz-hero-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '20px' }}>
                     
-                    {/* 1. CATEGORIA NO TOPO */}
                     <span className="vibz-category-pill" style={{ marginBottom: 0 }}>
                         {evento.category}
                     </span>
                     
-                    {/* 2. IMAGEM NO MEIO (Forçada para 16:9) */}
-                    <div className="vibz-image-minimal" aria-hidden="true" style={{ width: '100%', maxWidth: '800px', margin: '5px 0' }}>
-                        <img src={evento.imageUrl} alt="" style={{ width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: '20px' }} />
+                    <div className="vibz-image-minimal" aria-hidden="true">
+                        <img src={evento.imageUrl} alt={evento.title || 'Capa do Evento'} className="eventBannerImage" />
                     </div>
 
-                    {/* 3. TÍTULO E META INFO ABAIXO DA IMAGEM */}
                     <div className="vibz-hero-info" style={{ alignItems: 'center', width: '100%' }}>
                         <h1 className="vibz-title">{evento.title}</h1>
                         
@@ -541,6 +570,27 @@ export default function EventoDetalhes() {
                 <div className="vibz-grid">
                     
                     <section className="vibz-main" style={{ minWidth: 0 }}>
+                        
+                        {/* ========================================= */}
+                        {/* 🌟 CARD DE INTERESSE / SOCIAL PROOF 🌟    */}
+                        {/* ========================================= */}
+                        <div className="vibz-card vibz-interest-card">
+                            <h3>Quem vai?</h3>
+                            <div className="vibz-interest-content">
+                                <div className="vibz-avatars-group">
+                                    {/* Mapeia as 5 letras aleatórias geradas especificamente para este evento */}
+                                    {avatarLetters.map((letter, index) => (
+                                        <div key={index} className="vibz-avatar-circle" style={{ zIndex: 5 - index }}>
+                                            {letter}
+                                        </div>
+                                    ))}
+                                </div>
+                                <span className="vibz-interest-text">
+                                    {interestCount} pessoas demonstraram interesse
+                                </span>
+                            </div>
+                        </div>
+
                         {renderTicketBox()}
 
                         <div className="vibz-card">
@@ -548,14 +598,44 @@ export default function EventoDetalhes() {
                             <p className="vibz-desc">{evento.description}</p>
                         </div>
                         
+                        {/* ========================================= */}
+                        {/* 🌟 CARD ONDE ACONTECE / MAPA GRÁFICO 🌟   */}
+                        {/* ========================================= */}
+                        <div className="vibz-card vibz-location-card">
+                            <h3>Onde acontece</h3>
+                            
+                            <div className="vibz-map-graphic">
+                                <div className="map-shape-line"></div>
+                                <div className="map-shape-1"></div>
+                                <div className="map-shape-2"></div>
+                                <div className="map-shape-3"></div>
+                                
+                                <div className="vibz-map-pin-custom">
+                                    <FaMapMarkerAlt />
+                                </div>
+                            </div>
+
+                            <div className="vibz-map-details">
+                                <div className="vibz-map-text-block">
+                                    <strong>{evento.location}</strong>
+                                    <span>{evento.city} - {evento.address?.state || 'BA'}</span>
+                                </div>
+                                <a href={googleMapsLink} target="_blank" rel="noopener noreferrer" className="vibz-btn-map-rounded">
+                                    Ver no mapa
+                                </a>
+                            </div>
+                        </div>
+
                         <div className="vibz-card">
                             <h3>Organizado por</h3>
                             <div className="vibz-org">
-                                <div className="vibz-avatar" aria-hidden="true">{orgInfo.name?.charAt(0) || 'V'}</div>
+                                <div className="vibz-avatar" aria-hidden="true">
+                                    {orgInfo.name ? orgInfo.name.charAt(0).toUpperCase() : 'O'}
+                                </div>
                                 <div className="vibz-org-info">
-                                    <h4>{orgInfo.name || "Produtor Cultural"}</h4>
+                                    <h4>{orgInfo.name || "Organização do Evento"}</h4>
                                     {orgInfo.instagram && (
-                                        <a href={`https://instagram.com/${orgInfo.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="vibz-insta" aria-label={`Instagram de ${orgInfo.name}`}>
+                                        <a href={`https://instagram.com/${orgInfo.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="vibz-insta" aria-label={`Instagram de ${orgInfo.name || 'Organização'}`}>
                                             <InstagramIcon /> {orgInfo.instagram}
                                         </a>
                                     )}
@@ -571,16 +651,16 @@ export default function EventoDetalhes() {
                                 <FaTicketAlt className="guide-icon" aria-hidden="true" />
                                 <h3>Ingressos Oficiais</h3>
                                 <p className="external-subtitle">
-                                    {evento.externalUrl ? 'Disponível via Curadoria' : 'Evento Informativo'}
+                                    {evento.externalUrl ? 'Disponível via Site Externo' : 'Evento Informativo'}
                                 </p>
                                 <p className="external-text">
                                     {evento.externalUrl 
-                                        ? 'Curadoria oficial. Clique abaixo para acessar a bilheteria no canal oficial do produtor.'
-                                        : 'Acesse as redes sociais da produção para detalhes sobre reservas ou ingressos físicos.'}
+                                        ? 'As vendas ou inscrições oficiais acontecem no canal do organizador.'
+                                        : 'Acesse as redes sociais da organização para mais detalhes.'}
                                 </p>
                                 {evento.externalUrl && (
                                     <a href={evento.externalUrl} target="_blank" rel="noopener noreferrer" className="vibz-btn-primary" style={{ width: '100%', textDecoration: 'none' }}>
-                                        <FaExternalLinkAlt aria-hidden="true" style={{ marginRight: '8px' }} /> Acessar Ingressos
+                                        <FaExternalLinkAlt aria-hidden="true" style={{ marginRight: '8px' }} /> Acessar Site Oficial
                                     </a>
                                 )}
                             </div>
@@ -613,9 +693,7 @@ export default function EventoDetalhes() {
             </main>
             <Footer />
 
-            {/* ======================================================== */}
-            {/* MODAL DE CHECKOUT (APARECE SE TIVER FORMULÁRIO EXIGIDO)  */}
-            {/* ======================================================== */}
+            {/* MODAL DE CHECKOUT */}
             {showCheckoutModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
                     <div style={{ background: '#111118', width: '100%', maxWidth: '500px', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.3)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>

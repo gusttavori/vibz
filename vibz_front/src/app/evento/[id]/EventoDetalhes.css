@@ -8,7 +8,14 @@
     color: #0f172a; 
 }
 
-/* --- TELA DE CARREGAMENTO (LOADING) CORRIGIDA --- */
+.eventBannerImage {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
 .vibz-loading-container {
     display: flex;
     flex-direction: column;
@@ -19,7 +26,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    background-color: #f4f4f5; /* Alinhado com o preto sofisticado do Hero */
+    background-color: #f4f4f5; 
     font-family: 'Urbanist', sans-serif;
     text-align: center;
     padding: 20px;
@@ -42,14 +49,14 @@
 
 .vibz-loading-title {
     font-size: 1.5rem;
-    color: #050408; /* Branco elegante */
+    color: #050408; 
     font-weight: 800;
     margin: 0 0 8px 0;
 }
 
 .vibz-loading-subtitle {
     font-size: 1rem;
-    color: #9893a7;/* Cinza suave */
+    color: #9893a7;
     font-weight: 500;
     margin: 0;
 }
@@ -91,7 +98,7 @@
 }
 
 .vibz-title { 
-    font-size: 3rem; 
+    font-size: 2rem; 
     margin: 0 0 24px 0; 
     font-weight: 700; 
     line-height: 1.15; 
@@ -108,7 +115,7 @@
 .meta-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     color: #94a3b8; 
     font-size: 1rem;
     font-weight: 500;
@@ -116,14 +123,14 @@
 
 .meta-icon {
     color: #64748b; 
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .vibz-image-minimal { 
-    width: 360px; /* Mais largo no desktop */
-    aspect-ratio: 16 / 9; /* Mágica do CSS moderno: trava a proporção exata */
-    height: auto; /* A altura se adapta automaticamente à largura */
-    border-radius: 16px; /* Borda levemente menor combina mais com formatos retangulares */
+    width: 550px; 
+    aspect-ratio: 16 / 9; 
+    height: auto; 
+    border-radius: 16px; 
     overflow: hidden;
     flex-shrink: 0; 
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); 
@@ -231,6 +238,152 @@
     white-space: pre-line;
 }
 
+/* ==========================================================
+   NOVO: CARTÃO DE INTERESSE "Quem vai?" (SOCIAL PROOF)
+   ========================================================== */
+.vibz-interest-card {
+    padding: 25px 35px;
+}
+
+.vibz-interest-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.vibz-interest-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.vibz-avatars-group {
+    display: flex;
+    align-items: center;
+}
+
+.vibz-avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #6D28D9;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 2px solid #ffffff;
+    margin-left: -10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.vibz-avatar-circle:first-child {
+    margin-left: 0;
+}
+
+/* Cores variadas para os avatares parecerem reais */
+.vibz-avatar-circle:nth-child(1) { background: #4C01B5; }
+.vibz-avatar-circle:nth-child(2) { background: #6D28D9; }
+.vibz-avatar-circle:nth-child(3) { background: #8B5CF6; }
+.vibz-avatar-circle:nth-child(4) { background: #A78BFA; }
+.vibz-avatar-circle:nth-child(5) { background: #C4B5FD; color: #4C01B5; }
+
+.vibz-interest-text {
+    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+/* ==========================================================
+   NOVO: CARTÃO "Onde Acontece" COM MAPA GRÁFICO
+   ========================================================== */
+.vibz-location-card {
+    padding: 0; /* Remove padding para a imagem colar nas bordas superiores */
+    overflow: hidden;
+}
+
+.vibz-location-card h3 {
+    padding: 30px 35px 15px;
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.vibz-map-graphic {
+    height: 180px;
+    background-color: #f5f3ff;
+    /* Linhas do mapa simuladas */
+    background-image: 
+        linear-gradient(rgba(139, 92, 246, 0.1) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(139, 92, 246, 0.1) 2px, transparent 2px);
+    background-size: 60px 60px;
+    background-position: center center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Construções / Blocos abstratos na arte do mapa */
+.map-shape-1 { position: absolute; top: 30px; right: 25%; width: 140px; height: 35px; background: rgba(139, 92, 246, 0.08); border-radius: 8px; }
+.map-shape-2 { position: absolute; bottom: 25px; right: 10%; width: 110px; height: 50px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; }
+.map-shape-3 { position: absolute; top: 40px; left: 15%; width: 90px; height: 40px; background: rgba(139, 92, 246, 0.12); border-radius: 8px; }
+.map-shape-line { position: absolute; top: 45%; left: -10%; width: 120%; height: 3px; background: rgba(139, 92, 246, 0.15); transform: rotate(-5deg); }
+
+.vibz-map-pin-custom {
+    width: 44px;
+    height: 44px;
+    background: #6D28D9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    box-shadow: 0 10px 25px rgba(109, 40, 217, 0.4);
+    position: relative;
+    z-index: 2;
+}
+
+.vibz-map-details {
+    padding: 25px 35px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.vibz-map-text-block strong {
+    display: block;
+    font-size: 1.15rem;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.vibz-map-text-block span {
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+.vibz-btn-map-rounded {
+    background: transparent;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    padding: 10px 24px;
+    border-radius: 50px; /* Borda bem redonda igual à foto */
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.vibz-btn-map-rounded:hover {
+    border-color: #0f172a;
+    background: #f8fafc;
+}
+
 /* --- ORGANIZADOR --- */
 .vibz-org { 
     display: flex; 
@@ -308,7 +461,7 @@
     font-size: 0.95rem;
 }
 
-/* --- CORREÇÃO DO LAYOUT DOS INGRESSOS --- */
+/* --- LAYOUT DOS INGRESSOS --- */
 .vibz-ticket-selector { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; width: 100%; }
 
 .vibz-ticket-row { 
@@ -325,14 +478,13 @@
 .ticket-details strong { font-size: 1rem; color: #f8fafc; letter-spacing: 0.3px; }
 .ticket-price { color: #a78bfa; font-size: 0.9rem; font-weight: 700; margin-top: 2px;}
 
-/* NOVO: Estilo Premium para o Horário */
 .ticket-time-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(167, 139, 250, 0.15); /* Fundo roxo translúcido */
+    background: rgba(167, 139, 250, 0.15);
     border: 1px solid rgba(167, 139, 250, 0.25);
-    color: #d8b4fe; /* Roxo claro brilhante */
+    color: #d8b4fe; 
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 0.75rem;
@@ -390,7 +542,7 @@
 
 .vibz-btn-outline:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); }
 
-/* --- ABAS DE SELEÇÃO DE DIAS NA BILHETERIA --- */
+/* --- ABAS DE SELEÇÃO --- */
 .ticket-dropdown-header {
     display: flex;
     justify-content: space-between;
@@ -414,7 +566,7 @@
 
 .vibz-day-tabs {
     display: flex;
-    flex-wrap: wrap; /* Evita estourar o limite horizontal da tela */
+    flex-wrap: wrap; 
     gap: 6px;
     margin-bottom: 15px;
     width: 100%;
@@ -430,7 +582,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
-    flex: 1 1 auto; /* Ajusta o tamanho dinamicamente em telas pequenas */
+    flex: 1 1 auto; 
     min-width: 75px;
     text-align: center;
     transition: all 0.2s ease;
@@ -449,62 +601,13 @@
     box-shadow: 0 4px 12px rgba(76, 1, 181, 0.4);
 }
 
-/* Proteção geral para evitar overflow horizontal nas caixas escuras */
 .vibz-guide, .vibz-card {
     box-sizing: border-box;
     max-width: 100%;
     word-break: break-word;
 }
 
-/* ==========================================================
-   NOVO: CARD DE INGRESSO EXTERNO (LINK) E INFORMATIVO
-   ========================================================== */
-
-.vibz-ticket-external {
-    background: #0b0914; 
-    color: white; 
-    padding: 35px 30px; 
-    border-radius: 16px; 
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    box-sizing: border-box; 
-    width: 100%;
-    margin-bottom: 25px;
-}
-
-.vibz-ticket-external .external-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.vibz-ticket-external h3 {
-    margin: 0 0 10px 0;
-    font-size: 1.4rem;
-    color: #ffffff;
-}
-
-.vibz-ticket-external p.external-subtitle {
-    margin: 0;
-    font-size: 0.95rem;
-    color: #a78bfa;
-    font-weight: 600;
-}
-
-.vibz-ticket-external p.external-text {
-    margin: 0 0 25px 0;
-    line-height: 1.6;
-    color: #94a3b8;
-    font-size: 0.95rem;
-    max-width: 90%;
-}
-
-/* --- CARD DE INGRESSOS EXTERNOS (SIDEBAR) --- */
+/* --- CARD DE INGRESSO EXTERNO --- */
 .vibz-guide-external {
     background: #0b0914; 
     color: white; 
@@ -559,6 +662,8 @@
     .vibz-title { font-size: 2.5rem; }
     .vibz-content { margin-top: 20px; }
     .vibz-card { padding: 25px; }
+    .vibz-map-details { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .vibz-btn-map-rounded { width: 100%; text-align: center; }
 }
 
 @media (max-width: 480px) {
@@ -566,4 +671,5 @@
     .vibz-meta { flex-direction: column; gap: 8px; }
     .vibz-card { padding: 20px; }
     .vibz-org { flex-direction: column; text-align: center; gap: 15px; }
+    .vibz-interest-content { justify-content: center; }
 }

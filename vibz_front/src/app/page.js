@@ -171,22 +171,19 @@ export default function Home() {
         fetchCategory('Bares e Entretenimento', 'bares'); 
     }, []);
 
-    // --- NOVA VALIDAÇÃO DE LOGIN DA HOME ---
     useEffect(() => {
         const checkLoginStatus = async () => {
             if (typeof window !== 'undefined') {
-                // UI otimista: lê rapidamente o ID do local storage
                 const storedUserId = localStorage.getItem('userId');
                 if (storedUserId) {
                     setIsUserLoggedIn(true);
                     setCurrentUserId(storedUserId);
                 }
 
-                // Validação real invisível (Cookie HttpOnly)
                 try {
                     const res = await fetch(`${API_BASE_URL}/auth/me`, {
                         method: 'GET',
-                        credentials: 'include' // Envia o cookie para confirmar a sessão
+                        credentials: 'include' 
                     });
                     
                     if (res.ok) {
@@ -213,13 +210,12 @@ export default function Home() {
         };
     }, []);
 
-    // --- BUSCA DE FAVORITOS (VIA COOKIE) ---
     useEffect(() => {
         const fetchFavoritedEvents = async () => {
             if (!currentUserId) { setFavoritedEventIds([]); return; }
             try {
                 const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/favorites`, {
-                    credentials: 'include' // Envia o cookie automaticamente
+                    credentials: 'include' 
                 });
                 if (response.ok) {
                     const data = await response.json();
@@ -256,7 +252,6 @@ export default function Home() {
         fetchFeatured();
     }, []);
 
-    // --- TOGGLE FAVORITO (VIA COOKIE) ---
     const handleToggleFavorite = async (eventId, isFavoriting) => {
         if (!currentUserId) {
             toast.error("Faça login para favoritar.");
@@ -264,33 +259,29 @@ export default function Home() {
             return;
         }
 
-        // UI Otimista
         setFavoritedEventIds(prev => {
             if (isFavoriting) return [...prev, eventId];
             return prev.filter(id => id !== eventId);
         });
 
         try {
-            // Rota Segura (sem Authorization Header)
             let response = await fetch(`${API_BASE_URL}/users/toggle-favorite`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // <-- MÁGICA DE SEGURANÇA AQUI
+                credentials: 'include', 
                 body: JSON.stringify({ eventId })
             });
 
             if (response.status === 404) {
-                // Fallback legado caso a rota acima não exista em algum ambiente antigo
                 response = await fetch(`${API_BASE_URL}/events/${eventId}/favorite`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // <-- MÁGICA DE SEGURANÇA AQUI
+                    credentials: 'include', 
                     body: JSON.stringify({ userId: currentUserId, isFavoriting })
                 });
             }
 
             if (!response.ok) {
-                // Reverte se deu erro no servidor
                 setFavoritedEventIds(prev => {
                     if (isFavoriting) return prev.filter(id => id !== eventId);
                     return [...prev, eventId];
@@ -319,18 +310,15 @@ export default function Home() {
         { name: 'Acadêmico', icon: <FaGraduationCap size={24} />, ref: academicoRef, key: 'academico' },
         { name: 'Religioso', icon: <FaDove size={24} />, ref: religiosoRef, key: 'religioso' }, 
         { name: 'Esportes', icon: <FaTrophy size={24} />, ref: esportesRef, key: 'esportes' },
-        { name: 'Bares e Entretenimento', icon: <FaGlassCheers size={24} />, ref: baresRef, key: 'bares' }, 
         { name: 'Gastronomia', icon: <FaUtensils size={24} />, ref: gastronomiaRef, key: 'gastronomia' },
-        { name: 'Cursos', icon: <FaChalkboardTeacher size={24} />, ref: cursosRef, key: 'cursos' }
+        { name: 'Cursos', icon: <FaChalkboardTeacher size={24} />, ref: cursosRef, key: 'cursos' },
+        { name: 'Bares e Entretenimento', icon: <FaGlassCheers size={24} />, ref: baresRef, key: 'bares' }
     ];
 
     const categoriesToShowInNavigation = categoriesConfig.filter(cat =>
         categoryEvents[cat.key] && categoryEvents[cat.key].length > 0
     );
 
-    // ======================================================================
-    // RENDERIZADOR DA AGENDA
-    // ======================================================================
     const renderAgendaSection = (title, categoryKey, ref) => {
         const events = categoryEvents[categoryKey] || [];
         const loading = loadingCategories[categoryKey];
@@ -604,12 +592,12 @@ export default function Home() {
                 {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
                 {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
                 {renderSection("Religioso", 'religioso', religiosoRef)}
-                
-                {renderAgendaSection("Bares e Entretenimento", 'bares', baresRef)} 
-                
                 {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
                 {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
                 {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
+                
+                {/* Agora a seção de bares será sempre renderizada por último */}
+                {renderAgendaSection("Bares e Entretenimento", 'bares', baresRef)} 
             </main>
 
             <div className="mkt-premium-section">

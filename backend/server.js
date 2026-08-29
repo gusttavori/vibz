@@ -75,7 +75,7 @@ app.use(express.urlencoded({ extended: true }));
 // Limiter Geral: Protege o banco de dados contra raspagem de dados e DDoS
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 300, // Limite super generoso para usuários reais, mas barra bots
+    max: 500, // Limite super generoso para usuários reais, mas barra bots
     message: { message: 'Muitas requisições recebidas deste IP. Por favor, aguarde alguns minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
