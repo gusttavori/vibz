@@ -19,6 +19,16 @@ const nextConfig = {
   },
   
   turbopack: {}, 
+
+  // 👇 NOVA CONFIGURAÇÃO: Proxy Reverso para o Render
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://vibz.onrender.com/api/:path*' 
+      }
+    ];
+  }
 };
 
 export default withPWA(nextConfig);
