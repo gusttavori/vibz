@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const cloudinary = require('../config/cloudinary');
-const { z } = require('zod'); // <-- Importação do Zod
+const { z } = require('zod'); 
 
 const { 
     sendEventStatusEmail, 
@@ -24,26 +24,20 @@ const eventSchema = z.object({
 const validateFormSchemaLGPD = (schema) => {
     if (!schema || !Array.isArray(schema)) return;
 
-    // Padrões Regex baseados estritamente na Seção 4.4 dos Termos de Uso
     const forbiddenPatterns = [
-        // Dados Pessoais Sensíveis
         /\b(religião|religiao|raça|raca|etnia|política|politica|sindicato|saúde|saude|doença|doenca|sexual|genético|genetico|biometria|biométrico)\b/i,
-        // Credenciais e Dados Financeiros
         /\b(senha|cartão de crédito|cartao de credito|cvv|conta bancária|conta bancaria|chave pix)\b/i,
-        // Proibição de Fotos/Cópias de Documentos (Permite texto de RG para portaria, mas proíbe envio de foto)
         /\b(foto|cópia|copia|digitalização)\b.*\b(rg|cnh|passaporte|documento)\b/i,
         /\b(rg|cnh|passaporte|documento)\b.*\b(foto|cópia|copia|digitalização)\b/i,
-        // Localização em Tempo Real
         /\b(gps|tempo real)\b/i
     ];
 
     for (const field of schema) {
-        // Pega a label da pergunta, ou o nome do campo
         const label = (field.label || field.question || field.name || '').toLowerCase();
         
         for (const pattern of forbiddenPatterns) {
             if (pattern.test(label)) {
-                throw new Error(`Alerta LGPD: O campo "${field.label || field.name}" contém solicitações restritas pelas Políticas da Vibz (ex: dados sensíveis, financeiros ou pedido de fotos de documentos).`);
+                throw new Error(`Alerta LGPD: O campo "${field.label || field.name}" contém solicitações restritas pelas Políticas da Vibz.`);
             }
         }
     }
@@ -79,28 +73,32 @@ const mapEventToFrontend = (event) => {
         parsedTickets = typeof event.tickets === 'string' ? JSON.parse(event.tickets) : event.tickets;
     }
 
-    // Injeção visual do hasSchedule para o frontend funcionar sem precisar salvar no banco
     parsedTickets = parsedTickets.map(t => ({
         ...t,
         hasSchedule: !!(t.activityDate || t.startTime)
     }));
 
-    let organizerNameFinal = "Curador Vibz";
-    let organizerInstaFinal = "";
-
+    // 👇 Correção do erro da "Curador Vibz" ao ler do banco de dados no Backend 👇
+    let organizerData = [];
+    
     if (event.organizerInfo) {
         try {
             const info = typeof event.organizerInfo === 'string' ? JSON.parse(event.organizerInfo) : event.organizerInfo;
-            if (info.name && info.name.trim() !== "") organizerNameFinal = info.name;
-            if (info.instagram) organizerInstaFinal = info.instagram;
+            // Se for um array real de organizadores...
+            if (Array.isArray(info)) {
+                organizerData = info;
+            } else if (info && info.name) {
+                // Se for um objeto antigo...
+                organizerData = [info];
+            }
         } catch (e) {
             console.error("Erro parse organizerInfo:", e);
         }
     }
 
-    if (organizerNameFinal === "Curador Vibz" && event.organizer && event.organizer.name) {
-        organizerNameFinal = event.organizer.name;
-    }
+    // Mantendo a compatibilidade do backend com o objeto antigo para não quebrar outras telas
+    const firstOrganizerName = (organizerData.length > 0 && organizerData[0].name) ? organizerData[0].name : "Organização do Evento";
+    const firstOrganizerInsta = (organizerData.length > 0 && organizerData[0].instagram) ? organizerData[0].instagram : "";
 
     return {
         ...event,
@@ -111,9 +109,13 @@ const mapEventToFrontend = (event) => {
         date: safeDate,
         tickets: parsedTickets, 
         formSchema: event.formSchema ? (typeof event.formSchema === 'string' ? JSON.parse(event.formSchema) : event.formSchema) : [],
-        organizer: { name: organizerNameFinal, instagram: organizerInstaFinal },
-        organizerName: organizerNameFinal,
-        organizerInstagram: organizerInstaFinal,
+        
+        // Passa a string JSON intocada para o frontend processar (como fizemos no EventoDetalhes.js)
+        organizerInfo: event.organizerInfo, 
+        
+        organizer: { name: firstOrganizerName, instagram: firstOrganizerInsta },
+        organizerName: firstOrganizerName,
+        organizerInstagram: firstOrganizerInsta,
         isInformational: event.isInformational !== undefined ? event.isInformational : true, 
         highlightStatus: event.highlightStatus,
         highlightPaymentLink: event.highlightPaymentLink 
@@ -134,13 +136,11 @@ const createEvent = async (req, res) => {
             tickets, isInformational 
         } = req.body;
 
-        // 🛡️ Validação Zod dos campos de texto cruciais
         const validation = eventSchema.safeParse({ title, description, category });
         if (!validation.success) {
             return res.status(400).json({ message: validation.error.errors[0].message });
         }
 
-        // 🛡️ Validação da Trava LGPD no Formulário Customizado
         let parsedFormSchema = formSchema ? JSON.parse(formSchema) : [];
         try {
             validateFormSchemaLGPD(parsedFormSchema);
@@ -150,15 +150,23 @@ const createEvent = async (req, res) => {
 
         const userId = req.user.id;
         
-        let finalOrganizerName = "Curador Vibz";
-        let finalOrganizerInsta = "";
+        // 👇 Correção do erro de salvar o Array como um Objeto vazio 👇
+        let finalOrganizerData = [];
 
         if (organizerInfo) {
             try {
                 let parsedOrganizerInfo = JSON.parse(organizerInfo);
-                if (parsedOrganizerInfo.name) finalOrganizerName = parsedOrganizerInfo.name;
-                if (parsedOrganizerInfo.instagram) finalOrganizerInsta = parsedOrganizerInfo.instagram;
-            } catch (e) { console.error(e); }
+                
+                // Trata a dupla conversão que o FormData às vezes faz
+                if (typeof parsedOrganizerInfo === 'string') {
+                    parsedOrganizerInfo = JSON.parse(parsedOrganizerInfo);
+                }
+
+                // Salva diretamente o array se for um array, caso contrário encapsula em array
+                finalOrganizerData = Array.isArray(parsedOrganizerInfo) ? parsedOrganizerInfo : [parsedOrganizerInfo];
+            } catch (e) { 
+                console.error(e); 
+            }
         }
 
         const isFeaturedBool = (isFeaturedRequested === 'true' || isFeaturedRequested === true);
@@ -196,7 +204,7 @@ const createEvent = async (req, res) => {
                 externalUrl: externalUrl || null,
                 eventDate: mainEventDate,
                 sessions: parsedSessions,
-                organizerInfo: { name: finalOrganizerName, instagram: finalOrganizerInsta },
+                organizerInfo: finalOrganizerData, // <-- Agora salva o array completo com todos os nomes no banco!
                 formSchema: parsedFormSchema,
                 isInformational: isInfoBool
             }
@@ -246,13 +254,11 @@ const updateEvent = async (req, res) => {
             tickets, isInformational
         } = req.body;
 
-        // 🛡️ Validação Zod dos campos de texto cruciais
         const validation = eventSchema.safeParse({ title, description, category });
         if (!validation.success) {
             return res.status(400).json({ message: validation.error.errors[0].message });
         }
 
-        // 🛡️ Validação da Trava LGPD no Formulário Customizado
         const parsedFormSchema = typeof formSchema === 'string' ? JSON.parse(formSchema) : (formSchema || []);
         try {
             validateFormSchemaLGPD(parsedFormSchema);
@@ -272,9 +278,14 @@ const updateEvent = async (req, res) => {
         let mainEventDate = existingEvent.eventDate;
         if (parsedSessions && parsedSessions.length > 0) mainEventDate = new Date(parsedSessions[0].date);
 
+        // Mesma correção do createEvent para garantir que salve o Array
         let parsedOrgInfo = existingEvent.organizerInfo;
         if (organizerInfo) {
-            parsedOrgInfo = typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo;
+            try {
+                let tempInfo = typeof organizerInfo === 'string' ? JSON.parse(organizerInfo) : organizerInfo;
+                if (typeof tempInfo === 'string') tempInfo = JSON.parse(tempInfo);
+                parsedOrgInfo = Array.isArray(tempInfo) ? tempInfo : [tempInfo];
+            } catch(e) {}
         }
 
         const isInfoBool = isInformational !== undefined 

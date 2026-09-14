@@ -45,12 +45,10 @@ export default function EventoDetalhes() {
                 setEvento(data); 
                 
                 // ==============================================================
-                // ALGORITMO DINÂMICO DIÁRIO PARA PROVA SOCIAL (ETAPA 3)
+                // ALGORITMO DINÂMICO DIÁRIO PARA PROVA SOCIAL
                 // ==============================================================
-                // Pega a data de hoje no formato AAAA-MM-DD
                 const todayDateString = new Date().toISOString().split('T')[0]; 
                 
-                // Junta o ID único do evento + a data de hoje para gerar variação diária
                 const hashInput = id + todayDateString;
                 
                 let hash = 0;
@@ -59,10 +57,8 @@ export default function EventoDetalhes() {
                 }
                 hash = Math.abs(hash);
 
-                // Base flutuante de pessoas interessadas (muda todo dia)
                 const dailyFloatingInterest = (hash % 48) + 18; 
 
-                // Hash exclusivo do ID para fixar os avatares (não mudam com o dia)
                 let idHash = 0;
                 for (let i = 0; i < id.length; i++) {
                     idHash = id.charCodeAt(i) + ((idHash << 5) - idHash);
@@ -79,7 +75,6 @@ export default function EventoDetalhes() {
                 }
                 setAvatarLetters(selectedLetters);
 
-                // Soma a base diária com os engajamentos REAIS
                 const totalSold = (data.tickets || []).reduce((acc, t) => acc + (t.sold || 0), 0);
                 const totalFavorites = data.favoritesCount || (Array.isArray(data.favorites) ? data.favorites.length : 0);
                 const totalViews = data.viewCount || data.views || 0;
@@ -137,10 +132,38 @@ export default function EventoDetalhes() {
     const displayDate = new Date(evento.date || evento.createdAt);
 
     // ==============================================================
-    // ETAPA 2: TRATAMENTO PARA MÚLTIPLOS ORGANIZADORES
+    // LEITURA DOS ORGANIZADORES (Exatamente como preenchido no cadastro)
     // ==============================================================
-    const parsedOrg = typeof evento.organizerInfo === 'string' ? JSON.parse(evento.organizerInfo || '[]') : (evento.organizerInfo || []);
-    const organizersList = Array.isArray(parsedOrg) ? parsedOrg : [parsedOrg];
+    let organizersList = [];
+    
+    if (evento.organizerInfo) {
+        try {
+            // Verifica se é uma string e tenta converter
+            let parsedOrg = typeof evento.organizerInfo === 'string' 
+                ? JSON.parse(evento.organizerInfo) 
+                : evento.organizerInfo;
+                
+            // Tratamento de segurança caso o backend tenha salvo como string dupla
+            if (typeof parsedOrg === 'string') {
+                parsedOrg = JSON.parse(parsedOrg);
+            }
+
+            // Garante que o resultado final seja um Array
+            organizersList = Array.isArray(parsedOrg) ? parsedOrg : [parsedOrg];
+        } catch (e) {
+            // Se falhar totalmente, significa que é um texto puro do banco antigo
+            organizersList = [{ name: evento.organizerInfo }];
+        }
+    }
+
+    // Limpa a lista removendo blocos que estejam totalmente vazios
+    organizersList = organizersList.filter(org => org && org.name && org.name.trim() !== "");
+
+    // Só exibe texto genérico se o array chegar 100% vazio do banco de dados
+    if (organizersList.length === 0) {
+        organizersList = [{ name: "Organização do Evento" }];
+    }
+    // ==============================================================
 
     const uniqueDatesSet = new Set();
     

@@ -128,11 +128,13 @@
 
 .vibz-image-minimal { 
     width: 550px; 
+    max-width: 100%; /* IMPEDE QUE A IMAGEM CRESÇA MAIS QUE A TELA */
     aspect-ratio: 16 / 9; 
     height: auto; 
     border-radius: 16px; 
     overflow: hidden;
     flex-shrink: 0; 
+    box-sizing: border-box; /* GARANTE QUE A BORDA NÃO ESTOURE A MARGEM */
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); 
     border: 1px solid rgba(255, 255, 255, 0.05); 
 }
@@ -141,26 +143,6 @@
     width: 100%; 
     height: 100%; 
     object-fit: cover; 
-}
-
-@media (max-width: 900px) {
-    .vibz-hero-container { 
-        flex-direction: column-reverse; 
-        text-align: center; 
-        gap: 40px;
-    }
-    .vibz-hero-info { align-items: center; }
-    .vibz-meta-minimal { align-items: center; }
-}
-
-@media (max-width: 768px) {
-    .vibz-title { font-size: 1.75rem; }
-    .vibz-image-minimal { width: 100%; max-width: 500px; }
-}
-
-@media (max-width: 480px) {
-    .vibz-title { font-size: 1.5rem; }
-    .vibz-image-minimal { width: 100%; }
 }
 
 .vibz-pill { 
@@ -239,7 +221,7 @@
 }
 
 /* ==========================================================
-   NOVO: CARTÃO DE INTERESSE "Quem vai?" (SOCIAL PROOF)
+   CARTÃO DE INTERESSE "Quem vai?" (SOCIAL PROOF)
    ========================================================== */
 .vibz-interest-card {
     padding: 25px 35px;
@@ -282,7 +264,6 @@
     margin-left: 0;
 }
 
-/* Cores variadas para os avatares parecerem reais */
 .vibz-avatar-circle:nth-child(1) { background: #4C01B5; }
 .vibz-avatar-circle:nth-child(2) { background: #6D28D9; }
 .vibz-avatar-circle:nth-child(3) { background: #8B5CF6; }
@@ -296,7 +277,7 @@
 }
 
 /* ==========================================================
-   NOVO: CARTÃO "Onde Acontece" COM MAPA GRÁFICO
+   CARTÃO "Onde Acontece" COM MAPA GRÁFICO
    ========================================================== */
 .vibz-location-card {
     padding: 0; 
@@ -343,7 +324,6 @@
     z-index: 2;
 }
 
-/* 👇 CORREÇÃO: Estrutura do texto flexível para não empurrar o botão */
 .vibz-map-details {
     padding: 25px 35px;
     display: flex;
@@ -357,6 +337,7 @@
 .vibz-map-text-block {
     flex: 1; 
     min-width: 0; 
+    text-align: left;
 }
 
 .vibz-map-text-block strong {
@@ -663,25 +644,68 @@
     font-size: 0.95rem;
 }
 
-/* --- RESPONSIVIDADE --- */
+/* ==========================================================
+   RESPONSIVIDADE E AJUSTES DE CELULAR
+   ========================================================== */
 @media (max-width: 900px) {
     .vibz-grid { grid-template-columns: 1fr; }
     .vibz-hero-container { flex-direction: column-reverse; text-align: center; }
 }
 
 @media (max-width: 768px) {
-    .vibz-hero { padding: 40px 20px 60px; }
+    .vibz-hero { 
+        padding: 40px 20px 60px; 
+        overflow: hidden; /* CORTA QUALQUER ELEMENTO QUE TENTAR VAZAR PARA OS LADOS */
+        width: 100%;
+        box-sizing: border-box;
+    }
     .vibz-title { font-size: 2.5rem; }
     .vibz-content { margin-top: 20px; }
-    .vibz-card { padding: 25px; }
-    .vibz-map-details { flex-direction: column; align-items: flex-start; gap: 15px; }
-    .vibz-btn-map-rounded { width: 100%; text-align: center; }
+    .vibz-card { padding: 25px; } 
+    
+    .vibz-image-minimal { 
+        width: 100%; 
+        max-width: 100%; 
+        aspect-ratio: auto; /* Permite que a imagem se adapte naturalmente no celular */
+    }
+    
+    /* Protege o mapa para ele continuar full-width */
+    .vibz-location-card { padding: 0 !important; } 
+    
+    /* Alinha o botão "Ver no mapa" perfeitamente e estica para ocupar a largura toda */
+    .vibz-map-details { 
+        padding: 25px !important; 
+        flex-direction: column; 
+        align-items: stretch; /* Estica o botão para preencher as bordas laterais */
+        gap: 20px; 
+        box-sizing: border-box;
+        width: 100%;
+    }
+    
+    .vibz-map-text-block {
+        width: 100%;
+        text-align: left; /* Mantém o nome do local alinhado à esquerda */
+    }
+
+    .vibz-btn-map-rounded { 
+        width: 100%; 
+        text-align: center; 
+        box-sizing: border-box; 
+    }
 }
 
 @media (max-width: 480px) {
     .vibz-title { font-size: 1.5rem; }
     .vibz-meta { flex-direction: column; gap: 8px; }
-    .vibz-card { padding: 20px; }
-    .vibz-org { flex-direction: column; text-align: center; gap: 15px; }
-    .vibz-interest-content { justify-content: center; }
+    
+    /* Remove a centralização forçada e mantém o organizador perfeitinho na esquerda */
+    .vibz-org { 
+        flex-direction: row; 
+        text-align: left; 
+        gap: 15px; 
+        align-items: center;
+    }
+    
+    /* Garante o alinhamento da "Prova Social" na esquerda */
+    .vibz-interest-content { justify-content: flex-start; } 
 }
