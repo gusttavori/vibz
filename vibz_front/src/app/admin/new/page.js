@@ -26,6 +26,9 @@ const CadastroEvento = () => {
     const [imagePreview, setImagePreview] = useState('');
     const [sellOnPlatform, setSellOnPlatform] = useState(true);
     const [externalUrl, setExternalUrl] = useState(''); 
+    const [instagramImportUrl, setInstagramImportUrl] = useState('');
+    const [isImportingInsta, setIsImportingInsta] = useState(false);
+
     const [tickets, setTickets] = useState([
         { name: '', price: '', quantity: '', isFree: false, hasSchedule: false, activityDate: '', startTime: '', endTime: '' }
     ]);
@@ -56,10 +59,35 @@ const CadastroEvento = () => {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    // Captura automática de imagem e descrição vindas do Bookmarklet do Instagram
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const imgParam = params.get('img');
+            const descParam = params.get('desc');
+
+            if (imgParam) {
+                const decodedImg = decodeURIComponent(imgParam);
+                setImagePreview(decodedImg);
+                toast.success('Flyer do Instagram carregado com sucesso!');
+            }
+            if (descParam) {
+                const decodedDesc = decodeURIComponent(descParam);
+                setDescription(decodedDesc);
+            }
+        }
+    }, []);
+
+    // Se a categoria for "Bares e Entretenimento", desativa automaticamente a venda complexa de ingressos na plataforma
+    useEffect(() => {
+        if (category === 'Bares e Entretenimento') {
+            setSellOnPlatform(false);
+        }
+    }, [category]);
+
     useEffect(() => {
         const verifySession = async () => {
             try {
-                // CORRIGIDO: Rota alterada de /auth/verify para /auth/me
                 const res = await fetch(`${API_BASE_URL}/auth/me`, {
                     method: 'GET',
                     credentials: 'include'
@@ -84,6 +112,27 @@ const CadastroEvento = () => {
             if (file.size > 5 * 1024 * 1024) return toast.error('Imagem muito grande (Máx: 5MB)');
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    // Importação rápida via link do Instagram (oEmbed) para Bares
+    const handleImportFromInstagram = async () => {
+        if (!instagramImportUrl) return toast.error('Cole o link do post do Instagram.');
+        setIsImportingInsta(true);
+        try {
+            const res = await fetch(`https://graph.facebook.com/v15.0/instagram_oembed?url=${encodeURIComponent(instagramImportUrl)}&omitscript=true`);
+            const data = await res.json();
+            if (data && data.thumbnail_url) {
+                setImagePreview(data.thumbnail_url);
+                if (data.title) setDescription(data.title);
+                toast.success('Flyer e legenda importados do Instagram com sucesso!');
+            } else {
+                toast.error('Não foi possível extrair a imagem deste link. Verifique se o post é público.');
+            }
+        } catch (e) {
+            toast.error('Erro ao importar do Instagram.');
+        } finally {
+            setIsImportingInsta(false);
         }
     };
     
@@ -162,7 +211,7 @@ const CadastroEvento = () => {
 
     const handleNextStep = () => {
         if (currentStep === 1) {
-            if (!imageFile) return toast.error('Adicione uma capa para o evento.');
+            if (!imageFile && !imagePreview) return toast.error('Adicione uma capa ou importe do Instagram.');
             if (!title || !category || !description) return toast.error('Preencha as informações principais.');
             for (let org of organizers) {
                 if (!org.name) return toast.error('Preencha o nome de todos os organizadores.');
@@ -210,7 +259,11 @@ const CadastroEvento = () => {
         formData.append('description', description);
         formData.append('category', category);
         formData.append('ageRating', ageRating);
-        formData.append('image', imageFile);
+        if (imageFile) {
+            formData.append('image', imageFile);
+        } else if (imagePreview) {
+            formData.append('imageUrl', imagePreview); 
+        }
 
         formData.append('sellOnPlatform', sellOnPlatform);
         if (!sellOnPlatform) {
@@ -308,8 +361,8 @@ const CadastroEvento = () => {
                     <button className={styles.backBtn} onClick={() => router.back()}>
                         <FaArrowLeft /> Cancelar
                     </button>
-                    <h1>Cadastrar Novo Evento</h1>
-                    <p>Siga os passos abaixo para configurar seu evento.</p>
+                    <h1>{category === 'Bares e Entretenimento' ? 'Cadastrar Programação de Bar' : 'Cadastrar Novo Evento'}</h1>
+                    <p>{category === 'Bares e Entretenimento' ? 'Modo Rápido: Publique o line-up ou flyer do seu estabelecimento.' : 'Siga os passos abaixo para configurar seu evento.'}</p>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', position: 'relative' }}>
@@ -341,45 +394,48 @@ const CadastroEvento = () => {
                     {currentStep === 1 && (
                         <div className="wizard-step animate-fade-in">
                             <section className={styles.card}>
+                                <div className={styles.inputGroup} style={{marginBottom: '25px'}}>
+                                    <label className={styles.label}>Categoria Principal</label>
+                                    <select className={styles.select} value={category || ''} onChange={e=>setCategory(e.target.value)} required>
+                                        <option value="">Selecione...</option>
+                                        <option>Festas e Shows</option>
+                                        <option>Acadêmico / Congresso</option>
+                                        <option>Cursos e Workshops</option>
+                                        <option>Teatro e Cultura</option>
+                                        <option>Esportes</option>
+                                        <option>Gastronomia</option>
+                                        <option>Religioso</option>
+                                        <option>Bares e Entretenimento</option>
+                                    </select>
+                                </div>
+
                                 <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaImage /></div><h3>Design e Descrição</h3></div>
                                 <div className={styles.uploadSection}>
                                     <div className={styles.uploadBox} onClick={() => document.getElementById('imageUpload').click()}>
-                                        {imagePreview ? <img src={imagePreview} className={styles.imagePreview} alt="Capa" /> : <div className={styles.uploadPlaceholder}><FaImage size={48} /><span>Carregar Capa (Obrigatório)</span></div>}
+                                        {imagePreview ? <img src={imagePreview} className={styles.imagePreview} alt="Capa" /> : <div className={styles.uploadPlaceholder}><FaImage size={48} /><span>Carregar Capa ou Flyer</span></div>}
                                     </div>
                                     <input type="file" id="imageUpload" accept="image/*" onChange={handleImageUpload} hidden />
                                 </div>
                                 <div className={styles.gridTwo}>
                                     <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
-                                        <label className={styles.label}>Título do Evento ou Nome do Bar</label>
-                                        <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title || ''} onChange={e=>setTitle(e.target.value)} required placeholder="Ex: Festival de Música ou Bar do Zé"/></div>
+                                        <label className={styles.label}>{category === 'Bares e Entretenimento' ? 'Nome do Estabelecimento / Bar' : 'Título do Evento'}</label>
+                                        <div className={styles.inputWrapper}><FaAlignLeft className={styles.inputIcon}/><input className={styles.input} value={title || ''} onChange={e=>setTitle(e.target.value)} required placeholder={category === 'Bares e Entretenimento' ? 'Ex: Bar do Zé' : 'Ex: Festival de Música'}/></div>
                                     </div>
                                     <div className={styles.inputGroupFull} style={{gridColumn:'span 2'}}>
-                                        <label className={styles.label}>Descrição Completa</label>
-                                        <textarea className={styles.textarea} value={description || ''} onChange={e=>setDescription(e.target.value)} required placeholder="Detalhes, promoções de Happy Hour, cardápio..."/>
+                                        <label className={styles.label}>Descrição / Programação</label>
+                                        <textarea className={styles.textarea} value={description || ''} onChange={e=>setDescription(e.target.value)} required placeholder={category === 'Bares e Entretenimento' ? 'Happy hour, atrações da semana, promoções...' : 'Detalhes completos do evento...'}/>
                                     </div>
-                                    <div className={styles.inputGroup}>
-                                        <label className={styles.label}>Categoria Principal</label>
-                                        <select className={styles.select} value={category || ''} onChange={e=>setCategory(e.target.value)} required>
-                                            <option value="">Selecione...</option>
-                                            <option>Festas e Shows</option>
-                                            <option>Acadêmico / Congresso</option>
-                                            <option>Cursos e Workshops</option>
-                                            <option>Teatro e Cultura</option>
-                                            <option>Esportes</option>
-                                            <option>Gastronomia</option>
-                                            <option>Religioso</option>
-                                            <option>Bares e Entretenimento</option>
-                                        </select>
-                                    </div>
-                                    <div className={styles.inputGroup}>
-                                        <label className={styles.label}>Classificação Etária</label>
-                                        <select className={styles.select} value={ageRating || 'Livre'} onChange={e=>setAgeRating(e.target.value)}><option>Livre</option><option>12+</option><option>14+</option><option>16+</option><option>18+</option></select>
-                                    </div>
+                                    {category !== 'Bares e Entretenimento' && (
+                                        <div className={styles.inputGroup}>
+                                            <label className={styles.label}>Classificação Etária</label>
+                                            <select className={styles.select} value={ageRating || 'Livre'} onChange={e=>setAgeRating(e.target.value)}><option>Livre</option><option>12+</option><option>14+</option><option>16+</option><option>18+</option></select>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
 
                             <section className={styles.card}>
-                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>Produtor(es) Organizador(es)</h3></div>
+                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaInstagram /></div><h3>{category === 'Bares e Entretenimento' ? 'Responsável / Estabelecimento' : 'Produtor(es) Organizador(es)'}</h3></div>
                                 
                                 {organizers.map((org, index) => (
                                     <div key={index} style={{ marginBottom: '20px', paddingBottom: '15px', borderBottom: index < organizers.length - 1 ? '1px dashed #e2e8f0' : 'none' }}>
@@ -393,8 +449,8 @@ const CadastroEvento = () => {
                                         </div>
                                         <div className={styles.gridTwo}>
                                             <div className={styles.inputGroup}>
-                                                <label className={styles.label}>Nome do Organizador</label>
-                                                <input className={styles.input} placeholder="Ex: Diretório Acadêmico" value={org.name} onChange={e => handleChangeOrganizer(index, 'name', e.target.value)} required />
+                                                <label className={styles.label}>Nome</label>
+                                                <input className={styles.input} placeholder="Ex: Bar do Zé" value={org.name} onChange={e => handleChangeOrganizer(index, 'name', e.target.value)} required />
                                             </div>
                                             <div className={styles.inputGroup}>
                                                 <label className={styles.label}>Instagram (Opcional)</label>
@@ -406,9 +462,11 @@ const CadastroEvento = () => {
                                         </div>
                                     </div>
                                 ))}
-                                <button type="button" onClick={handleAddOrganizer} className={styles.addBtnSmall} style={{ marginTop: '10px' }}>
-                                    <FaPlus /> Adicionar outro organizador
-                                </button>
+                                {category !== 'Bares e Entretenimento' && (
+                                    <button type="button" onClick={handleAddOrganizer} className={styles.addBtnSmall} style={{ marginTop: '10px' }}>
+                                        <FaPlus /> Adicionar outro organizador
+                                    </button>
+                                )}
                             </section>
                         </div>
                     )}
@@ -417,22 +475,22 @@ const CadastroEvento = () => {
                     {currentStep === 2 && (
                         <div className="wizard-step animate-fade-in">
                             <section className={styles.card}>
-                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaCalendarAlt /></div><h3>Agenda de Realização</h3></div>
+                                <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaCalendarAlt /></div><h3>{category === 'Bares e Entretenimento' ? 'Dias de Funcionamento / Atrações' : 'Agenda de Realização'}</h3></div>
                                 {sessions.map((s,i)=>(
                                     <div key={i} className={styles.sessionCard}>
                                         <div className={styles.sessionHeader}><h4>Sessão / Data #{i+1}</h4>{sessions.length>1 && <button type="button" onClick={()=>handleRemoveSession(i)} className={styles.trashBtn}><FaTrashAlt/></button>}</div>
                                         <div className={styles.gridTwo}>
-                                            <div className={styles.inputGroup}><label className={styles.label}>Início (Abertura da Casa)</label><div className={styles.gridDateTime}><input type="date" className={styles.input} value={s.date || ''} onChange={e=>handleChangeSession(i,'date',e.target.value)} required/><input type="time" className={styles.input} value={s.time || ''} onChange={e=>handleChangeSession(i,'time',e.target.value)} required/></div></div>
+                                            <div className={styles.inputGroup}><label className={styles.label}>Início (Abertura)</label><div className={styles.gridDateTime}><input type="date" className={styles.input} value={s.date || ''} onChange={e=>handleChangeSession(i,'date',e.target.value)} required/><input type="time" className={styles.input} value={s.time || ''} onChange={e=>handleChangeSession(i,'time',e.target.value)} required/></div></div>
                                             <div className={styles.inputGroup}><label className={styles.label}>Fim (Encerramento - Opcional)</label><div className={styles.gridDateTime}><input type="date" className={styles.input} value={s.endDate || ''} onChange={e=>handleChangeSession(i,'endDate',e.target.value)}/><input type="time" className={styles.input} value={s.endTime || ''} onChange={e=>handleChangeSession(i,'endTime',e.target.value)}/></div></div>
                                         </div>
                                     </div>
                                 ))}
-                                <button type="button" onClick={handleAddSession} className={styles.addBtnSmall}><FaPlus /> Adicionar nova data para este local</button>
+                                <button type="button" onClick={handleAddSession} className={styles.addBtnSmall}><FaPlus /> Adicionar nova data</button>
                             </section>
 
                             <section className={styles.card}>
                                 <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaMapMarkerAlt /></div><h3>Endereço</h3></div>
-                                <div className={styles.inputGroupFull}><label className={styles.label}>Nome do Local</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName || ''} onChange={e=>setLocationName(e.target.value)} required placeholder="Ex: Auditório Principal ou Bar do Zé"/></div></div>
+                                <div className={styles.inputGroupFull}><label className={styles.label}>Nome do Local / Estabelecimento</label><div className={styles.inputWrapper}><FaMapMarkerAlt className={styles.inputIcon}/><input className={styles.input} value={locationName || ''} onChange={e=>setLocationName(e.target.value)} required placeholder="Ex: Bar do Zé"/></div></div>
                                 <div className={styles.gridAddressTop}>
                                     <div className={styles.inputGroup}><label className={styles.label}>CEP</label><input className={styles.input} value={addressZipCode || ''} onChange={e=>handleZipCodeChange(e.target.value)} required placeholder="00000-000"/></div>
                                     <div className={styles.inputGroup}><label className={styles.label}>Cidade</label><input className={styles.input} value={addressCity || ''} onChange={e=>setAddressCity(e.target.value)} required/></div>
@@ -457,7 +515,7 @@ const CadastroEvento = () => {
                                         <h3 style={{ color: '#4c01b5' }}>Programação de Atrações (Line-up)</h3>
                                     </div>
                                     <p style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '20px'}}>
-                                        Defina quem vai tocar em cada data que você criou no passo anterior. Isso vai gerar aquela vitrine linda de shows ao vivo no site!
+                                        Defina quem vai tocar em cada data. Isso vai gerar a vitrine de shows ao vivo do bar!
                                     </p>
                                     
                                     {sessions.map((session, sIndex) => (
@@ -503,23 +561,25 @@ const CadastroEvento = () => {
                             <section className={styles.card}>
                                 <div className={styles.cardHeader}>
                                     <div className={styles.iconWrapper}><FaTicketAlt /></div>
-                                    <h3>Gestão de Ingressos e Reservas</h3>
+                                    <h3>{category === 'Bares e Entretenimento' ? 'Link de Reservas / Redirecionamento' : 'Gestão de Ingressos e Reservas'}</h3>
                                 </div>
                                 
-                                <div className={styles.infoSwitchContainer}>
-                                    <label className={styles.switch}>
-                                        <input className={styles.hiddenCheckbox} type="checkbox" checked={sellOnPlatform} onChange={e => setSellOnPlatform(e.target.checked)} />
-                                        <span className={styles.slider}></span>
-                                    </label>
-                                    <div>
-                                        <strong style={{display: 'block', color: '#0f172a'}}>Gerar Ingressos / Lista VIP pela Vibz</strong>
-                                        <span style={{fontSize: '0.85rem', color: '#64748b'}}>Desmarque se for usar o evento apenas como vitrine de informações ou usar link externo.</span>
+                                {category !== 'Bares e Entretenimento' && (
+                                    <div className={styles.infoSwitchContainer}>
+                                        <label className={styles.switch}>
+                                            <input className={styles.hiddenCheckbox} type="checkbox" checked={sellOnPlatform} onChange={e => setSellOnPlatform(e.target.checked)} />
+                                            <span className={styles.slider}></span>
+                                        </label>
+                                        <div>
+                                            <strong style={{display: 'block', color: '#0f172a'}}>Gerar Ingressos / Lista VIP pela Vibz</strong>
+                                            <span style={{fontSize: '0.85rem', color: '#64748b'}}>Desmarque se for usar o evento apenas como vitrine de informações ou usar link externo.</span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {!sellOnPlatform ? (
                                     <div className={styles.inputGroupFull} style={{marginTop: '20px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
-                                        <label className={styles.label}>Link de Vendas, Reservas ou Instagram (Opcional)</label>
+                                        <label className={styles.label}>{category === 'Bares e Entretenimento' ? 'Link do Instagram, WhatsApp para Reservas ou Cardápio' : 'Link de Vendas, Reservas ou Instagram (Opcional)'}</label>
                                         <div className={styles.inputWrapper}>
                                             <FaLink className={styles.inputIcon}/>
                                             <input className={styles.input} type="url" value={externalUrl || ''} onChange={e=>setExternalUrl(e.target.value)} placeholder="https://..." />
@@ -596,7 +656,7 @@ const CadastroEvento = () => {
                                                                 {tickets.length > 1 && (
                                                                     <button type="button" onClick={() => handleRemoveTicket(index)} style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
                                                                         <FaTrashAlt /> Remover
-                                                                </button>
+                                                                    </button>
                                                                 )}
                                                                 <button type="button" onClick={() => handleDuplicateTicket(index)} style={{ padding: '8px 15px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', transition: '0.2s' }}>
                                                                     <FaCopy /> Duplicar e Alterar Horário
@@ -611,68 +671,6 @@ const CadastroEvento = () => {
                                         <button type="button" onClick={handleAddTicket} style={{width: '100%', padding: '16px', borderRadius: '12px', border: '2px dashed #a78bfa', background: 'rgba(76, 1, 181, 0.05)', color: '#4c01b5', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', transition: '0.2s'}}>
                                             <FaPlus /> Adicionar Novo Lote / Ingresso Zerado
                                         </button>
-
-                                        <div style={{ marginTop: '40px', borderTop: '1px solid #e2e8f0', paddingTop: '30px' }}>
-                                            <h4 style={{ color: '#0f172a', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
-                                                <FaClipboardCheck color="#4c01b5" /> Formulário Personalizado do Participante
-                                            </h4>
-                                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '20px', lineHeight: '1.5' }}>
-                                                Além do Nome e E-mail padrão coletados no checkout, adicione perguntas extras caso precise de mais informações (Ex: WhatsApp, Igreja, Mesa Desejada).
-                                            </p>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '25px', padding: '15px', border: '1px solid #e2e8f0', borderRadius: '10px', background: requireCustomForm ? '#f8fafc' : '#fff' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={requireCustomForm} 
-                                                    onChange={e => setRequireCustomForm(e.target.checked)} 
-                                                    style={{ accentColor: '#4c01b5', transform: 'scale(1.2)' }} 
-                                                />
-                                                <strong style={{ color: requireCustomForm ? '#4c01b5' : '#475569' }}>
-                                                    Quero exigir informações adicionais na inscrição/reserva
-                                                </strong>
-                                            </label>
-
-                                            {requireCustomForm && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                                    {formFields.map((field) => (
-                                                        <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '15px', background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-                                                            
-                                                            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                                                                <div className={styles.inputGroup} style={{ flex: '2 1 250px' }}>
-                                                                    <label className={styles.label}>Pergunta / Campo</label>
-                                                                    <input className={styles.input} value={field.label} onChange={e => handleChangeFormField(field.id, 'label', e.target.value)} placeholder="Ex: Qual seu WhatsApp?" required />
-                                                                </div>
-                                                                
-                                                                <div className={styles.inputGroup} style={{ flex: '1 1 150px' }}>
-                                                                    <label className={styles.label}>Tipo de Resposta</label>
-                                                                    <select className={styles.select} value={field.type} onChange={e => handleChangeFormField(field.id, 'type', e.target.value)}>
-                                                                        <option value="text">Texto Curto</option>
-                                                                        <option value="tel">Telefone / WhatsApp</option>
-                                                                        <option value="email">E-mail</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '15px' }}>
-                                                                <button type="button" onClick={() => handleRemoveFormField(field.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', fontSize: '0.9rem' }} title="Remover Pergunta">
-                                                                    <FaTrashAlt /> Remover
-                                                                </button>
-
-                                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#475569', fontWeight: 'bold', margin: 0 }}>
-                                                                    <input type="checkbox" checked={field.required} onChange={e => handleChangeFormField(field.id, 'required', e.target.checked)} style={{ accentColor: '#4c01b5', width: '18px', height: '18px', cursor: 'pointer' }} />
-                                                                    Obrigatório
-                                                                </label>
-                                                            </div>
-                                                            
-                                                        </div>
-                                                    ))}
-                                                    
-                                                    <button type="button" onClick={handleAddFormField} style={{ alignSelf: 'flex-start', background: '#e0e7ff', color: '#4c01b5', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                                        <FaPlus /> Adicionar Nova Pergunta
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 )}
                             </section>
@@ -688,22 +686,21 @@ const CadastroEvento = () => {
                                 <div style={{padding: '0 0 20px 0'}}>
                                     <div onClick={() => setIsFeaturedRequested(!isFeaturedRequested)} style={{border: isFeaturedRequested ? '2px solid #F59E0B' : '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', cursor: 'pointer', background: isFeaturedRequested ? '#FFFBEB' : '#fff', transition: '0.2s'}}>
                                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                            <strong style={{color: isFeaturedRequested ? '#B45309' : '#64748b'}}>Solicitar Selo de Evento Patrocinado</strong>
+                                            <strong style={{color: isFeaturedRequested ? '#B45309' : '#64748b'}}>Solicitar Selo de Evento / Bar Patrocinado</strong>
                                             {isFeaturedRequested ? <FaCheckCircle size={24} color="#F59E0B"/> : <FaRegCircle size={24} color="#cbd5e1"/>}
                                         </div>
-                                        <p style={{fontSize:'0.85rem', color:'#64748b', marginTop:'10px', marginBottom: 0}}>Este evento aparecerá nos grandes banners rotativos no topo da agenda. A equipe entrará em contato para alinhar os valores.</p>
+                                        <p style={{fontSize:'0.85rem', color:'#64748b', marginTop:'10px', marginBottom: 0}}>Aparecerá nos grandes banners rotativos no topo da agenda.</p>
                                     </div>
                                 </div>
 
                                 <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ margin: '0 0 15px', color: '#0f172a' }}>Resumo do Evento</h4>
+                                    <h4 style={{ margin: '0 0 15px', color: '#0f172a' }}>Resumo do Cadastro</h4>
                                     <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <li><strong>Título:</strong> {title || '-'}</li>
+                                        <li><strong>Título / Estabelecimento:</strong> {title || '-'}</li>
                                         <li><strong>Categoria:</strong> {category || '-'}</li>
                                         <li><strong>Local:</strong> {locationName || '-'}</li>
                                         <li><strong>Sessões cadastradas:</strong> {sessions.length}</li>
-                                        <li><strong>Ingressos/Atividades:</strong> {sellOnPlatform ? tickets.length : 'Venda Externa / Vitrine'}</li>
-                                        <li><strong>Perguntas Extras no Checkout:</strong> {sellOnPlatform && requireCustomForm ? formFields.filter(f => f.label.trim() !== '').length : 'Nenhuma'}</li>
+                                        <li><strong>Modelo:</strong> {sellOnPlatform ? 'Com Ingressos / Reservas Vibz' : 'Vitrine / Link Externo'}</li>
                                     </ul>
                                 </div>
                             </section>
@@ -713,12 +710,12 @@ const CadastroEvento = () => {
                                     <label style={{display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer', margin: 0}}>
                                         <input className={styles.checkbox} type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} style={{ marginTop: '4px' }} />
                                         <span style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>
-                                            Confirmo que as informações estão corretas e estou ciente das políticas de aprovação e taxas da plataforma Vibz.
+                                            Confirmo que as informações estão corretas e estou ciente das políticas de publicação da plataforma Vibz.
                                         </span>
                                     </label>
                                 </div>
                                 <button onClick={handleSubmit} className={styles.submitButton} disabled={loading || !termsAccepted} style={{ width: '100%', padding: '18px', fontSize: '1.1rem', background: termsAccepted ? '#10b981' : '#cbd5e1' }}>
-                                    {loading ? 'PUBLICANDO...' : <><FaClipboardCheck /> CONFIRMAR E PUBLICAR EVENTO</>}
+                                    {loading ? 'PUBLICANDO...' : <><FaClipboardCheck /> CONFIRMAR E PUBLICAR</>}
                                 </button>
                             </div>
                         </div>

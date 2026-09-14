@@ -58,12 +58,12 @@ enum LedgerTransactionType {
 // --- MODELOS PRINCIPAIS (AGENDA CULTURAL) ---
 
 model SystemConfig {
-  id            String   @id @default(uuid())
-  platformFee   Int      @default(1000) // 1000 = 10.00%
-  minFee        Int      @default(200) // 200 = R$ 2,00
-  premiumPrice  Int      @default(10000) // 10000 = R$ 100,00
-  standardPrice Int      @default(200) // 200 = R$ 2,00
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  platformFee    Int      @default(1000) // 1000 = 10.00%
+  minFee         Int      @default(200) // 200 = R$ 2,00
+  premiumPrice   Int      @default(10000) // 10000 = R$ 100,00
+  standardPrice  Int      @default(200) // 200 = R$ 2,00
+  updatedAt      DateTime @updatedAt
 
   @@map("system_config")
 }
@@ -286,7 +286,7 @@ model FinancialLedger {
 }
 
 // =====================================================================
-// --- NOVOS MODELOS: MÚSICA AO VIVO (PROGRAMAÇÃO DE ESTABELECIMENTOS) ---
+// --- MODELOS: MÚSICA AO VIVO (PROGRAMAÇÃO DE ESTABELECIMENTOS) ---
 // =====================================================================
 
 model Artist {
@@ -319,7 +319,7 @@ model Schedule {
   id       String  @id @default(uuid())
   artistId String
   placeId  String
-  title    String? // <-- ADICIONE ESTA LINHA AQUI
+  title    String?
 
   date String
   time String
@@ -332,4 +332,22 @@ model Schedule {
 
   @@unique([artistId, placeId, date, time])
   @@map("schedules")
+}
+
+// =====================================================================
+// --- NOVO MODELO: FEED DE PROGRAMAÇÃO DOS BARES (INSTAGRAM OEMBED) ---
+// =====================================================================
+
+model VenueFeed {
+  id          String   @id @default(uuid())
+  venueName   String   // Nome do Bar/Local (Ex: "Boteco Central")
+  city        String   // Cidade (Ex: "Vitória da Conquista")
+  imageUrl    String   // URL da imagem do flyer extraída do Instagram
+  caption     String?  // Legenda ou descrição da programação
+  postUrl     String   // Link direto para a postagem original do Instagram
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("venue_feeds")
 }

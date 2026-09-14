@@ -7,7 +7,7 @@ import {
     FaBullhorn, FaLayerGroup, FaGraduationCap, FaMusic, 
     FaTheaterMasks, FaTrophy, FaUtensils, FaChalkboardTeacher, 
     FaStar, FaLink, FaArrowRight, FaDove, FaGlassCheers,
-    FaClock, FaChevronDown, FaChevronUp, FaMapMarkerAlt
+    FaClock, FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaInstagram, FaExternalLinkAlt
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -46,6 +46,9 @@ export default function Home() {
     const [selectedAgendaDate, setSelectedAgendaDate] = useState('');
     const [expandedAgendaId, setExpandedAgendaId] = useState(null);
 
+    // Estado para os feeds de Instagram dos Bares (oEmbed)
+    const [venueFeeds, setVenueFeeds] = useState([]);
+
     const academicoRef = useRef(null);
     const festasRef = useRef(null);
     const teatroRef = useRef(null);
@@ -59,6 +62,24 @@ export default function Home() {
         const d = new Date();
         const localISO = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         setSelectedAgendaDate(localISO);
+    }, []);
+
+    // Buscar os feeds de Instagram cadastrados para os bares
+    useEffect(() => {
+        const fetchVenueFeeds = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/venues`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        setVenueFeeds(data);
+                    }
+                }
+            } catch (error) {
+                console.error("Erro ao carregar feeds dos bares:", error);
+            }
+        };
+        fetchVenueFeeds();
     }, []);
 
     const getEventDates = (event) => {
@@ -494,6 +515,36 @@ export default function Home() {
                         
                         </div>
                     )}
+
+                    {/* SEÇÃO INTEGRADA DE FLYERS DO INSTAGRAM DOS BARES */}
+                    {venueFeeds.length > 0 && (
+                        <div style={{ marginTop: '30px' }}>
+                            <h4 style={{ fontSize: '1.2rem', color: '#0f172a', marginBottom: '15px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaInstagram color="#e1306c" /> Flyers e Programações da Semana (Instagram)
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '15px' }}>
+                                {venueFeeds.map(feed => (
+                                    <div key={feed.id} style={{ background: '#fff', borderRadius: '14px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#000', overflow: 'hidden' }}>
+                                            <img src={feed.imageUrl} alt={feed.venueName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                                            <div>
+                                                <strong style={{ fontSize: '1rem', color: '#0f172a', display: 'block', marginBottom: '4px' }}>{feed.venueName}</strong>
+                                                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 12px 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                    {feed.caption || 'Confira os detalhes no post original.'}
+                                                </p>
+                                            </div>
+                                            <a href={feed.postUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: '#f8fafc', color: '#4c01b5', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', textDecoration: 'none' }}>
+                                                <FaInstagram size={14} /> Ver no Instagram <FaExternalLinkAlt size={10} />
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </section>
         );
@@ -596,7 +647,6 @@ export default function Home() {
                 {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
                 {renderSection("Cursos e Workshops", 'cursos', cursosRef)}
                 
-                {/* Agora a seção de bares será sempre renderizada por último */}
                 {renderAgendaSection("Bares e Entretenimento", 'bares', baresRef)} 
             </main>
 
@@ -651,7 +701,7 @@ export default function Home() {
                             width={360} 
                             height={720} 
                             className="mkt-mockup-img" 
-                            style={{ width: '100%', height: 'auto', maxWidth: '360px', width: 'auto' }}
+                            style={{ width: '100%', height: 'auto', maxWidth: '360px' }}
                         />
                     </div>
                 </div>
