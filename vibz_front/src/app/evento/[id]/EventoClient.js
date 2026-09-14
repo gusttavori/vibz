@@ -45,36 +45,46 @@ export default function EventoDetalhes() {
                 setEvento(data); 
                 
                 // ==============================================================
-                // ALGORITMO DETERMINÍSTICO PARA PROVA SOCIAL ÚNICA POR EVENTO
+                // ALGORITMO DINÂMICO DIÁRIO PARA PROVA SOCIAL (ETAPA 3)
                 // ==============================================================
-                // Cria um hash matemático baseado no ID único do evento
+                // Pega a data de hoje no formato AAAA-MM-DD
+                const todayDateString = new Date().toISOString().split('T')[0]; 
+                
+                // Junta o ID único do evento + a data de hoje para gerar variação diária
+                const hashInput = id + todayDateString;
+                
                 let hash = 0;
-                for (let i = 0; i < id.length; i++) {
-                    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+                for (let i = 0; i < hashInput.length; i++) {
+                    hash = hashInput.charCodeAt(i) + ((hash << 5) - hash);
                 }
                 hash = Math.abs(hash);
 
-                // Define uma base de pessoas interessadas entre 15 e 84 (única para este evento)
-                const baseInterest = (hash % 70) + 15; 
+                // Base flutuante de pessoas interessadas (muda todo dia)
+                const dailyFloatingInterest = (hash % 48) + 18; 
 
-                // Escolhe 5 letras únicas do alfabeto baseado no hash do evento
+                // Hash exclusivo do ID para fixar os avatares (não mudam com o dia)
+                let idHash = 0;
+                for (let i = 0; i < id.length; i++) {
+                    idHash = id.charCodeAt(i) + ((idHash << 5) - idHash);
+                }
+                idHash = Math.abs(idHash);
+
                 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                let tempHash = hash;
+                let tempHash = idHash;
                 let selectedLetters = [];
                 while (selectedLetters.length < 5) {
                     let char = alphabet[tempHash % alphabet.length];
                     if (!selectedLetters.includes(char)) selectedLetters.push(char);
-                    tempHash = (tempHash * 31) + 17; // Muda o hash para a próxima letra
+                    tempHash = (tempHash * 31) + 17; 
                 }
                 setAvatarLetters(selectedLetters);
 
-                // Soma a base fictícia com os dados REAIS de engajamento do sistema
+                // Soma a base diária com os engajamentos REAIS
                 const totalSold = (data.tickets || []).reduce((acc, t) => acc + (t.sold || 0), 0);
                 const totalFavorites = data.favoritesCount || (Array.isArray(data.favorites) ? data.favorites.length : 0);
                 const totalViews = data.viewCount || data.views || 0;
                 
-                setInterestCount(totalSold + totalFavorites + totalViews + baseInterest);
-                
+                setInterestCount(totalSold + totalFavorites + totalViews + dailyFloatingInterest);
                 // ==============================================================
 
                 if (data.formSchema) {
@@ -125,7 +135,12 @@ export default function EventoDetalhes() {
     if (!evento) return <div className="error-screen" role="alert">Evento não encontrado.</div>;
 
     const displayDate = new Date(evento.date || evento.createdAt);
-    const orgInfo = typeof evento.organizerInfo === 'string' ? JSON.parse(evento.organizerInfo || '{}') : (evento.organizerInfo || {});
+
+    // ==============================================================
+    // ETAPA 2: TRATAMENTO PARA MÚLTIPLOS ORGANIZADORES
+    // ==============================================================
+    const parsedOrg = typeof evento.organizerInfo === 'string' ? JSON.parse(evento.organizerInfo || '[]') : (evento.organizerInfo || []);
+    const organizersList = Array.isArray(parsedOrg) ? parsedOrg : [parsedOrg];
 
     const uniqueDatesSet = new Set();
     
@@ -571,14 +586,10 @@ export default function EventoDetalhes() {
                     
                     <section className="vibz-main" style={{ minWidth: 0 }}>
                         
-                        {/* ========================================= */}
-                        {/* 🌟 CARD DE INTERESSE / SOCIAL PROOF 🌟    */}
-                        {/* ========================================= */}
                         <div className="vibz-card vibz-interest-card">
                             <h3>Quem vai?</h3>
                             <div className="vibz-interest-content">
                                 <div className="vibz-avatars-group">
-                                    {/* Mapeia as 5 letras aleatórias geradas especificamente para este evento */}
                                     {avatarLetters.map((letter, index) => (
                                         <div key={index} className="vibz-avatar-circle" style={{ zIndex: 5 - index }}>
                                             {letter}
@@ -598,9 +609,6 @@ export default function EventoDetalhes() {
                             <p className="vibz-desc">{evento.description}</p>
                         </div>
                         
-                        {/* ========================================= */}
-                        {/* 🌟 CARD ONDE ACONTECE / MAPA GRÁFICO 🌟   */}
-                        {/* ========================================= */}
                         <div className="vibz-card vibz-location-card">
                             <h3>Onde acontece</h3>
                             
@@ -628,18 +636,22 @@ export default function EventoDetalhes() {
 
                         <div className="vibz-card">
                             <h3>Organizado por</h3>
-                            <div className="vibz-org">
-                                <div className="vibz-avatar" aria-hidden="true">
-                                    {orgInfo.name ? orgInfo.name.charAt(0).toUpperCase() : 'O'}
-                                </div>
-                                <div className="vibz-org-info">
-                                    <h4>{orgInfo.name || "Organização do Evento"}</h4>
-                                    {orgInfo.instagram && (
-                                        <a href={`https://instagram.com/${orgInfo.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="vibz-insta" aria-label={`Instagram de ${orgInfo.name || 'Organização'}`}>
-                                            <InstagramIcon /> {orgInfo.instagram}
-                                        </a>
-                                    )}
-                                </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {organizersList.map((org, idx) => (
+                                    <div key={idx} className="vibz-org">
+                                        <div className="vibz-avatar" aria-hidden="true">
+                                            {org.name ? org.name.charAt(0).toUpperCase() : 'O'}
+                                        </div>
+                                        <div className="vibz-org-info">
+                                            <h4>{org.name || "Organização do Evento"}</h4>
+                                            {org.instagram && (
+                                                <a href={`https://instagram.com/${org.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="vibz-insta" aria-label={`Instagram de ${org.name || 'Organização'}`}>
+                                                    <InstagramIcon /> {org.instagram}
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </section>

@@ -299,7 +299,7 @@
    NOVO: CARTÃO "Onde Acontece" COM MAPA GRÁFICO
    ========================================================== */
 .vibz-location-card {
-    padding: 0; /* Remove padding para a imagem colar nas bordas superiores */
+    padding: 0; 
     overflow: hidden;
 }
 
@@ -312,7 +312,6 @@
 .vibz-map-graphic {
     height: 180px;
     background-color: #f5f3ff;
-    /* Linhas do mapa simuladas */
     background-image: 
         linear-gradient(rgba(139, 92, 246, 0.1) 2px, transparent 2px),
         linear-gradient(90deg, rgba(139, 92, 246, 0.1) 2px, transparent 2px);
@@ -324,7 +323,6 @@
     justify-content: center;
 }
 
-/* Construções / Blocos abstratos na arte do mapa */
 .map-shape-1 { position: absolute; top: 30px; right: 25%; width: 140px; height: 35px; background: rgba(139, 92, 246, 0.08); border-radius: 8px; }
 .map-shape-2 { position: absolute; bottom: 25px; right: 10%; width: 110px; height: 50px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; }
 .map-shape-3 { position: absolute; top: 40px; left: 15%; width: 90px; height: 40px; background: rgba(139, 92, 246, 0.12); border-radius: 8px; }
@@ -345,13 +343,20 @@
     z-index: 2;
 }
 
+/* 👇 CORREÇÃO: Estrutura do texto flexível para não empurrar o botão */
 .vibz-map-details {
     padding: 25px 35px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    gap: 15px;
+    box-sizing: border-box; 
+    width: 100%;
+}
+
+.vibz-map-text-block {
+    flex: 1; 
+    min-width: 0; 
 }
 
 .vibz-map-text-block strong {
@@ -359,11 +364,18 @@
     font-size: 1.15rem;
     color: #0f172a;
     margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .vibz-map-text-block span {
     font-size: 0.95rem;
     color: #64748b;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .vibz-btn-map-rounded {
@@ -371,7 +383,7 @@
     color: #0f172a;
     border: 1px solid #cbd5e1;
     padding: 10px 24px;
-    border-radius: 50px; /* Borda bem redonda igual à foto */
+    border-radius: 50px; 
     text-decoration: none;
     font-weight: 600;
     font-size: 0.95rem;
