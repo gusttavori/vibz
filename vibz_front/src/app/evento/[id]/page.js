@@ -1,20 +1,28 @@
 import EventoClient from './EventoClient'; 
 
-const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// URL específica para o Servidor (Node.js precisa do link absoluto, não entende "/api")
+const getServerApiUrl = () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    // Se a variável for o proxy do front-end, o servidor aponta direto pro backend
+    if (apiUrl === '/api') {
+        return 'https://vibz.onrender.com/api'; 
+    }
+    return apiUrl;
+};
 
 // ==========================================
 // MÁGICA DO SEO E OPEN GRAPH (WhatsApp/Insta)
 // ==========================================
 export async function generateMetadata({ params }) {
-    // CORREÇÃO AQUI: No Next.js 15+, params é uma Promise e precisa do 'await'
     const resolvedParams = await params;
     const id = resolvedParams.id;
 
     try {
-        const res = await fetch(`${getApiBaseUrl()}/events/${id}`);
+        const res = await fetch(`${getServerApiUrl()}/events/${id}`, {
+            cache: 'no-store' // Garante que o servidor pegue sempre o nome mais atualizado
+        });
         
         if (!res.ok) {
-            // Se não achar o evento, envia apenas o título (o layout.js vai colocar o " | Vibz")
             return { title: 'Evento não encontrado' };
         }
 
@@ -24,7 +32,7 @@ export async function generateMetadata({ params }) {
         const descricaoCurta = evento.description ? evento.description.substring(0, 150) + '...' : 'Garanta seu ingresso na Vibz!';
 
         return {
-            // 👇 CORREÇÃO: Envia apenas o nome do evento. O layout.js global cuida do sufixo.
+            // Envia APENAS o título. O layout.js global cuida de adicionar o " | Vibz"
             title: evento.title, 
             description: descricaoCurta,
             openGraph: {
@@ -51,9 +59,9 @@ export async function generateMetadata({ params }) {
             },
         };
     } catch (error) {
-        // 👇 Fallback: Envia apenas "Detalhes do Evento"
+        console.error("Erro ao gerar metadata:", error);
         return {
-            title: 'Detalhes do Evento',
+            title: 'Ingressos Oficiais',
         };
     }
 }
