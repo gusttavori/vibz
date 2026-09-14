@@ -14,7 +14,8 @@ export async function generateMetadata({ params }) {
         const res = await fetch(`${getApiBaseUrl()}/events/${id}`);
         
         if (!res.ok) {
-            return { title: 'Evento não encontrado | Vibz' };
+            // Se não achar o evento, envia apenas o título (o layout.js vai colocar o " | Vibz")
+            return { title: 'Evento não encontrado' };
         }
 
         const evento = await res.json();
@@ -23,12 +24,13 @@ export async function generateMetadata({ params }) {
         const descricaoCurta = evento.description ? evento.description.substring(0, 150) + '...' : 'Garanta seu ingresso na Vibz!';
 
         return {
-            title: `${evento.title} | Vibz`,
+            // 👇 CORREÇÃO: Envia apenas o nome do evento. O layout.js global cuida do sufixo.
+            title: evento.title, 
             description: descricaoCurta,
             openGraph: {
-                title: `${evento.title} - ${dataEvento}`,
+                title: `${evento.title} - ${dataEvento} | Vibz`,
                 description: descricaoCurta,
-                url: `https://vibzeventos.com.br/evento/${id}`, // Troque pelo seu domínio depois
+                url: `https://vibzeventos.com.br/evento/${id}`, 
                 siteName: 'Vibz',
                 images: [
                     {
@@ -43,14 +45,15 @@ export async function generateMetadata({ params }) {
             },
             twitter: {
                 card: 'summary_large_image',
-                title: evento.title,
+                title: `${evento.title} | Vibz`,
                 description: descricaoCurta,
                 images: [evento.imageUrl],
             },
         };
     } catch (error) {
+        // 👇 Fallback: Envia apenas "Detalhes do Evento"
         return {
-            title: 'Detalhes do Evento | Vibz',
+            title: 'Detalhes do Evento',
         };
     }
 }
