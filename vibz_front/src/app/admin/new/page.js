@@ -59,21 +59,25 @@ const CadastroEvento = () => {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    // Captura automática de imagem e descrição vindas do Bookmarklet do Instagram
+// Captura automática de imagem, descrição e organizador vindos do Bookmarklet do Instagram
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const imgParam = params.get('img');
             const descParam = params.get('desc');
+            const orgParam = params.get('org');
 
             if (imgParam) {
-                const decodedImg = decodeURIComponent(imgParam);
-                setImagePreview(decodedImg);
-                toast.success('Flyer do Instagram carregado com sucesso!');
+                setImagePreview(decodeURIComponent(imgParam));
             }
             if (descParam) {
-                const decodedDesc = decodeURIComponent(descParam);
-                setDescription(decodedDesc);
+                setDescription(decodeURIComponent(descParam));
+            }
+            if (orgParam) {
+                const decodedOrg = decodeURIComponent(orgParam);
+                setTitle(decodedOrg); // Preenche o título/nome do bar
+                setOrganizers([{ name: decodedOrg, instagram: `@${decodedOrg.toLowerCase().replace(/\s+/g, '')}` }]); // Preenche o organizador
+                toast.success(`Dados de @${decodedOrg} importados com sucesso! 🚀`);
             }
         }
     }, []);
