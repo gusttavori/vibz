@@ -8,7 +8,7 @@ import {
     FaImage, FaInstagram, FaPlus, FaTrashAlt, FaTicketAlt,
     FaStar, FaCalendarAlt, FaMapMarkerAlt, FaMusic,
     FaAlignLeft, FaArrowLeft, FaLink, FaCheckCircle, FaRegCircle,
-    FaChevronDown, FaChevronUp, FaCopy, FaArrowRight, FaClipboardCheck, FaListUl
+    FaChevronDown, FaChevronUp, FaCopy, FaArrowRight, FaClipboardCheck
 } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast'; 
 
@@ -48,7 +48,6 @@ const CadastroEvento = () => {
     const [addressState, setAddressState] = useState('');
     const [addressZipCode, setAddressZipCode] = useState('');
     
-    // NOVO: Array para suportar múltiplos organizadores
     const [organizers, setOrganizers] = useState([
         { name: '', instagram: '' }
     ]);
@@ -60,7 +59,8 @@ const CadastroEvento = () => {
     useEffect(() => {
         const verifySession = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/verify`, {
+                // CORRIGIDO: Rota alterada de /auth/verify para /auth/me
+                const res = await fetch(`${API_BASE_URL}/auth/me`, {
                     method: 'GET',
                     credentials: 'include'
                 });
@@ -87,7 +87,6 @@ const CadastroEvento = () => {
         }
     };
     
-    // --- FUNÇÕES DE MÚLTIPLOS ORGANIZADORES ---
     const handleAddOrganizer = () => setOrganizers([...organizers, { name: '', instagram: '' }]);
     const handleRemoveOrganizer = (index) => {
         if (organizers.length === 1) return toast.error("Mínimo de 1 organizador.");
@@ -176,8 +175,6 @@ const CadastroEvento = () => {
             }
         }
         if (currentStep === 3) {
-            // Removida a obrigatoriedade de externalUrl se a plataforma de vendas for desligada. 
-            // Agora o formulário permite criar Eventos Informativos/Livres tranquilamente.
             if (sellOnPlatform) {
                 for (let i = 0; i < tickets.length; i++) {
                     if (!tickets[i].name) return toast.error(`Preencha o nome do ingresso ${i + 1}`);
@@ -273,7 +270,6 @@ const CadastroEvento = () => {
             city: addressCity, state: addressState, zipCode: addressZipCode
         }));
         
-        // NOVO: Salvando o array completo de organizadores
         formData.append('organizerInfo', JSON.stringify(organizers));
         formData.append('isFeaturedRequested', isFeaturedRequested ? 'true' : 'false');
 
@@ -600,7 +596,7 @@ const CadastroEvento = () => {
                                                                 {tickets.length > 1 && (
                                                                     <button type="button" onClick={() => handleRemoveTicket(index)} style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
                                                                         <FaTrashAlt /> Remover
-                                                                    </button>
+                                                                </button>
                                                                 )}
                                                                 <button type="button" onClick={() => handleDuplicateTicket(index)} style={{ padding: '8px 15px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', transition: '0.2s' }}>
                                                                     <FaCopy /> Duplicar e Alterar Horário
