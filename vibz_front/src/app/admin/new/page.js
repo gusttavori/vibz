@@ -59,7 +59,7 @@ const CadastroEvento = () => {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
 
-// Captura automática de imagem, descrição e organizador vindos do Bookmarklet do Instagram
+    // Captura automática de imagem, descrição e organizador vindos do Bookmarklet do Instagram
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
@@ -403,7 +403,8 @@ const CadastroEvento = () => {
                                     <select className={styles.select} value={category || ''} onChange={e=>setCategory(e.target.value)} required>
                                         <option value="">Selecione...</option>
                                         <option>Festas e Shows</option>
-                                        <option>Acadêmico / Congresso</option>
+                                        <option>Acadêmico</option>
+                                        <option>Congressos e Convenções</option>
                                         <option>Cursos e Workshops</option>
                                         <option>Teatro e Cultura</option>
                                         <option>Esportes</option>
@@ -412,6 +413,34 @@ const CadastroEvento = () => {
                                         <option>Bares e Entretenimento</option>
                                     </select>
                                 </div>
+
+                                {/* ATALHO DE IMPORTAÇÃO INSTAGRAM PARA BARES */}
+                                {category === 'Bares e Entretenimento' && (
+                                    <div style={{ background: '#faf5ff', border: '1px dashed #7c3aed', padding: '20px', borderRadius: '12px', marginBottom: '25px' }}>
+                                        <h4 style={{ color: '#6d28d9', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <FaInstagram /> Importar Flyer Direto do Instagram
+                                        </h4>
+                                        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '12px' }}>
+                                            Cole o link do post do Instagram do seu bar para puxar a arte do flyer automaticamente.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input 
+                                                className={styles.input} 
+                                                placeholder="https://www.instagram.com/p/..." 
+                                                value={instagramImportUrl} 
+                                                onChange={e => setInstagramImportUrl(e.target.value)} 
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={handleImportFromInstagram} 
+                                                disabled={isImportingInsta}
+                                                style={{ background: '#7c3aed', color: '#fff', border: 'none', padding: '0 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                            >
+                                                {isImportingInsta ? 'Puxando...' : 'Importar'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className={styles.cardHeader}><div className={styles.iconWrapper}><FaImage /></div><h3>Design e Descrição</h3></div>
                                 <div className={styles.uploadSection}>

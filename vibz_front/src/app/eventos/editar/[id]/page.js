@@ -525,10 +525,12 @@ const EditarEvento = () => {
                                     </div>
                                     <div className={styles.inputGroup}>
                                         <label className={styles.label}>Categoria</label>
+                                        {/* ATUALIZADO: Dropdown com as novas categorias separadas */}
                                         <select className={styles.select} value={category} onChange={e => setCategory(e.target.value)} required>
                                             <option value="" disabled>Selecione...</option>
                                             <option>Festas e Shows</option>
-                                            <option>Acadêmico / Congresso</option>
+                                            <option>Acadêmico</option>
+                                            <option>Congressos e Convenções</option>
                                             <option>Cursos e Workshops</option>
                                             <option>Teatro e Cultura</option>
                                             <option>Esportes</option>

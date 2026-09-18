@@ -29,16 +29,19 @@ export default function Home() {
     const [featuredEvents, setFeaturedEvents] = useState([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
 
+    // ADICIONADO: Estado para 'congressos'
     const [categoryEvents, setCategoryEvents] = useState({
-        academico: [], festas: [], teatro: [], esportes: [], gastronomia: [], cursos: [], religioso: [], bares: []
+        academico: [], congressos: [], festas: [], teatro: [], esportes: [], gastronomia: [], cursos: [], religioso: [], bares: []
     });
 
+    // ADICIONADO: Estado para 'congressos'
     const [loadingCategories, setLoadingCategories] = useState({
-        academico: true, festas: true, teatro: true, esportes: true, gastronomia: true, cursos: true, religioso: true, bares: true
+        academico: true, congressos: true, festas: true, teatro: true, esportes: true, gastronomia: true, cursos: true, religioso: true, bares: true
     });
 
+    // ADICIONADO: Estado para 'congressos'
     const [activeFilters, setActiveFilters] = useState({
-        academico: 'Todos', festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos', religioso: 'Todos', bares: 'Todos'
+        academico: 'Todos', congressos: 'Todos', festas: 'Todos', teatro: 'Todos', esportes: 'Todos', gastronomia: 'Todos', cursos: 'Todos', religioso: 'Todos', bares: 'Todos'
     });
 
     const [favoritedEventIds, setFavoritedEventIds] = useState([]);
@@ -46,10 +49,10 @@ export default function Home() {
     const [selectedAgendaDate, setSelectedAgendaDate] = useState('');
     const [expandedAgendaId, setExpandedAgendaId] = useState(null);
 
-    // Estado para os feeds de Instagram dos Bares (oEmbed)
     const [venueFeeds, setVenueFeeds] = useState([]);
 
     const academicoRef = useRef(null);
+    const congressosRef = useRef(null); // ADICIONADO
     const festasRef = useRef(null);
     const teatroRef = useRef(null);
     const esportesRef = useRef(null);
@@ -64,7 +67,6 @@ export default function Home() {
         setSelectedAgendaDate(localISO);
     }, []);
 
-    // Buscar os feeds de Instagram cadastrados para os bares
     useEffect(() => {
         const fetchVenueFeeds = async () => {
             try {
@@ -182,7 +184,10 @@ export default function Home() {
     };
 
     useEffect(() => {
-        fetchCategory('Acadêmico / Congresso', 'academico');
+        // ATUALIZADO: Buscar as duas categorias separadamente
+        fetchCategory('Acadêmico', 'academico');
+        fetchCategory('Congressos e Convenções', 'congressos');
+        
         fetchCategory('Festas e Shows', 'festas');
         fetchCategory('Teatro e Cultura', 'teatro');
         fetchCategory('Esportes', 'esportes');
@@ -328,7 +333,8 @@ export default function Home() {
     const categoriesConfig = [
         { name: 'Festas e Shows', icon: <FaMusic size={24} />, ref: festasRef, key: 'festas' },
         { name: 'Teatro e Cultura', icon: <FaTheaterMasks size={24} />, ref: teatroRef, key: 'teatro' },
-        { name: 'Acadêmico', icon: <FaGraduationCap size={24} />, ref: academicoRef, key: 'academico' },
+        { name: 'Acadêmico', icon: <FaGraduationCap size={24} />, ref: academicoRef, key: 'academico' }, // ATUALIZADO
+        { name: 'Congressos e Convenções', icon: <FaLayerGroup size={24} />, ref: congressosRef, key: 'congressos' }, // ADICIONADO
         { name: 'Religioso', icon: <FaDove size={24} />, ref: religiosoRef, key: 'religioso' }, 
         { name: 'Esportes', icon: <FaTrophy size={24} />, ref: esportesRef, key: 'esportes' },
         { name: 'Gastronomia', icon: <FaUtensils size={24} />, ref: gastronomiaRef, key: 'gastronomia' },
@@ -641,7 +647,8 @@ export default function Home() {
             <main id="conteudo-principal" className="main-content-wrapper" tabIndex="-1">
                 {renderSection("Festas e Shows", 'festas', festasRef)}
                 {renderSection("Teatro e Cultura", 'teatro', teatroRef)}
-                {renderSection("Acadêmico / Congresso", 'academico', academicoRef)}
+                {renderSection("Acadêmico", 'academico', academicoRef)} {/* ATUALIZADO */}
+                {renderSection("Congressos e Convenções", 'congressos', congressosRef)} {/* ADICIONADO */}
                 {renderSection("Religioso", 'religioso', religiosoRef)}
                 {renderSection("Esportes e Lazer", 'esportes', esportesRef)}
                 {renderSection("Gastronomia", 'gastronomia', gastronomiaRef)}
